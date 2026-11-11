@@ -1,0 +1,6 @@
+{
+  "name": "Kasuwar Kanawa",
+  "description": "Kasuwar Kanawa e-commerce storefront – Arewa Sai Dan Arewa. Modern northern commerce hub featuring flash sales, special offers, electronics, and authentic lifestyle products.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
