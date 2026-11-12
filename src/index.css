@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
-/* Keep content and replaced elements inside their available layout width. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 img,
 video,
 svg {
@@ -12,46 +17,73 @@ svg {
   body,
   #root {
     width: 100%;
-    min-width: 320px;
+    min-width: 0;
   }
 
-  /* Let grid and flex children shrink to the viewport instead of their contents. */
+  /* Let page sections and their flex/grid children size to the viewport. */
+  #root > div,
   main,
   main section,
   main section > *,
-  main section .grid > * {
+  main section .grid,
+  main section .grid > *,
+  main section .flex,
+  main section .flex > * {
     min-width: 0;
     max-width: 100%;
   }
 
-  /* Keep the established two-card mobile layout while allowing narrow cards to shrink. */
-  main .grid-cols-2 {
+  /* Preserve the intended two product cards per row on all phone widths. */
+  main .grid.grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* Permit long unbroken contact and product text to wrap instead of widening sections. */
-  a[href^='mailto:'],
+  /* Section titles and descriptions can wrap without forcing wider columns. */
+  main section > div:first-child {
+    flex-wrap: wrap;
+  }
+
   main h1,
   main h2,
   main h3,
   main h4,
-  main p {
+  main p,
+  #root a[href^='mailto:'] {
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
-  /* Keep the product dialog within the viewport and its content vertically scrollable. */
+  /* Keep the toast within the viewport on narrow phones. */
+  #root > div > .fixed.bottom-6.right-6 {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  /* Product-details dialog: bound the panel and keep scrolling vertical. */
   [class*='max-h-[92vh]'] {
     width: calc(100vw - 1rem);
     max-width: 56rem;
+    max-height: calc(100svh - 1rem);
+    margin-block: 0;
+    min-width: 0;
   }
 
   [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] {
     min-width: 0;
-    overscroll-behavior-x: contain;
+    min-height: 0;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
   }
 
-  /* Bound the product gallery height and preserve the source image's aspect ratio. */
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div,
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Reduce the gallery's mobile footprint and contain, rather than crop, product photos. */
   [class*='max-h-[92vh]'] [class*='aspect-square'] {
     width: 100%;
     max-height: 35svh;
@@ -59,25 +91,93 @@ svg {
   }
 
   [class*='max-h-[92vh]'] [class*='aspect-square'] > img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
   }
 
-  /* Make seller/contact rows wrap naturally on narrow devices. */
-  [class*='max-h-[92vh]'] [class*='space-y-2'] > div {
+  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Wrap seller details/phone into available space and keep the WhatsApp CTA full-width. */
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > div:first-child > div:last-child > div {
     min-width: 0;
     flex-wrap: wrap;
+    justify-content: flex-start;
     gap: 0.25rem 0.75rem;
   }
 
-  [class*='max-h-[92vh]'] [class*='space-y-2'] > div > :last-child {
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > div:first-child > div:last-child > div > :last-child {
     min-width: 0;
+    max-width: 100%;
     overflow-wrap: anywhere;
   }
 
   [class*='max-h-[92vh]'] button,
   [class*='max-h-[92vh]'] a {
     min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  [class*='max-h-[92vh]'] [class*='grid-cols-2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Authentication dialog and its form retain vertical scrolling inside the viewport. */
+  [class*='max-w-lg'] {
+    width: calc(100vw - 1rem);
+    max-width: 32rem;
+    max-height: calc(100svh - 1rem);
+    min-width: 0;
+  }
+
+  [class*='max-w-lg'] [class*='max-h-[80vh]'] {
+    max-height: calc(100svh - 9rem);
+    min-width: 0;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+
+  [class*='max-w-lg'] [class*='grid-cols-3'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [class*='max-w-lg'] input,
+  [class*='max-w-lg'] select,
+  [class*='max-w-lg'] textarea,
+  [class*='max-w-lg'] button {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Header branding and controls may shrink without pushing the viewport wider. */
+  header,
+  header > div,
+  header > div > div,
+  header a,
+  header form {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Keep the mobile navigation drawer within the available width. */
+  nav,
+  nav > div,
+  nav [class*='md:hidden'] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Constrain promotional and trust sections while preserving their existing layout. */
+  main section img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  main section [class*='aspect-'] {
+    max-width: 100%;
   }
 }
