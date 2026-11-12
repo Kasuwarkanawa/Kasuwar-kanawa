@@ -20,7 +20,7 @@ svg {
     min-width: 0;
   }
 
-  /* Let page sections and their flex/grid children size to the viewport. */
+  /* Make page-level flex and grid children shrink to the available viewport. */
   #root > div,
   main,
   main section,
@@ -28,29 +28,39 @@ svg {
   main section .grid,
   main section .grid > *,
   main section .flex,
-  main section .flex > * {
+  main section .flex > *,
+  header,
+  header > div,
+  header > div > div,
+  header a,
+  header form,
+  nav,
+  nav > div,
+  nav [class*='md:hidden'] {
     min-width: 0;
     max-width: 100%;
   }
 
-  /* Preserve the intended two product cards per row on all phone widths. */
+  /* Keep product grids at exactly two columns on narrow Android screens. */
   main .grid.grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* Section titles and descriptions can wrap without forcing wider columns. */
-  main section > div:first-child {
-    flex-wrap: wrap;
-  }
-
+  /* Allow long content to wrap instead of defining an oversized min-content width. */
   main h1,
   main h2,
   main h3,
   main h4,
   main p,
-  #root a[href^='mailto:'] {
+  a[href^='mailto:'] {
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* Responsive hero image callout and content stay inside their existing banner. */
+  main section [class*='aspect-'] {
+    width: 100%;
+    max-width: 100%;
   }
 
   /* Keep the toast within the viewport on narrow phones. */
@@ -61,7 +71,7 @@ svg {
     max-width: calc(100vw - 1.5rem);
   }
 
-  /* Product-details dialog: bound the panel and keep scrolling vertical. */
+  /* Product-details dialog: viewport-bounded panel and a vertical content scroller. */
   [class*='max-h-[92vh]'] {
     width: calc(100vw - 1rem);
     max-width: 56rem;
@@ -73,7 +83,7 @@ svg {
   [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] {
     min-width: 0;
     min-height: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
     overscroll-behavior: contain;
   }
 
@@ -83,7 +93,7 @@ svg {
     max-width: 100%;
   }
 
-  /* Reduce the gallery's mobile footprint and contain, rather than crop, product photos. */
+  /* Reduce the main gallery height and show the whole product image without stretching. */
   [class*='max-h-[92vh]'] [class*='aspect-square'] {
     width: 100%;
     max-height: 35svh;
@@ -97,12 +107,18 @@ svg {
     object-fit: contain;
   }
 
+  /* Thumbnails remain a bounded, touch-scrollable row rather than widening the modal. */
   [class*='max-h-[92vh]'] [class*='overflow-x-auto'] {
+    width: 100%;
     max-width: 100%;
     overscroll-behavior-x: contain;
   }
 
-  /* Wrap seller details/phone into available space and keep the WhatsApp CTA full-width. */
+  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] > button {
+    flex: 0 0 auto;
+  }
+
+  /* Seller name and phone can use additional lines when their values are long. */
   [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > div:first-child > div:last-child > div {
     min-width: 0;
     flex-wrap: wrap;
@@ -126,7 +142,7 @@ svg {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* Authentication dialog and its form retain vertical scrolling inside the viewport. */
+  /* Authentication dialog and form stay inside the viewport with vertical scrolling. */
   [class*='max-w-lg'] {
     width: calc(100vw - 1rem);
     max-width: 32rem;
@@ -137,7 +153,7 @@ svg {
   [class*='max-w-lg'] [class*='max-h-[80vh]'] {
     max-height: calc(100svh - 9rem);
     min-width: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
     overscroll-behavior: contain;
   }
 
@@ -150,34 +166,6 @@ svg {
   [class*='max-w-lg'] textarea,
   [class*='max-w-lg'] button {
     min-width: 0;
-    max-width: 100%;
-  }
-
-  /* Header branding and controls may shrink without pushing the viewport wider. */
-  header,
-  header > div,
-  header > div > div,
-  header a,
-  header form {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* Keep the mobile navigation drawer within the available width. */
-  nav,
-  nav > div,
-  nav [class*='md:hidden'] {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* Constrain promotional and trust sections while preserving their existing layout. */
-  main section img {
-    max-width: 100%;
-    height: auto;
-  }
-
-  main section [class*='aspect-'] {
     max-width: 100%;
   }
 }
