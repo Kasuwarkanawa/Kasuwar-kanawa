@@ -46,6 +46,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { db } from '../db/database';
+import { UserAvatar } from './UserAvatar';
+import { ProfileImageUploader } from './ProfileImageUploader';
 import {
   User,
   Product,
@@ -128,6 +130,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [userBusinessName, setUserBusinessName] = useState('');
   const [userRole, setUserRole] = useState<'buyer' | 'seller' | 'admin'>('buyer');
   const [userStatus, setUserStatus] = useState<'active' | 'pending' | 'suspended' | 'rejected'>('active');
+  const [userProfileImage, setUserProfileImage] = useState('');
 
   // Product Management Modals
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -338,6 +341,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setUserBusinessName('');
     setUserRole('buyer');
     setUserStatus('active');
+    setUserProfileImage('');
     setIsAddingUser(true);
   };
 
@@ -351,6 +355,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setUserBusinessName(u.businessName || '');
     setUserRole(u.accountType);
     setUserStatus(u.status || 'active');
+    setUserProfileImage(u.profileImage || '');
     setIsAddingUser(true);
   };
 
@@ -366,6 +371,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         businessName: userBusinessName,
         accountType: userRole,
         status: userStatus,
+        profileImage: userProfileImage.trim() || undefined,
       });
       showNotification(`User ${userFullName} updated successfully!`);
     } else {
@@ -381,6 +387,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         area: 'Kano Municipal',
         accountType: userRole,
         status: userStatus,
+        profileImage: userProfileImage.trim() || undefined,
         businessName: userRole === 'seller' ? userBusinessName || `${userFullName} Trade Hub` : undefined,
       });
       showNotification(`New user ${userFullName} created successfully!`);
@@ -1171,9 +1178,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         {filteredUsers.map((u) => (
                           <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                             <td className="p-3">
-                              <div className="font-bold text-[#0B172E]">{u.fullName}</div>
-                              <div className="text-[11px] text-slate-500">{u.email}</div>
-                              <div className="text-[11px] text-slate-600 font-semibold">{u.phone}</div>
+                              <div className="flex items-center gap-2.5">
+                                <UserAvatar user={u} size="md" showBadge />
+                                <div>
+                                  <div className="font-bold text-[#0B172E]">{u.fullName}</div>
+                                  <div className="text-[11px] text-slate-500">{u.email}</div>
+                                  <div className="text-[11px] text-slate-600 font-semibold">{u.phone}</div>
+                                </div>
+                              </div>
                             </td>
                             <td className="p-3">
                               <span
@@ -1282,10 +1294,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         >
                           <div>
                             <div className="flex items-start justify-between">
-                              <div>
-                                <h4 className="font-black text-sm text-[#0B172E]">{buyer.fullName}</h4>
-                                <p className="text-xs text-slate-500">{buyer.email}</p>
-                                <p className="text-xs font-semibold text-slate-700">{buyer.phone}</p>
+                              <div className="flex items-center gap-3">
+                                <UserAvatar user={buyer} size="lg" showBadge />
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <h4 className="font-black text-sm text-[#0B172E]">{buyer.fullName}</h4>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditUser(buyer)}
+                                      className="text-slate-400 hover:text-[#E6007E] p-0.5 cursor-pointer"
+                                      title="Edit Buyer Profile & Picture"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-slate-500">{buyer.email}</p>
+                                  <p className="text-xs font-semibold text-slate-700">{buyer.phone}</p>
+                                </div>
                               </div>
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -1369,13 +1394,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         >
                           <div>
                             <div className="flex items-start justify-between">
-                              <div>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase inline-block mb-1">
-                                  {seller.productCategory || 'Kano Merchant'}
-                                </span>
-                                <h4 className="font-black text-sm text-[#0B172E]">{seller.businessName || seller.fullName}</h4>
-                                <p className="text-xs font-semibold text-slate-700">Proprietor: {seller.fullName}</p>
-                                <p className="text-xs text-slate-500">{seller.email}</p>
+                              <div className="flex items-center gap-3">
+                                <UserAvatar user={seller} size="lg" showBadge />
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase inline-block mb-1">
+                                    {seller.productCategory || 'Kano Merchant'}
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <h4 className="font-black text-sm text-[#0B172E]">{seller.businessName || seller.fullName}</h4>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditUser(seller)}
+                                      className="text-slate-400 hover:text-[#E6007E] p-0.5 cursor-pointer"
+                                      title="Edit Merchant Profile & Picture"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <p className="text-xs font-semibold text-slate-700">Proprietor: {seller.fullName}</p>
+                                  <p className="text-xs text-slate-500">{seller.email}</p>
+                                </div>
                               </div>
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -2377,7 +2415,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveUser} className="space-y-3 text-xs max-h-[80vh] overflow-y-auto pr-1">
+              {/* Profile Image Uploader for Super Admin */}
+              <ProfileImageUploader
+                value={userProfileImage}
+                onChange={setUserProfileImage}
+                name={userFullName || 'User'}
+                role={userRole}
+                label="User Profile Picture / Store Logo"
+                helperText="Upload or replace photo. Auto-optimized (max 512x512 WebP, <200KB)."
+              />
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Full Name</label>
                 <input

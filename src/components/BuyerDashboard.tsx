@@ -21,6 +21,8 @@ import {
 import { User, Order, OrderStatus } from '../types';
 import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
+import { UserAvatar } from './UserAvatar';
+import { ProfileImageUploader } from './ProfileImageUploader';
 
 interface BuyerDashboardProps {
   user: User;
@@ -62,6 +64,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   const [editArea, setEditArea] = useState(user.area);
   const [editCity, setEditCity] = useState(user.city);
   const [editState, setEditState] = useState(user.state);
+  const [editProfileImage, setEditProfileImage] = useState(user.profileImage || '');
 
   // Payment Confirmation input for pending orders
   const [senderName, setSenderName] = useState('');
@@ -81,10 +84,21 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
       area: editArea,
       city: editCity,
       state: editState,
+      profileImage: editProfileImage.trim() || undefined,
     });
     if (updated) {
       onUpdateUser(updated);
       setIsEditingProfile(false);
+    }
+  };
+
+  const handleDirectAvatarChange = (url: string) => {
+    setEditProfileImage(url);
+    const updated = db.updateUserProfile(user.id, {
+      profileImage: url.trim() || undefined,
+    });
+    if (updated) {
+      onUpdateUser(updated);
     }
   };
 
@@ -159,9 +173,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#E6007E] text-white flex items-center justify-center font-black text-lg shadow-sm">
-              {user.fullName.slice(0, 1)}
-            </div>
+            <UserAvatar user={user} size="lg" showBadge />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-base sm:text-lg">{user.fullName}</h2>
@@ -563,8 +575,44 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                 </button>
               </div>
 
+              {/* Profile Image Banner & Quick Uploader in View Mode */}
+              {!isEditingProfile && (
+                <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <UserAvatar user={user} size="xl" showBadge />
+                    <div>
+                      <h4 className="font-black text-sm text-[#0B172E]">{user.fullName}</h4>
+                      <p className="text-xs text-slate-500">Buyer Account (Mai Siyayya)</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {user.profileImage ? 'Custom photo active' : 'Default system avatar active'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full sm:w-auto">
+                    <ProfileImageUploader
+                      value={user.profileImage || ''}
+                      onChange={handleDirectAvatarChange}
+                      name={user.fullName}
+                      role={user.accountType}
+                      label=""
+                      helperText="Click to update picture directly (max 512x512 WebP, <200KB)."
+                    />
+                  </div>
+                </div>
+              )}
+
               {isEditingProfile ? (
                 <form onSubmit={handleProfileSave} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 text-xs">
+                  <ProfileImageUploader
+                    value={editProfileImage}
+                    onChange={setEditProfileImage}
+                    name={editFullName}
+                    role={user.accountType}
+                    label="Profile Photo (Hoton Bayani)"
+                    helperText="Upload or change your profile picture from gallery or camera."
+                  />
+
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Full Name</label>
                     <input

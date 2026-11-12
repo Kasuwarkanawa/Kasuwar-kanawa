@@ -16,6 +16,7 @@ export interface User {
   productCategory?: string;
   accountType: AccountType;
   status?: 'active' | 'pending' | 'suspended' | 'rejected';
+  profileImage?: string;
   createdAt: string;
 }
 

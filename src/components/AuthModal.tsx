@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { db } from '../db/database';
 import { User, AccountType } from '../types';
+import { ProfileImageUploader } from './ProfileImageUploader';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [city, setCity] = useState('Kano City');
   const [state, setState] = useState('Kano State');
   const [area, setArea] = useState('Kano Municipal');
+  const [profileImage, setProfileImage] = useState('');
 
   // Login states
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -92,6 +94,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       area,
       productCategory: accountType === 'seller' ? productCategory : undefined,
       accountType,
+      profileImage: profileImage.trim() || undefined,
     });
 
     if (!res.success || !res.user) {
@@ -370,6 +373,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Profile Image Upload (Buyer & Seller) */}
+              <ProfileImageUploader
+                value={profileImage}
+                onChange={setProfileImage}
+                name={fullName || (accountType === 'seller' ? businessName : 'New User')}
+                role={accountType}
+                label={
+                  accountType === 'seller'
+                    ? 'Seller / Store Logo & Profile Picture (Hoton Bayani)'
+                    : 'Buyer Profile Picture (Hoton Bayani Mai Siyayya)'
+                }
+                helperText={
+                  accountType === 'seller'
+                    ? 'Upload your store logo or merchant photo from gallery/camera. Auto-resized to 512x512 WebP.'
+                    : 'Select your profile photo from camera or gallery. Auto-optimized to max 512x512 WebP.'
+                }
+              />
 
               {/* Full Name */}
               <div>

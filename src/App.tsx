@@ -20,6 +20,7 @@ import { AdminPanelModal } from './components/AdminPanelModal';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { Footer } from './components/Footer';
 import { AnnouncementsSection } from './components/AnnouncementsSection';
+import { NewsletterSection } from './components/NewsletterSection';
 import { ProductCard } from './components/ProductCard';
 import { PRODUCTS } from './data/products';
 import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, Announcement } from './types';
@@ -611,6 +612,9 @@ export default function App() {
           onBuyNow={handleBuyNow}
           onViewDetails={(p) => setSelectedProductForDetail(p)}
         />
+
+        {/* 13. Newsletter Signup Section (Market Updates & Special Offers) */}
+        <NewsletterSection />
       </main>
 
       {/* Product Details Modal (Colors, Sizes, Variations, Reviews, WhatsApp, Report) */}

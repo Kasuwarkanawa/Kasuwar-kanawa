@@ -171,6 +171,7 @@ const INITIAL_USERS: User[] = [
     area: 'Nassarawa',
     accountType: 'buyer',
     status: 'active',
+    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-11-01T08:00:00Z',
   },
   {
@@ -187,6 +188,7 @@ const INITIAL_USERS: User[] = [
     area: 'Tarauni',
     accountType: 'buyer',
     status: 'active',
+    profileImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-11-03T11:20:00Z',
   },
   {
@@ -205,6 +207,7 @@ const INITIAL_USERS: User[] = [
     productCategory: 'Kasuwar Kwari',
     accountType: 'seller',
     status: 'active',
+    profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-10-15T09:30:00Z',
   },
   {
@@ -223,6 +226,7 @@ const INITIAL_USERS: User[] = [
     productCategory: 'Kasuwar Farm Center',
     accountType: 'seller',
     status: 'active',
+    profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-10-20T14:00:00Z',
   },
   {
@@ -240,6 +244,7 @@ const INITIAL_USERS: User[] = [
     area: 'Kano Municipal',
     accountType: 'admin',
     status: 'active',
+    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-09-01T12:00:00Z',
   },
 ];
@@ -543,8 +548,12 @@ export const db = {
       const parsed: User[] = JSON.parse(raw);
       let updated = false;
       INITIAL_USERS.forEach((initUser) => {
-        if (!parsed.some((u) => u.id === initUser.id || u.email === initUser.email)) {
+        const existing = parsed.find((u) => u.id === initUser.id || u.email.toLowerCase() === initUser.email.toLowerCase());
+        if (!existing) {
           parsed.push(initUser);
+          updated = true;
+        } else if (!existing.profileImage && initUser.profileImage) {
+          existing.profileImage = initUser.profileImage;
           updated = true;
         }
       });
@@ -1697,6 +1706,31 @@ export const db = {
           new Date(b.deliveredAt || b.dispatchedAt || b.updatedAt || b.createdAt).getTime() -
           new Date(a.deliveredAt || a.dispatchedAt || a.updatedAt || a.createdAt).getTime()
       );
+  },
+
+  // --- NEWSLETTER SUBSCRIPTION ---
+  getNewsletterSubscribers(): string[] {
+    const raw = localStorage.getItem('kasuwar_newsletter_subscribers');
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  },
+
+  subscribeNewsletter(email: string): { success: boolean; message: string } {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, message: 'Please enter a valid email address.' };
+    }
+    const list = this.getNewsletterSubscribers();
+    if (list.includes(cleanEmail)) {
+      return { success: true, message: 'You are already subscribed to Kasuwar Kanawa updates!' };
+    }
+    list.push(cleanEmail);
+    localStorage.setItem('kasuwar_newsletter_subscribers', JSON.stringify(list));
+    return { success: true, message: 'Nagode! You are now subscribed to Kano market deals and exclusive offers.' };
   },
 };
 

@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
 import { db } from '../db/database';
+import { UserAvatar } from './UserAvatar';
+import { ProfileImageUploader } from './ProfileImageUploader';
 
 interface SellerDashboardProps {
   isOpen: boolean;
@@ -53,6 +55,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   onProductUpdated,
   onOpenSuperAdmin,
 }) => {
+  const [currentSeller, setCurrentSeller] = useState<User>(seller);
+  const [showLogoModal, setShowLogoModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'history' | 'reports'>('overview');
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
@@ -262,12 +266,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2b4e]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-linear-to-br from-[#E6007E] to-pink-700 flex items-center justify-center text-white shadow-md">
-              <Building className="w-6 h-6" />
-            </div>
+            <UserAvatar user={currentSeller} size="lg" showBadge />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-wide">{seller.businessName || seller.fullName}</h2>
+                <h2 className="text-lg font-black tracking-wide">{currentSeller.businessName || currentSeller.fullName}</h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E6007E] text-white uppercase tracking-wider">
                   Verified Seller
                 </span>
@@ -340,8 +342,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] border border-slate-200">
-              Category: {seller.productCategory || 'General Merchandise'}
+              Category: {currentSeller.productCategory || 'General Merchandise'}
             </span>
+            <button
+              type="button"
+              onClick={() => setShowLogoModal(true)}
+              className="px-2.5 py-1 bg-pink-50 hover:bg-pink-100 text-[#E6007E] font-bold rounded-lg text-[11px] border border-pink-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Update merchant profile picture or store logo"
+            >
+              <UserAvatar user={currentSeller} size="xs" />
+              <span>Update Logo / Picture</span>
+            </button>
           </div>
         </div>
 
@@ -1464,6 +1475,53 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Update Merchant Logo / Profile Picture */}
+        {showLogoModal && (
+          <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="font-black text-sm text-[#0B172E]">
+                  Update Store Logo & Profile Picture
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoModal(false)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <ProfileImageUploader
+                value={currentSeller.profileImage || ''}
+                onChange={(url) => {
+                  const updated = db.updateUserProfile(currentSeller.id, {
+                    profileImage: url.trim() || undefined,
+                  });
+                  if (updated) {
+                    setCurrentSeller(updated);
+                    triggerRefresh();
+                  }
+                }}
+                name={currentSeller.businessName || currentSeller.fullName}
+                role={currentSeller.accountType}
+                label="Merchant Store Logo / Profile Photo"
+                helperText="Upload or change store logo. Auto-optimized (max 512x512 WebP, <200KB)."
+              />
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoModal(false)}
+                  className="px-4 py-2 bg-[#0B172E] text-white text-xs font-bold rounded-lg cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         )}

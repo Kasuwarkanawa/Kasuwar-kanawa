@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, ShoppingBag, User as UserIcon, Menu, X, LogOut, Package, Shield, Store } from 'lucide-react';
 import { User } from '../types';
+import { UserAvatar } from './UserAvatar';
 
 interface HeaderProps {
   searchQuery: string;
@@ -181,9 +182,13 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
                 className="flex items-center gap-2 py-1.5 px-3 rounded-full hover:bg-slate-100 transition-colors text-slate-700 hover:text-[#0B172E] cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-pink-50 border border-pink-200 flex items-center justify-center text-[#E6007E] font-black text-xs">
-                  {currentUser ? currentUser.fullName.slice(0, 1) : <UserIcon className="w-4 h-4" />}
-                </div>
+                {currentUser ? (
+                  <UserAvatar user={currentUser} size="sm" showBadge />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-pink-50 border border-pink-200 flex items-center justify-center text-[#E6007E] font-black text-xs">
+                    <UserIcon className="w-4 h-4" />
+                  </div>
+                )}
                 <div className="text-left text-xs">
                   <span className="block text-slate-400 text-[10px] leading-tight">
                     {currentUser ? `Hi, ${currentUser.fullName.split(' ')[0]}` : 'Welcome'}
@@ -199,23 +204,26 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
                   {currentUser ? (
                     <>
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <span className="font-extrabold text-slate-900 block truncate">{currentUser.fullName}</span>
-                        {currentUser.businessName && (
-                          <span className="font-bold text-[#0B172E] text-[11px] block truncate">
-                            {currentUser.businessName}
+                      <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2.5">
+                        <UserAvatar user={currentUser} size="md" showBadge />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-extrabold text-slate-900 block truncate">{currentUser.fullName}</span>
+                          {currentUser.businessName && (
+                            <span className="font-bold text-[#0B172E] text-[11px] block truncate">
+                              {currentUser.businessName}
+                            </span>
+                          )}
+                          <span className="text-slate-400 text-[11px] block truncate">{currentUser.email}</span>
+                          <span className={`inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            currentUser.accountType === 'seller'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : currentUser.accountType === 'admin'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-pink-100 text-[#E6007E]'
+                          }`}>
+                            {currentUser.accountType}
                           </span>
-                        )}
-                        <span className="text-slate-400 text-[11px] block truncate">{currentUser.email}</span>
-                        <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          currentUser.accountType === 'seller'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : currentUser.accountType === 'admin'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-pink-100 text-[#E6007E]'
-                        }`}>
-                          {currentUser.accountType}
-                        </span>
+                        </div>
                       </div>
 
                       {/* SELLER SPECIFIC MENU ITEMS */}
