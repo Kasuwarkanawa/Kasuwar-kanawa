@@ -57,7 +57,6 @@ svg {
     overflow-wrap: anywhere;
   }
 
-  /* Responsive hero image callout and content stay inside their existing banner. */
   main section [class*='aspect-'] {
     width: 100%;
     max-width: 100%;
@@ -69,77 +68,6 @@ svg {
     left: 0.75rem;
     width: auto;
     max-width: calc(100vw - 1.5rem);
-  }
-
-  /* Product-details dialog: viewport-bounded panel and a vertical content scroller. */
-  [class*='max-h-[92vh]'] {
-    width: calc(100vw - 1rem);
-    max-width: 56rem;
-    max-height: calc(100svh - 1rem);
-    margin-block: 0;
-    min-width: 0;
-  }
-
-  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] {
-    min-width: 0;
-    min-height: 0;
-    overflow-x: clip;
-    overscroll-behavior: contain;
-  }
-
-  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div,
-  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > * {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* Reduce the main gallery height and show the whole product image without stretching. */
-  [class*='max-h-[92vh]'] [class*='aspect-square'] {
-    width: 100%;
-    max-height: 35svh;
-    aspect-ratio: 4 / 3;
-  }
-
-  [class*='max-h-[92vh]'] [class*='aspect-square'] > img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  /* Thumbnails remain a bounded, touch-scrollable row rather than widening the modal. */
-  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] {
-    width: 100%;
-    max-width: 100%;
-    overscroll-behavior-x: contain;
-  }
-
-  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] > button {
-    flex: 0 0 auto;
-  }
-
-  /* Seller name and phone can use additional lines when their values are long. */
-  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > div:first-child > div:last-child > div {
-    min-width: 0;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 0.25rem 0.75rem;
-  }
-
-  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > div > div:first-child > div:last-child > div > :last-child {
-    min-width: 0;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
-  [class*='max-h-[92vh]'] button,
-  [class*='max-h-[92vh]'] a {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  [class*='max-h-[92vh]'] [class*='grid-cols-2'] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   /* Authentication dialog and form stay inside the viewport with vertical scrolling. */
@@ -167,5 +95,105 @@ svg {
   [class*='max-w-lg'] button {
     min-width: 0;
     max-width: 100%;
+  }
+}
+
+/* The Product Details dialog stacks its gallery and information through tablet widths. */
+@media (max-width: 767px) {
+  [class*='max-h-[92vh]'] {
+    width: calc(100vw - 1rem);
+    max-width: 56rem;
+    max-height: calc(100svh - 1rem);
+    margin-block: 0;
+    min-width: 0;
+  }
+
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: clip;
+    overscroll-behavior: contain;
+  }
+
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > .grid {
+    /* Do not override the component's grid-cols-1 with a forced two-column layout. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > .grid > * {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Bound the product gallery height and show the full image without distortion. */
+  [class*='max-h-[92vh]'] [class*='aspect-square'] {
+    width: 100%;
+    max-width: 100%;
+    max-height: 35svh;
+    aspect-ratio: 4 / 3;
+  }
+
+  [class*='max-h-[92vh]'] [class*='aspect-square'] > img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] {
+    width: 100%;
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+  }
+
+  [class*='max-h-[92vh]'] [class*='overflow-x-auto'] > button {
+    flex: 0 0 auto;
+  }
+
+  /* Wrap seller name and phone rather than squeezing or widening the modal. */
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > .grid > div:first-child > div:last-child > div {
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.25rem 0.75rem;
+  }
+
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > .grid > div:first-child > div:last-child > div > :last-child {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  [class*='max-h-[92vh]'] [class*='bg-pink-50/60'] {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  [class*='max-h-[92vh]'] h1,
+  [class*='max-h-[92vh]'] h3,
+  [class*='max-h-[92vh]'] p,
+  [class*='max-h-[92vh]'] span,
+  [class*='max-h-[92vh]'] a {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  [class*='max-h-[92vh]'] button,
+  [class*='max-h-[92vh]'] a,
+  [class*='max-h-[92vh]'] input,
+  [class*='max-h-[92vh]'] select,
+  [class*='max-h-[92vh]'] textarea {
+    max-width: 100%;
+  }
+}
+
+/* On extra-narrow phones, stack purchase actions instead of compressing their labels. */
+@media (max-width: 359px) {
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] > .grid > div:last-child > div:last-child > .grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
