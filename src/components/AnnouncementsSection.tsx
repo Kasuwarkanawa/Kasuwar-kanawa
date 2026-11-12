@@ -52,8 +52,8 @@ export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({ anno
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-1">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-pink-50 via-white to-blue-50 border border-pink-200/90 shadow-xs p-3 sm:py-2.5 sm:px-4 flex items-center justify-between gap-3 transition-all">
+    <div className="max-w-7xl mx-auto w-full min-w-0 px-3 sm:px-6 pt-3 pb-1">
+      <div className="relative min-w-0 max-w-full overflow-hidden rounded-xl bg-gradient-to-r from-pink-50 via-white to-blue-50 border border-pink-200/90 shadow-xs p-3 sm:py-2.5 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 transition-all">
         {/* Left Icon and Content */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="w-8 h-8 rounded-lg bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0">
@@ -61,13 +61,13 @@ export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({ anno
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0 flex-1">
-            <div className="flex items-center gap-2 shrink-0">
-              {getTypeBadge(current.type)}
-              <h4 className="font-extrabold text-xs sm:text-sm text-[#0B172E] truncate">
+            <div className="flex items-center gap-2 min-w-0 sm:shrink-0">
+              <div className="shrink-0">{getTypeBadge(current.type)}</div>
+              <h4 className="min-w-0 flex-1 sm:flex-initial font-extrabold text-xs sm:text-sm text-[#0B172E] truncate">
                 {current.title}
               </h4>
             </div>
-            <p className="text-[11px] sm:text-xs text-slate-600 truncate font-medium">
+            <p className="min-w-0 text-[11px] sm:text-xs text-slate-600 line-clamp-2 sm:truncate font-medium">
               {current.description}
             </p>
           </div>
