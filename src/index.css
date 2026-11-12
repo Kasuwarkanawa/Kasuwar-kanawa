@@ -1,1 +1,83 @@
 @import "tailwindcss";
+
+/* Keep content and replaced elements inside their available layout width. */
+img,
+video,
+svg {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 320px;
+  }
+
+  /* Let grid and flex children shrink to the viewport instead of their contents. */
+  main,
+  main section,
+  main section > *,
+  main section .grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Keep the established two-card mobile layout while allowing narrow cards to shrink. */
+  main .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Permit long unbroken contact and product text to wrap instead of widening sections. */
+  a[href^='mailto:'],
+  main h1,
+  main h2,
+  main h3,
+  main h4,
+  main p {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Keep the product dialog within the viewport and its content vertically scrollable. */
+  [class*='max-h-[92vh]'] {
+    width: calc(100vw - 1rem);
+    max-width: 56rem;
+  }
+
+  [class*='max-h-[92vh]'] > [class*='overflow-y-auto'] {
+    min-width: 0;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Bound the product gallery height and preserve the source image's aspect ratio. */
+  [class*='max-h-[92vh]'] [class*='aspect-square'] {
+    width: 100%;
+    max-height: 35svh;
+    aspect-ratio: 4 / 3;
+  }
+
+  [class*='max-h-[92vh]'] [class*='aspect-square'] > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Make seller/contact rows wrap naturally on narrow devices. */
+  [class*='max-h-[92vh]'] [class*='space-y-2'] > div {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+  }
+
+  [class*='max-h-[92vh]'] [class*='space-y-2'] > div > :last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  [class*='max-h-[92vh]'] button,
+  [class*='max-h-[92vh]'] a {
+    min-width: 0;
+  }
+}
