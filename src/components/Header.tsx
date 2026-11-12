@@ -40,18 +40,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white border-b border-slate-100 shadow-xs relative z-30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5">
-        <div className="flex items-center justify-between gap-3 md:gap-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5">
+        <div className="flex min-w-0 items-center justify-between gap-1 sm:gap-3 md:gap-8">
           {/* Logo Brand Lockup */}
           <a
             href="/"
-            className="flex items-center gap-2 sm:gap-3 shrink-0 group focus:outline-hidden"
+            className="flex min-w-0 items-center gap-1.5 sm:gap-3 shrink group focus:outline-hidden"
           >
             {/* Shopping Cart Icon with speed trails */}
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex shrink-0 items-center justify-center">
               <svg
                 viewBox="0 0 100 80"
-                className="w-10 h-8 sm:w-12 sm:h-10 text-[#E6007E]"
+                className="w-8 h-7 sm:w-12 sm:h-10 text-[#E6007E]"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -111,24 +111,24 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Typography */}
-            <div className="flex flex-col">
-              <div className="flex items-center tracking-tight leading-none">
-                <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#0B172E]">
+            <div className="flex min-w-0 flex-col">
+              <div className="flex items-center whitespace-nowrap tracking-tight leading-none">
+                <span className="text-[clamp(0.75rem,4vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
                   KASUWAR&nbsp;
                 </span>
-                <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#E6007E]">
+                <span className="text-[clamp(0.75rem,4vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#E6007E]">
                   KANAWA
                 </span>
               </div>
               {/* Slogan Banner with Pink Accents */}
-              <div className="flex items-center gap-1 mt-0.5">
-                <svg className="w-3.5 h-2 text-[#E6007E]" viewBox="0 0 20 10" fill="currentColor">
+              <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
+                <svg className="w-3 h-2 sm:w-3.5 text-[#E6007E] shrink-0" viewBox="0 0 20 10" fill="currentColor">
                   <path d="M20 5C14 5 10 9 0 10C8 8 12 4 14 0C15 3 17 4.5 20 5Z" />
                 </svg>
-                <div className="bg-[#0B172E] text-white text-[9px] sm:text-[11px] font-extrabold tracking-wider px-2 sm:px-3 py-0.5 rounded-full uppercase shadow-xs">
+                <div className="bg-[#0B172E] text-white text-[8px] sm:text-[11px] font-extrabold tracking-wide sm:tracking-wider px-1.5 sm:px-3 py-0.5 rounded-full uppercase shadow-xs whitespace-nowrap">
                   AREWA SAI DAN AREWA
                 </div>
-                <svg className="w-3.5 h-2 text-[#E6007E] scale-x-[-1]" viewBox="0 0 20 10" fill="currentColor">
+                <svg className="w-3 h-2 sm:w-3.5 text-[#E6007E] scale-x-[-1] shrink-0" viewBox="0 0 20 10" fill="currentColor">
                   <path d="M20 5C14 5 10 9 0 10C8 8 12 4 14 0C15 3 17 4.5 20 5Z" />
                 </svg>
               </div>
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
           </form>
 
           {/* Right Action Icons: Account & Cart + Mobile Menu Button */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-4">
             {/* Account Dropdown Container */}
             <div
               className="relative hidden sm:block"
@@ -322,7 +322,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Shopping Cart Button */}
             <button
               onClick={onOpenCart}
-              className="flex items-center gap-2 py-1.5 px-3 rounded-full bg-pink-50 hover:bg-pink-100 transition-colors border border-pink-200 text-[#E6007E] cursor-pointer group"
+              className="flex items-center gap-1 sm:gap-2 py-1.5 px-2 sm:px-3 rounded-full bg-pink-50 hover:bg-pink-100 transition-colors border border-pink-200 text-[#E6007E] cursor-pointer group"
             >
               <div className="relative">
                 <ShoppingBag className="w-5 h-5 text-[#E6007E] transition-transform group-hover:scale-110" />
@@ -343,7 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile Hamburger Menu Toggle */}
             <button
               onClick={onToggleMobileMenu}
-              className="md:hidden p-2 rounded-lg text-slate-700 hover:text-[#E6007E] hover:bg-slate-100 cursor-pointer focus:outline-hidden"
+              className="md:hidden p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-[#E6007E] hover:bg-slate-100 cursor-pointer focus:outline-hidden"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? (
@@ -363,12 +363,12 @@ export const Header: React.FC<HeaderProps> = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search for products here..."
-              className="w-full pl-10 pr-24 py-2 bg-white border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#E6007E]"
+              className="w-full min-w-0 pl-10 pr-20 sm:pr-24 py-2 bg-white border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#E6007E]"
             />
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <button
               type="submit"
-              className="absolute right-1 top-1 bottom-1 px-4 bg-[#E6007E] text-white font-bold text-xs rounded-full hover:bg-[#D00071]"
+              className="absolute right-1 top-1 bottom-1 px-3 sm:px-4 bg-[#E6007E] text-white font-bold text-xs rounded-full hover:bg-[#D00071]"
             >
               Search
             </button>
