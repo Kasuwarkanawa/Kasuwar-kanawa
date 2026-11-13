@@ -16,35 +16,37 @@ enum ReportStatus { pending reviewed resolved approved rejected }
 enum OtpChannel { EMAIL PHONE }
 
 model User {
-  id                String        @id @default(cuid())
-  fullName          String
-  businessName      String?
-  phone             String        @unique
-  phoneVerified     Boolean       @default(false)
-  whatsAppNumber    String?
-  email             String        @unique
-  emailVerified     Boolean       @default(false)
-  passwordHash      String
-  address           String        @default("")
-  businessAddress   String?
-  city              String        @default("Kano City")
-  state             String        @default("Kano State")
-  area              String        @default("Kano Municipal")
-  productCategory   String?
-  role              Role
-  status            AccountStatus @default(PENDING)
-  profileImage      String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  sessions          Session[]
-  products          Product[]
-  reviews           ProductReview[]
-  buyerOrders       Order[]       @relation("BuyerOrders")
-  sellerOrders      Order[]       @relation("SellerOrders")
-  cart              Cart?
-  productReports    ProductReport[] @relation("ReporterProductReports")
-  buyerReports      BuyerReport[] @relation("SellerBuyerReports")
-  sellerReports     SellerReport[] @relation("BuyerSellerReports")
+  id                     String        @id @default(cuid())
+  fullName               String
+  businessName           String?
+  phone                  String        @unique
+  phoneVerified          Boolean       @default(false)
+  whatsAppNumber         String?
+  email                  String        @unique
+  emailVerified          Boolean       @default(false)
+  passwordHash           String
+  address                String        @default("")
+  businessAddress        String?
+  city                   String        @default("Kano City")
+  state                  String        @default("Kano State")
+  area                   String        @default("Kano Municipal")
+  productCategory        String?
+  role                   Role
+  status                 AccountStatus @default(PENDING)
+  profileImage           String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  sessions               Session[]
+  products               Product[]
+  reviews                ProductReview[]
+  buyerOrders            Order[]       @relation("BuyerOrders")
+  sellerOrders           Order[]       @relation("SellerOrders")
+  cart                   Cart?
+  productReports         ProductReport[] @relation("ReporterProductReports")
+  buyerReportsFiled      BuyerReport[] @relation("SellerBuyerReports")
+  buyerReportsReceived   BuyerReport[] @relation("BuyerReportsOnBuyer")
+  sellerReportsFiled     SellerReport[] @relation("BuyerSellerReports")
+  sellerReportsReceived  SellerReport[] @relation("SellerReportsOnSeller")
   @@index([role, status])
   @@index([createdAt])
 }
@@ -153,41 +155,41 @@ model CartItem {
   selectedVariation  String?
   cart               Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  @@unique([cartId, productId, selectedColor, selectedSize, selectedVariation])
   @@index([cartId])
+  @@index([productId])
 }
 
 model Order {
-  id                  String        @id @default(cuid())
-  orderNumber         String        @unique
-  buyerId             String
-  sellerId            String?
-  buyerName           String
-  buyerEmail          String
-  buyerPhone          String
-  sellerName          String        @default("")
-  sellerBusinessName  String        @default("")
-  sellerPhone         String        @default("")
-  sellerWhatsApp      String        @default("")
-  subtotal            Decimal       @db.Decimal(12, 2)
-  deliveryFee         Decimal       @db.Decimal(12, 2)
-  totalAmount         Decimal       @db.Decimal(12, 2)
-  shippingAddress     Json
-  paymentMethod       PaymentMethod
-  status              OrderStatus
-  paymentConfirmation Json
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique
+  buyerId              String
+  sellerId             String?
+  buyerName            String
+  buyerEmail           String
+  buyerPhone           String
+  sellerName           String        @default("")
+  sellerBusinessName   String        @default("")
+  sellerPhone          String        @default("")
+  sellerWhatsApp       String        @default("")
+  subtotal             Decimal       @db.Decimal(12, 2)
+  deliveryFee          Decimal       @db.Decimal(12, 2)
+  totalAmount          Decimal       @db.Decimal(12, 2)
+  shippingAddress      Json
+  paymentMethod        PaymentMethod
+  status               OrderStatus
+  paymentConfirmation  Json
   adminRejectionReason String?
   sellerRejectionReason String?
-  dispatchedAt        DateTime?
-  deliveredAt         DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  buyer               User          @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)
-  seller              User?         @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: SetNull)
-  items               OrderItem[]
-  trackingTimeline    OrderTrackingStep[]
-  buyerReports        BuyerReport[]
-  sellerReports       SellerReport[]
+  dispatchedAt         DateTime?
+  deliveredAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  buyer                User          @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller               User?         @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: SetNull)
+  items                OrderItem[]
+  trackingTimeline     OrderTrackingStep[]
+  buyerReports         BuyerReport[]
+  sellerReports        SellerReport[]
   @@index([buyerId, createdAt])
   @@index([sellerId, createdAt])
   @@index([status, createdAt])
@@ -237,38 +239,40 @@ model ProductReport {
 }
 
 model BuyerReport {
-  id         String       @id @default(cuid())
-  sellerId   String
-  buyerId    String
-  orderId    String?
+  id          String       @id @default(cuid())
+  sellerId    String
+  buyerId     String
+  orderId     String?
   orderNumber String?
-  reason     String
-  details    String
-  status     ReportStatus @default(pending)
-  adminNotes String?
-  createdAt  DateTime     @default(now())
-  seller     User         @relation("SellerBuyerReports", fields: [sellerId], references: [id], onDelete: Cascade)
-  buyer      User         @relation("BuyerReportsOnBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  order      Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reason      String
+  details     String
+  status      ReportStatus @default(pending)
+  adminNotes  String?
+  createdAt   DateTime     @default(now())
+  seller      User         @relation("SellerBuyerReports", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer       User         @relation("BuyerReportsOnBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  order       Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
   @@index([sellerId, status])
+  @@index([buyerId, status])
   @@index([status, createdAt])
 }
 
 model SellerReport {
-  id         String       @id @default(cuid())
-  buyerId    String
-  sellerId   String
-  orderId    String?
+  id          String       @id @default(cuid())
+  buyerId     String
+  sellerId    String
+  orderId     String?
   orderNumber String?
-  reason     String
-  details    String
-  status     ReportStatus @default(pending)
-  adminNotes String?
-  createdAt  DateTime     @default(now())
-  buyer      User         @relation("BuyerSellerReports", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller     User         @relation("SellerReportsOnSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  order      Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reason      String
+  details     String
+  status      ReportStatus @default(pending)
+  adminNotes  String?
+  createdAt   DateTime     @default(now())
+  buyer       User         @relation("BuyerSellerReports", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller      User         @relation("SellerReportsOnSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  order       Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
   @@index([buyerId, status])
+  @@index([sellerId, status])
   @@index([status, createdAt])
 }
 
@@ -280,9 +284,9 @@ model FlashSale {
   discountPercentage Int
   startTime          DateTime
   endTime            DateTime
-  isActive           Boolean            @default(false)
-  createdAt          DateTime           @default(now())
-  products           FlashSaleProduct[]
+  isActive            Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  products            FlashSaleProduct[]
   @@index([isActive, startTime, endTime])
 }
 
