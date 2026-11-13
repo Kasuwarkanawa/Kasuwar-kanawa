@@ -13,13 +13,8 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 12);
   await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, role: Role.SUPER_ADMIN, status: AccountStatus.ACTIVE, emailVerified: true, phoneVerified: true },
-    create: {
-      email, phone, passwordHash,
-      fullName: process.env.ADMIN_FULL_NAME || 'Kasuwar Kanawa Super Admin',
-      role: Role.SUPER_ADMIN, status: AccountStatus.ACTIVE,
-      emailVerified: true, phoneVerified: true,
-    },
+    update: { passwordHash, role: Role.SUPER_ADMIN, status: AccountStatus.ACTIVE },
+    create: { email, phone, passwordHash, fullName: process.env.ADMIN_FULL_NAME || 'Kasuwar Kanawa Super Admin', role: Role.SUPER_ADMIN, status: AccountStatus.ACTIVE },
   });
   console.log('Initial Super Admin seeded from environment.');
 }
