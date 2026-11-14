@@ -20,12 +20,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.clearCookie(env.SESSION_COOKIE_NAME, { httpOnly: true, secure: isProduction, sameSite: isProduction ? 'none' : 'lax', path: '/' });
       return res.status(401).json({ error: 'Session is invalid or expired.' });
     }
+    // Role/status are always sourced from the current database record, never the client session.
     req.authUser = { id: session.user.id, role: session.user.role, status: session.user.status, fullName: session.user.fullName, email: session.user.email, phone: session.user.phone };
     req.sessionId = session.id;
     return next();
   } catch (error) { return next(error); }
 }
-
 export function allowRoles(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.authUser) return res.status(401).json({ error: 'Authentication required.' });
