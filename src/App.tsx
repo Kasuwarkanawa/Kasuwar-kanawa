@@ -183,9 +183,16 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    // Clear the persisted session through the database layer and close protected views.
     db.logout();
     setCurrentUser(null);
-    showToast('Signed out of account.');
+    setBuyerDashboardOpen(false);
+    setSellerDashboardOpen(false);
+    setAdminPanelOpen(false);
+    setAuthModalOpen(false);
+    setCheckoutModalOpen(false);
+    setCartDrawerOpen(false);
+    showToast('Signed out successfully.');
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -243,11 +250,34 @@ export default function App() {
     }
   };
 
-  // Safe fallback seller user for testing
-  const activeSellerUser = useMemo(() => {
-    if (currentUser?.accountType === 'seller') return currentUser;
-    return db.getUserByEmailOrPhone('seller@kasuwarkanawa.com') || currentUser;
-  }, [currentUser]);
+  // A seller dashboard must only ever receive the currently authenticated seller.
+  const activeSellerUser = currentUser?.accountType === 'seller' ? currentUser : null;
+
+  const openBuyerDashboard = () => {
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      return;
+    }
+    if (currentUser.accountType !== 'buyer') {
+      showToast('Access Restricted: Buyers only.');
+      return;
+    }
+    setBuyerDashboardOpen(true);
+  };
+
+  const openSellerDashboard = () => {
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      return;
+    }
+    if (currentUser.accountType !== 'seller') {
+      showToast('Access Restricted: Sellers only.');
+      return;
+    }
+    setSellerDashboardOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-[#E6007E] selection:text-white">
@@ -282,13 +312,13 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
-              if (currentUser?.accountType === 'seller') {
-                showToast('Access Restricted: Sellers cannot access Buyer Dashboard.');
-                return;
-              }
               if (!currentUser) {
                 setAuthInitialMode('login');
                 setAuthModalOpen(true);
+                return;
+              }
+              if (currentUser.accountType !== 'buyer') {
+                showToast('Access Restricted: Buyers only.');
                 return;
               }
               setBuyerDashboardOpen(true);
@@ -303,16 +333,14 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
-              if (currentUser?.accountType === 'buyer') {
-                showToast('Access Restricted: Buyers cannot access Seller Dashboard.');
+              if (!currentUser) {
+                setAuthInitialMode('login');
+                setAuthModalOpen(true);
                 return;
               }
-              if (currentUser?.accountType !== 'seller') {
-                const s = db.getUserByEmailOrPhone('seller@kasuwarkanawa.com');
-                if (s) {
-                  db.setCurrentUser(s);
-                  setCurrentUser(s);
-                }
+              if (currentUser.accountType !== 'seller') {
+                showToast('Access Restricted: Sellers only.');
+                return;
               }
               setSellerDashboardOpen(true);
             }}
@@ -325,58 +353,17 @@ export default function App() {
           {/* Super Admin CPanel Button (Security Gated) */}
           <button
             type="button"
-            onClick={() => setAdminPanelOpen(true)}
+            onClick={() => {
+              // The admin modal must perform its own credential/role verification.
+              setAdminPanelOpen(true);
+            }}
             className="px-2.5 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-[#E6007E]" />
             <span>Super Admin CPanel</span>
           </button>
 
-          {/* Role switcher for quick testing */}
-          <div className="hidden lg:flex items-center gap-1.5 text-[10px] border-l border-slate-700 pl-3">
-            <span className="text-slate-500">Quick Test:</span>
-            <button
-              onClick={() => {
-                const u = db.getUserByEmailOrPhone('09060938835');
-                if (u) {
-                  db.setCurrentUser(u);
-                  setCurrentUser(u);
-                  showToast('Switched to Usman Nafiu (Buyer)');
-                }
-              }}
-              className="text-slate-300 hover:text-white underline cursor-pointer"
-            >
-              Buyer
-            </button>
-            <span className="text-slate-600">/</span>
-            <button
-              onClick={() => {
-                const s = db.getUserByEmailOrPhone('seller@kasuwarkanawa.com');
-                if (s) {
-                  db.setCurrentUser(s);
-                  setCurrentUser(s);
-                  showToast('Switched to Danladi (Seller)');
-                }
-              }}
-              className="text-slate-300 hover:text-white underline cursor-pointer"
-            >
-              Seller
-            </button>
-            <span className="text-slate-600">/</span>
-            <button
-              onClick={() => {
-                const a = db.getUserByEmailOrPhone('admin@kasuwarkanawa.com');
-                if (a) {
-                  db.setCurrentUser(a);
-                  setCurrentUser(a);
-                  showToast('Switched to Super Admin CPanel');
-                }
-              }}
-              className="text-slate-300 hover:text-white underline cursor-pointer"
-            >
-              Admin
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -396,8 +383,8 @@ export default function App() {
           setAuthInitialMode(mode || 'login');
           setAuthModalOpen(true);
         }}
-        onOpenDashboard={() => setBuyerDashboardOpen(true)}
-        onOpenSellerDashboard={() => setSellerDashboardOpen(true)}
+        onOpenDashboard={openBuyerDashboard}
+        onOpenSellerDashboard={openSellerDashboard}
         onOpenAdminPanel={() => setAdminPanelOpen(true)}
         onLogout={handleLogout}
         mobileMenuOpen={mobileMenuOpen}
@@ -431,7 +418,7 @@ export default function App() {
             setAuthModalOpen(true);
           }
         }}
-        onOpenDashboard={() => setBuyerDashboardOpen(true)}
+        onOpenDashboard={openBuyerDashboard}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         cartCount={cartCount}
@@ -653,7 +640,7 @@ export default function App() {
           items={checkoutItems}
           currentUser={currentUser}
           onOrderSuccess={handleOrderSuccess}
-          onOpenDashboard={() => setBuyerDashboardOpen(true)}
+          onOpenDashboard={openBuyerDashboard}
         />
       )}
 
@@ -668,7 +655,7 @@ export default function App() {
       )}
 
       {/* Buyer Dashboard Component (Profile, 10-status Orders, OPay approval simulation) */}
-      {buyerDashboardOpen && currentUser && (
+      {buyerDashboardOpen && currentUser?.accountType === 'buyer' && (
         <BuyerDashboard
           user={currentUser}
           onUpdateUser={(updated) => setCurrentUser(updated)}
@@ -681,7 +668,7 @@ export default function App() {
       )}
 
       {/* Seller Dashboard Component (Phase 4 Deliverable) */}
-      {sellerDashboardOpen && activeSellerUser && (
+      {sellerDashboardOpen && activeSellerUser?.accountType === 'seller' && (
         <SellerDashboard
           isOpen={sellerDashboardOpen}
           onClose={() => setSellerDashboardOpen(false)}
