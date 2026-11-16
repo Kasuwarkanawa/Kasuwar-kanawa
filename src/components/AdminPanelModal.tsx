@@ -716,8 +716,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[94vh] animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col min-h-0 max-h-[94vh] max-h-[94dvh] animate-in zoom-in-95 duration-200">
         
         {/* ============================================================ */}
         {/* 1. SUPER ADMIN LOGIN GATE (If not authenticated as admin) */}
@@ -906,7 +906,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* Admin Menu Grid (All 13 Comprehensive Tabs) */}
-            <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4">
+            <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 shrink-0 max-h-[34dvh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 text-xs font-bold">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
@@ -974,7 +974,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* Main Content Body */}
-            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4 [touch-action:pan-y]">
               
               {/* ============================================================ */}
               {/* TAB 1: ADMIN DASHBOARD (2. ADMIN DASHBOARD - 8 Stat Cards) */}
