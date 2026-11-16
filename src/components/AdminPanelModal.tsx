@@ -2059,7 +2059,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               value={selectedLogisticsAssignments[ord.id] ?? ord.logisticsCompanyId ?? ''}
                               onChange={(event) => setSelectedLogisticsAssignments((previous) => ({ ...previous, [ord.id]: event.target.value }))}
                               className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold"
-                              disabled={!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed'}
+                              disabled={
+                                ord.status !== 'dispatched' ||
+                                (ord.paymentMethod !== 'cod' && ord.paymentMethod !== 'cash_on_delivery' &&
+                                  !ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed')
+                              }
                             >
                               <option value="">Select approved logistics company</option>
                               {approvedLogisticsCompanies.map((company) => (
@@ -2069,7 +2073,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleAssignOrderToLogistics(ord.id, ord.logisticsCompanyId)}
-                              disabled={!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed'}
+                              disabled={
+                                ord.status !== 'dispatched' ||
+                                (ord.paymentMethod !== 'cod' && ord.paymentMethod !== 'cash_on_delivery' &&
+                                  !ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed')
+                              }
                               className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {ord.logisticsCompanyId ? 'Update Logistics' : 'Assign Logistics'}
@@ -2084,9 +2092,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </button>
                             )}
                           </div>
-                          {(!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed') && (
-                            <p className="text-[10px] text-amber-700">Payment must be verified by Super Admin before logistics assignment.</p>
+                          {ord.status !== 'dispatched' && (
+                            <p className="text-[10px] text-amber-700">
+                              Seller must complete Processing and mark this order Ready for Dispatch before logistics assignment.
+                            </p>
                           )}
+                          {ord.status === 'dispatched' &&
+                            ord.paymentMethod !== 'cod' &&
+                            ord.paymentMethod !== 'cash_on_delivery' &&
+                            !ord.paymentConfirmation?.verifiedByAdmin && (
+                              <p className="text-[10px] text-amber-700">
+                                Payment must be verified by Super Admin before logistics assignment.
+                              </p>
+                            )}
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
