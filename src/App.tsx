@@ -16,6 +16,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { AuthModal } from './components/AuthModal';
 import { BuyerDashboard } from './components/BuyerDashboard';
 import { SellerDashboard } from './components/SellerDashboard';
+import { LogisticsDashboard } from './components/LogisticsDashboard';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { Footer } from './components/Footer';
@@ -58,6 +59,7 @@ export default function App() {
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
   const [buyerDashboardOpen, setBuyerDashboardOpen] = useState(false);
   const [sellerDashboardOpen, setSellerDashboardOpen] = useState(false);
+  const [logisticsDashboardOpen, setLogisticsDashboardOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
@@ -200,6 +202,16 @@ export default function App() {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
+    if (user.accountType === 'logistics') {
+      const company = db.getLogisticsCompanyByOwner(user.id);
+      if (!company || company.approvalStatus !== 'approved' || user.status !== 'active') {
+        db.logout();
+        setCurrentUser(null);
+        showToast('Your logistics account is awaiting admin approval.');
+        return;
+      }
+      setLogisticsDashboardOpen(true);
+    }
     showToast(`Welcome, ${user.fullName}!`);
   };
 
@@ -209,6 +221,7 @@ export default function App() {
     setCurrentUser(null);
     setBuyerDashboardOpen(false);
     setSellerDashboardOpen(false);
+    setLogisticsDashboardOpen(false);
     setAdminPanelOpen(false);
     setAuthModalOpen(false);
     setCheckoutModalOpen(false);
@@ -300,6 +313,24 @@ export default function App() {
     setSellerDashboardOpen(true);
   };
 
+  const openLogisticsDashboard = () => {
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      return;
+    }
+    if (currentUser.accountType !== 'logistics') {
+      showToast('Access Restricted: Logistics companies only.');
+      return;
+    }
+    const company = db.getLogisticsCompanyByOwner(currentUser.id);
+    if (!company || company.approvalStatus !== 'approved' || currentUser.status !== 'active') {
+      showToast('Your logistics account is awaiting admin approval.');
+      return;
+    }
+    setLogisticsDashboardOpen(true);
+  };
+
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
   const openAdminPanel = () => {
     if (currentUser && currentUser.accountType !== 'admin') {
@@ -325,6 +356,8 @@ export default function App() {
                     ? 'bg-emerald-600 text-white'
                     : currentUser.accountType === 'admin'
                     ? 'bg-blue-600 text-white'
+                    : currentUser.accountType === 'logistics'
+                    ? 'bg-amber-600 text-white'
                     : 'bg-[#E6007E] text-white'
                 }`}
               >
@@ -379,6 +412,18 @@ export default function App() {
             <Store className="w-3.5 h-3.5 text-emerald-400" />
             <span>Seller Dashboard</span>
           </button>
+
+          {/* Logistics Dashboard Button (Approved company only) */}
+          {currentUser?.accountType === 'logistics' && (
+            <button
+              type="button"
+              onClick={openLogisticsDashboard}
+              className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40 font-black flex items-center gap-1"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Logistics Dashboard</span>
+            </button>
+          )}
 
           {/* Super Admin CPanel Button (Security Gated) */}
           <button
@@ -437,6 +482,8 @@ export default function App() {
           if (currentUser) {
             if (currentUser.accountType === 'seller') {
               setSellerDashboardOpen(true);
+            } else if (currentUser.accountType === 'logistics') {
+              openLogisticsDashboard();
             } else if (currentUser.accountType === 'admin') {
               openAdminPanel();
             } else {
@@ -707,6 +754,16 @@ export default function App() {
           seller={activeSellerUser}
           onProductUpdated={refreshLiveProducts}
           onOpenSuperAdmin={openAdminPanel}
+        />
+      )}
+
+      {/* Logistics Company Dashboard (approved logistics accounts only) */}
+      {logisticsDashboardOpen && currentUser?.accountType === 'logistics' && (
+        <LogisticsDashboard
+          user={currentUser}
+          onClose={() => setLogisticsDashboardOpen(false)}
+          onLogout={handleLogout}
+          onDataChanged={refreshLiveProducts}
         />
       )}
 
