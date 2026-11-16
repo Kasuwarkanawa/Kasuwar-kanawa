@@ -49,6 +49,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [state, setState] = useState('Kano State');
   const [area, setArea] = useState('Kano Municipal');
   const [profileImage, setProfileImage] = useState('');
+  const [companyLogo, setCompanyLogo] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('1500');
 
   // Login states
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -77,6 +79,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (accountType === 'seller' && !businessName.trim()) {
       setError('Please provide your Business Name as a seller.');
+      return;
+    }
+
+    if (accountType === 'logistics') {
+      if (!businessName.trim()) {
+        setError('Please provide your Logistics Company Name.');
+        return;
+      }
+      if (!whatsAppNumber.trim()) {
+        setError('Please provide your company WhatsApp number.');
+        return;
+      }
+      if (!companyLogo.trim()) {
+        setError('Please upload your Logistics Company Logo.');
+        return;
+      }
+      const fee = Number(deliveryFee);
+      if (!Number.isFinite(fee) || fee < 0) {
+        setError('Please enter a valid delivery fee.');
+        return;
+      }
+
+      const logisticsRes = db.registerLogisticsCompany(
+        {
+          fullName,
+          phone,
+          whatsAppNumber,
+          email,
+          password,
+          address: businessAddress || address,
+          businessAddress: businessAddress || address,
+          city,
+          state,
+          area,
+          profileImage: companyLogo,
+        },
+        {
+          companyName: businessName.trim(),
+          logo: companyLogo,
+          contactName: fullName.trim(),
+          phone,
+          whatsAppNumber: whatsAppNumber.trim(),
+          email,
+          address: businessAddress || address,
+          city,
+          state,
+          serviceAreas: [{ state, cities: [city], areas: area ? [area] : [] }],
+          pricing: [{ state, city, fee, currency: 'NGN' }],
+        }
+      );
+
+      if (!logisticsRes.success) {
+        setError(logisticsRes.error || 'Failed to submit logistics registration.');
+        return;
+      }
+      setSuccessMessage('Logistics registration submitted successfully. Your account is pending Super Admin approval. You can sign in after approval.');
       return;
     }
 
@@ -123,6 +181,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Incorrect password. Please try again or use Forgot Password.');
       return;
     }
+    if (user.accountType === 'logistics' && user.status !== 'active') {
+      setError(user.status === 'rejected'
+        ? 'Your Logistics registration was rejected. Please contact the Super Admin.'
+        : 'Your Logistics account is awaiting Super Admin approval.');
+      return;
+    }
 
     db.setCurrentUser(user);
     setSuccessMessage(`Logged in successfully! Welcome back, ${user.fullName} (${user.accountType.toUpperCase()}).`);
@@ -158,7 +222,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {mode === 'login'
                   ? 'Buyer Login'
                   : mode === 'register'
-                  ? 'Buyer & Seller Registration'
+                  ? 'Buyer, Seller & Logistics Registration'
                   : 'Reset Password'}
               </h3>
               <p className="text-xs text-pink-200 font-medium">KASUWAR KANAWA • AREWA SAI DAN AREWA</p>
@@ -298,7 +362,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select Account Type (Nau'in Asusun)
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setAccountType('buyer')}
@@ -330,11 +394,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <span className="text-[10px] font-normal text-slate-500">Sell on Kanawa</span>
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setAccountType('logistics')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                      accountType === 'logistics'
+                        ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Building className="w-4 h-4 shrink-0" />
+                    <div className="text-left">
+                      <div>Logistics Company</div>
+                      <span className="text-[10px] font-normal text-slate-500">Delivery services</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
               {/* Profile Image Upload (Buyer & Seller) */}
-              <ProfileImageUploader
+              {accountType !== 'logistics' && <ProfileImageUploader
                 value={profileImage}
                 onChange={setProfileImage}
                 name={fullName || (accountType === 'seller' ? businessName : 'New User')}
@@ -349,7 +428,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     ? 'Upload your store logo or merchant photo from gallery/camera. Auto-resized to 512x512 WebP.'
                     : 'Select your profile photo from camera or gallery. Auto-optimized to max 512x512 WebP.'
                 }
-              />
+              />}
+
+              {accountType === 'logistics' && (
+                <ProfileImageUploader
+                  value={companyLogo}
+                  onChange={setCompanyLogo}
+                  name={businessName || 'Logistics Company'}
+                  role="logistics"
+                  label="Logistics Company Logo (Alamar Kamfani) *"
+                  helperText="Upload your company logo from your phone gallery or camera."
+                />
+              )}
 
               {/* Full Name */}
               <div>
@@ -370,17 +460,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* SELLER SPECIFIC: Business Name */}
-              {accountType === 'seller' && (
+              {(accountType === 'seller' || accountType === 'logistics') && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Business / Store Name (Sunan Kasuwanci) *
+                    {accountType === 'logistics' ? 'Logistics Company Name (Sunan Kamfani) *' : 'Business / Store Name (Sunan Kasuwanci) *'}
                   </label>
                   <div className="relative">
                     <Building className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Danladi Textiles & Brocade Hub"
+                      placeholder={accountType === 'logistics' ? 'e.g. Kanawa Express Logistics' : 'e.g. Danladi Textiles & Brocade Hub'}
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
@@ -410,21 +500,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {accountType === 'seller' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
+                    {accountType === 'seller' || accountType === 'logistics' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
                   </label>
                   <div className="relative">
-                    {accountType === 'seller' ? (
+                    {accountType === 'seller' || accountType === 'logistics' ? (
                       <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     ) : (
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     )}
                     <input
-                      type={accountType === 'seller' ? 'tel' : 'email'}
+                      type={accountType === 'seller' || accountType === 'logistics' ? 'tel' : 'email'}
                       required
-                      placeholder={accountType === 'seller' ? 'e.g. 2348000000000' : 'you@gmail.com'}
-                      value={accountType === 'seller' ? whatsAppNumber : email}
+                      placeholder={accountType === 'seller' || accountType === 'logistics' ? 'e.g. 2348000000000' : 'you@gmail.com'}
+                      value={accountType === 'seller' || accountType === 'logistics' ? whatsAppNumber : email}
                       onChange={(e) =>
-                        accountType === 'seller' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
+                        accountType === 'seller' || accountType === 'logistics' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
                       }
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                     />
@@ -433,7 +523,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* For Seller: Additional Email & Product Category */}
-              {accountType === 'seller' && (
+              {(accountType === 'seller' || accountType === 'logistics') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -452,7 +542,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
                   </div>
 
-                  <div>
+                  {accountType === 'seller' && <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Product Category (Nau'in Kayayyaki) *
                     </label>
@@ -469,7 +559,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <option value="Shoes & Leather Bags">Shoes & Leather Bags</option>
                       <option value="Provisions & Groceries">Provisions & Groceries</option>
                     </select>
-                  </div>
+                  </div>}
                 </div>
               )}
 
@@ -513,7 +603,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Address Information */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {accountType === 'seller' ? 'Business Address (Adireshin Shago / Kasuwa) *' : 'Complete Delivery Address *'}
+                  {accountType === 'seller' || accountType === 'logistics' ? 'Business Address (Adireshin Kamfani / Kasuwa) *' : 'Complete Delivery Address *'}
                 </label>
                 <div className="relative">
                   <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -525,14 +615,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         ? 'e.g. Shop 42, Block B, Kasuwar Kwari Market, Kano'
                         : 'e.g. No. 25 Zoo Road / Sabo Garba Way'
                     }
-                    value={accountType === 'seller' ? businessAddress : address}
+                    value={accountType === 'seller' || accountType === 'logistics' ? businessAddress : address}
                     onChange={(e) =>
-                      accountType === 'seller' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
+                      accountType === 'seller' || accountType === 'logistics' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
                     }
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                   />
                 </div>
               </div>
+
+              {accountType === 'logistics' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Starting Delivery Fee (NGN) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={deliveryFee}
+                    onChange={(e) => setDeliveryFee(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
+                    placeholder="e.g. 1500"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -575,7 +680,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="submit"
                 className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-3"
               >
-                <span>Complete Registration</span>
+                <span>{accountType === 'logistics' ? 'Submit for Approval' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
