@@ -2,7 +2,8 @@
  * Profile Image Upload & Optimization Utility for KASUWAR KANAWA
  * Resizes images to max 512x512, compresses to WebP/JPEG target <= 200KB,
  * validates file types against executables, and uploads to the server storage.
- * Only the resulting static URL (e.g. /uploads/profiles/...) is stored in user records.
+ * Uses the server URL when available. On static hosting without an upload API,
+ * returns the optimized data URL for the existing localStorage profile flow.
  */
 
 export interface ValidationResult {
@@ -171,7 +172,9 @@ export async function optimizeProfileImage(file: File): Promise<OptimizedImageRe
 
 /**
  * Upload optimized profile image to server storage endpoint
- * Never stores Base64 in database or localStorage — returns the static file URL.
+ * Uses a static URL when the server endpoint is available. Static hosts such as
+ * GitHub Pages have no API route, so a small optimized data URL is returned as
+ * a compatibility fallback for the current localStorage-based application.
  */
 export async function uploadProfileImage(file: File): Promise<UploadResult> {
   // Step 1: Client-side validation
@@ -199,6 +202,17 @@ export async function uploadProfileImage(file: File): Promise<UploadResult> {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
+
+      // GitHub Pages is a static host and does not provide /api routes.
+      // For static deployments, keep the optimized image as a data URL so
+      // the existing localStorage-based profile flow can still save it.
+      if ([403, 404, 405, 501].includes(response.status)) {
+        return {
+          success: true,
+          url: optimized.dataUrl,
+        };
+      }
+
       return {
         success: false,
         error: errData.error || `Server upload failed with status code ${response.status}.`,
