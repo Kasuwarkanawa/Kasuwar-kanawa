@@ -880,8 +880,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </div>
 
-            {/* Tab Bar (All 13 Comprehensive Tabs) */}
-            <div className="bg-slate-50 border-b border-slate-200 px-3 flex overflow-x-auto gap-1 text-xs font-bold scrollbar-thin">
+            {/* Admin Menu Grid (All 13 Comprehensive Tabs) */}
+            <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 text-xs font-bold">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
                 { id: 'users', label: 'Users', icon: Users, badge: allUsers.length },
@@ -904,17 +905,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`py-3 px-3 flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                    className={`relative min-h-[88px] rounded-xl border p-3 flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${
                       isActive
-                        ? 'border-[#E6007E] text-[#E6007E] bg-white'
-                        : 'border-transparent text-slate-600 hover:text-slate-900'
+                        ? 'border-[#E6007E] text-[#E6007E] bg-white shadow-md ring-1 ring-[#E6007E]/20'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-[#E6007E]/50 hover:text-[#E6007E] hover:shadow-sm'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
+                    <Icon className="w-5 h-5" />
+                    <span className="leading-tight">{tab.label}</span>
                     {tab.badge !== null && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                        className={`absolute top-2 right-2 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-black ${
                           isActive
                             ? 'bg-[#E6007E] text-white'
                             : 'bg-slate-200 text-slate-700'
@@ -926,6 +927,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </button>
                 );
               })}
+              </div>
             </div>
 
             {/* Notification Toast */}
