@@ -34,9 +34,11 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
   const agents = useMemo(() => company ? db.getDeliveryAgents(company.id) : [], [company, refreshKey]);
   const shipments = useMemo(() => company ? db.getLogisticsShipments({ logisticsCompanyId: company.id }) : [], [company, refreshKey]);
   const orders = useMemo(() => db.getOrders().filter(order =>
-    !order.logisticsCompanyId &&
-    ['payment_confirmed', 'processing', 'dispatched'].includes(order.status)
-  ), [refreshKey]);
+    order.logisticsCompanyId === company.id &&
+    (order.paymentConfirmation?.verifiedByAdmin === true || order.status === 'payment_confirmed') &&
+    ['payment_confirmed', 'processing', 'dispatched'].includes(order.status) &&
+    !db.getLogisticsShipments({ orderId: order.id }).length
+  ), [company.id, refreshKey]);
 
   if (!company || company.approvalStatus !== 'approved' || user.status !== 'active') {
     return (
