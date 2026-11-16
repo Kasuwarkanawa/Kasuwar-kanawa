@@ -973,6 +973,72 @@ export const db = {
     return shipment;
   },
 
+  /**
+   * Super Admin assigns a verified/paid order to an approved logistics company.
+   * Seller assignment is not required for this workflow.
+   */
+  adminAssignOrderToLogistics(orderId: string, logisticsCompanyId: string, adminId?: string): Order | null {
+    const company = this.getLogisticsCompanyById(logisticsCompanyId);
+    if (!company || company.approvalStatus !== 'approved') {
+      throw new Error('Please select an approved logistics company.');
+    }
+
+    const orders = this.getOrders();
+    const index = orders.findIndex((order) => order.id === orderId);
+    if (index < 0) return null;
+
+    const order = orders[index];
+    const isVerifiedPayment =
+      order.status === 'payment_confirmed' ||
+      order.paymentConfirmation?.verifiedByAdmin === true;
+
+    // COD is intentionally excluded from this paid-order assignment flow.
+    if (!isVerifiedPayment) {
+      throw new Error('Payment must be verified by Super Admin before assigning logistics.');
+    }
+
+    if (order.status === 'rejected' || order.status === 'cancelled' || order.status === 'delivered') {
+      throw new Error('This order cannot be assigned to logistics in its current status.');
+    }
+
+    const now = new Date().toISOString();
+    const updatedOrder = {
+      ...order,
+      logisticsCompanyId,
+      logisticsCompanyName: company.companyName,
+      logisticsAssignedAt: now,
+      logisticsAssignedBy: adminId,
+      updatedAt: now,
+    };
+    orders[index] = updatedOrder;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    return updatedOrder;
+  },
+
+  adminUnassignOrderFromLogistics(orderId: string): Order | null {
+    const orders = this.getOrders();
+    const index = orders.findIndex((order) => order.id === orderId);
+    if (index < 0) return null;
+
+    const order = orders[index];
+    const hasShipment = this.getLogisticsShipments().some((shipment) => shipment.orderId === orderId);
+    if (hasShipment) {
+      throw new Error('This order already has a shipment. Manage the shipment before changing its logistics company.');
+    }
+
+    const updatedOrder = {
+      ...order,
+      logisticsCompanyId: undefined,
+      logisticsCompanyName: undefined,
+      logisticsAssignedAt: undefined,
+      logisticsAssignedBy: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    orders[index] = updatedOrder;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    return updatedOrder;
+  },
+
   getLogisticsShipments(filters?: { logisticsCompanyId?: string; buyerId?: string; orderId?: string }): LogisticsShipment[] {
     try {
       let shipments: LogisticsShipment[] = JSON.parse(localStorage.getItem(LOGISTICS_SHIPMENTS_STORAGE_KEY) || '[]');
