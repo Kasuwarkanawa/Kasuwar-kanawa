@@ -988,13 +988,19 @@ export const db = {
     if (index < 0) return null;
 
     const order = orders[index];
+    const isCashOnDelivery = order.paymentMethod === 'cod' || order.paymentMethod === 'cash_on_delivery';
     const isVerifiedPayment =
       order.status === 'payment_confirmed' ||
       order.paymentConfirmation?.verifiedByAdmin === true;
 
-    // COD is intentionally excluded from this paid-order assignment flow.
-    if (!isVerifiedPayment) {
+    // OPay orders must be verified; COD orders proceed without advance payment.
+    if (!isCashOnDelivery && !isVerifiedPayment) {
       throw new Error('Payment must be verified by Super Admin before assigning logistics.');
+    }
+
+    // Seller must finish processing and explicitly mark the order as dispatched/ready.
+    if (order.status !== 'dispatched') {
+      throw new Error('Seller must complete processing and mark this order Ready for Dispatch before logistics assignment.');
     }
 
     if (order.status === 'rejected' || order.status === 'cancelled' || order.status === 'delivered') {
@@ -1059,6 +1065,17 @@ export const db = {
     const company = this.getLogisticsCompanyById(data.logisticsCompanyId);
     if (!company || company.approvalStatus !== 'approved') {
       throw new Error('Only an approved logistics company can receive a shipment.');
+    }
+    const order = this.getOrders().find((item) => item.id === data.orderId);
+    if (!order || order.logisticsCompanyId !== data.logisticsCompanyId) {
+      throw new Error('This order has not been assigned to your approved logistics company by Super Admin.');
+    }
+    if (order.status !== 'dispatched') {
+      throw new Error('Seller must mark the order Ready for Dispatch before a shipment can be created.');
+    }
+    const existingShipment = this.getLogisticsShipments({ orderId: data.orderId })[0];
+    if (existingShipment) {
+      throw new Error('A shipment already exists for this order.');
     }
     const now = new Date().toISOString();
     const shipment: LogisticsShipment = {
@@ -1584,6 +1601,9 @@ export const db = {
 
   // Seller Order Controls (6. SELLER ORDER MANAGEMENT & 10. DELIVERY CONFIRMATION)
   sellerAcceptOrder(orderId: string): Order | null {
+    const order = this.getOrderById(orderId);
+    if (!order || order.status !== 'payment_confirmed') return null;
+    if (order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin !== true) return null;
     return this.updateOrderStatus(orderId, 'processing');
   },
 
@@ -1601,6 +1621,9 @@ export const db = {
   },
 
   sellerDispatchOrder(orderId: string): Order | null {
+    const order = this.getOrderById(orderId);
+    if (!order || order.status !== 'processing') return null;
+    if (order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin !== true) return null;
     return this.updateOrderStatus(orderId, 'dispatched');
   },
 
