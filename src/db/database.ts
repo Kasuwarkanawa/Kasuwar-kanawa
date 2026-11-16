@@ -14,6 +14,10 @@ import {
   PromotionalAdvertisement,
   Announcement,
   Category,
+  LogisticsCompany,
+  DeliveryAgent,
+  LogisticsShipment,
+  DeliveryStatus,
 } from '../types';
 import { INITIAL_REVIEWS, PRODUCTS } from '../data/products';
 
@@ -30,6 +34,9 @@ const CART_STORAGE_KEY = 'kasuwar_cart_v1';
 const FLASH_SALES_STORAGE_KEY = 'kasuwar_flash_sales_v1';
 const PROMOTIONS_STORAGE_KEY = 'kasuwar_promotions_v1';
 const ANNOUNCEMENTS_STORAGE_KEY = 'kasuwar_announcements_v1';
+const LOGISTICS_COMPANIES_STORAGE_KEY = 'kasuwar_logistics_companies_v1';
+const DELIVERY_AGENTS_STORAGE_KEY = 'kasuwar_delivery_agents_v1';
+const LOGISTICS_SHIPMENTS_STORAGE_KEY = 'kasuwar_logistics_shipments_v1';
 
 // Seed Initial Flash Sales
 const INITIAL_FLASH_SALES: FlashSale[] = [
@@ -768,6 +775,214 @@ export const db = {
   logout(): void {
     // Remove only the active login session; keep the user's account and order data.
     localStorage.removeItem(CURRENT_USER_KEY);
+  },
+
+
+  // --- LOGISTICS MANAGEMENT ---
+  getLogisticsCompanies(): LogisticsCompany[] {
+    try {
+      return JSON.parse(localStorage.getItem(LOGISTICS_COMPANIES_STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  },
+
+  getLogisticsCompanyById(id: string): LogisticsCompany | null {
+    return this.getLogisticsCompanies().find((company) => company.id === id) || null;
+  },
+
+  getLogisticsCompanyByOwner(ownerUserId: string): LogisticsCompany | null {
+    return this.getLogisticsCompanies().find((company) => company.ownerUserId === ownerUserId) || null;
+  },
+
+  registerLogisticsCompany(
+    userData: Omit<User, 'id' | 'createdAt' | 'accountType' | 'status'>,
+    companyData: Omit<LogisticsCompany, 'id' | 'ownerUserId' | 'approvalStatus' | 'createdAt' | 'updatedAt'>
+  ): { success: boolean; user?: User; company?: LogisticsCompany; error?: string } {
+    const users = this.getUsers();
+    const email = userData.email.trim().toLowerCase();
+    const phone = userData.phone.replace(/\s+/g, '');
+    if (users.some((user) => user.email.trim().toLowerCase() === email)) {
+      return { success: false, error: 'An account with this email already exists.' };
+    }
+    if (users.some((user) => user.phone.replace(/\s+/g, '') === phone)) {
+      return { success: false, error: 'An account with this phone number already exists.' };
+    }
+    if (this.getLogisticsCompanies().some((company) => company.companyName.trim().toLowerCase() === companyData.companyName.trim().toLowerCase())) {
+      return { success: false, error: 'A logistics company with this name is already registered.' };
+    }
+
+    const now = new Date().toISOString();
+    const user: User = {
+      ...userData,
+      id: `usr-logistics-${Date.now()}`,
+      accountType: 'logistics',
+      status: 'pending',
+      createdAt: now,
+    };
+    const company: LogisticsCompany = {
+      ...companyData,
+      id: `log-${Date.now()}`,
+      ownerUserId: user.id,
+      approvalStatus: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    users.push(user);
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    const companies = this.getLogisticsCompanies();
+    companies.unshift(company);
+    localStorage.setItem(LOGISTICS_COMPANIES_STORAGE_KEY, JSON.stringify(companies));
+    // Pending logistics accounts are deliberately NOT logged in automatically.
+    return { success: true, user, company };
+  },
+
+  updateLogisticsCompany(id: string, updates: Partial<LogisticsCompany>): LogisticsCompany | null {
+    const companies = this.getLogisticsCompanies();
+    const index = companies.findIndex((company) => company.id === id);
+    if (index < 0) return null;
+    companies[index] = { ...companies[index], ...updates, id, updatedAt: new Date().toISOString() };
+    localStorage.setItem(LOGISTICS_COMPANIES_STORAGE_KEY, JSON.stringify(companies));
+    return companies[index];
+  },
+
+  adminSetLogisticsApproval(
+    companyId: string,
+    status: 'approved' | 'rejected' | 'suspended',
+    adminNotes?: string,
+    adminId?: string
+  ): LogisticsCompany | null {
+    const company = this.getLogisticsCompanyById(companyId);
+    if (!company) return null;
+    const updated = this.updateLogisticsCompany(companyId, {
+      approvalStatus: status,
+      adminNotes,
+      approvedAt: status === 'approved' ? new Date().toISOString() : undefined,
+      approvedBy: status === 'approved' ? adminId : undefined,
+    });
+    const userStatus: User['status'] = status === 'approved' ? 'active' : status;
+    this.adminUpdateUser(company.ownerUserId, { status: userStatus });
+    return updated;
+  },
+
+  getDeliveryAgents(logisticsCompanyId?: string): DeliveryAgent[] {
+    try {
+      const agents: DeliveryAgent[] = JSON.parse(localStorage.getItem(DELIVERY_AGENTS_STORAGE_KEY) || '[]');
+      return logisticsCompanyId ? agents.filter((agent) => agent.logisticsCompanyId === logisticsCompanyId) : agents;
+    } catch {
+      return [];
+    }
+  },
+
+  addDeliveryAgent(data: Omit<DeliveryAgent, 'id' | 'createdAt'>): DeliveryAgent {
+    const agents = this.getDeliveryAgents();
+    const agent: DeliveryAgent = { ...data, id: `agent-${Date.now()}`, createdAt: new Date().toISOString() };
+    agents.unshift(agent);
+    localStorage.setItem(DELIVERY_AGENTS_STORAGE_KEY, JSON.stringify(agents));
+    return agent;
+  },
+
+  updateDeliveryAgent(id: string, updates: Partial<DeliveryAgent>): DeliveryAgent | null {
+    const agents = this.getDeliveryAgents();
+    const index = agents.findIndex((agent) => agent.id === id);
+    if (index < 0) return null;
+    agents[index] = { ...agents[index], ...updates, id };
+    localStorage.setItem(DELIVERY_AGENTS_STORAGE_KEY, JSON.stringify(agents));
+    return agents[index];
+  },
+
+  deleteDeliveryAgent(id: string): boolean {
+    const agents = this.getDeliveryAgents();
+    const filtered = agents.filter((agent) => agent.id !== id);
+    if (filtered.length === agents.length) return false;
+    localStorage.setItem(DELIVERY_AGENTS_STORAGE_KEY, JSON.stringify(filtered));
+    return true;
+  },
+
+  getLogisticsShipments(filters?: { logisticsCompanyId?: string; buyerId?: string; orderId?: string }): LogisticsShipment[] {
+    try {
+      let shipments: LogisticsShipment[] = JSON.parse(localStorage.getItem(LOGISTICS_SHIPMENTS_STORAGE_KEY) || '[]');
+      if (filters?.logisticsCompanyId) shipments = shipments.filter((item) => item.logisticsCompanyId === filters.logisticsCompanyId);
+      if (filters?.buyerId) shipments = shipments.filter((item) => item.buyerId === filters.buyerId);
+      if (filters?.orderId) shipments = shipments.filter((item) => item.orderId === filters.orderId);
+      return shipments;
+    } catch {
+      return [];
+    }
+  },
+
+  getShipmentByTrackingNumber(trackingNumber: string): LogisticsShipment | null {
+    return this.getLogisticsShipments().find((shipment) => shipment.trackingNumber.toLowerCase() === trackingNumber.trim().toLowerCase()) || null;
+  },
+
+  createLogisticsShipment(data: Omit<LogisticsShipment, 'id' | 'trackingNumber' | 'createdAt' | 'updatedAt'>): LogisticsShipment {
+    const company = this.getLogisticsCompanyById(data.logisticsCompanyId);
+    if (!company || company.approvalStatus !== 'approved') {
+      throw new Error('Only an approved logistics company can receive a shipment.');
+    }
+    const now = new Date().toISOString();
+    const shipment: LogisticsShipment = {
+      ...data,
+      id: `ship-${Date.now()}`,
+      trackingNumber: `KN-${Date.now().toString(36).toUpperCase()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const shipments = this.getLogisticsShipments();
+    shipments.unshift(shipment);
+    localStorage.setItem(LOGISTICS_SHIPMENTS_STORAGE_KEY, JSON.stringify(shipments));
+    return shipment;
+  },
+
+  updateShipmentStatus(
+    shipmentId: string,
+    status: DeliveryStatus,
+    note?: string
+  ): LogisticsShipment | null {
+    const shipments = this.getLogisticsShipments();
+    const index = shipments.findIndex((shipment) => shipment.id === shipmentId);
+    if (index < 0) return null;
+    const now = new Date().toISOString();
+    const labels: Record<DeliveryStatus, string> = {
+      awaiting_pickup: 'Awaiting Pickup',
+      picked_up: 'Picked Up',
+      in_transit: 'In Transit',
+      out_for_delivery: 'Out for Delivery',
+      delivered: 'Delivered',
+      failed: 'Delivery Failed',
+      cancelled: 'Cancelled',
+    };
+    const shipment = shipments[index];
+    shipment.status = status;
+    shipment.updatedAt = now;
+    if (status === 'picked_up' && !shipment.pickupAt) shipment.pickupAt = now;
+    if (status === 'delivered') shipment.deliveredAt = now;
+    shipment.trackingTimeline = [
+      ...(shipment.trackingTimeline || []),
+      { title: labels[status], date: now, completed: true, description: note || labels[status] },
+    ];
+    shipments[index] = shipment;
+    localStorage.setItem(LOGISTICS_SHIPMENTS_STORAGE_KEY, JSON.stringify(shipments));
+
+    const orders = this.getOrders();
+    const orderIndex = orders.findIndex((item) => item.id === shipment.orderId);
+    if (orderIndex >= 0) {
+      const order = orders[orderIndex];
+      orders[orderIndex] = {
+        ...order,
+        logisticsCompanyId: shipment.logisticsCompanyId,
+        logisticsCompanyName: this.getLogisticsCompanyById(shipment.logisticsCompanyId)?.companyName,
+        shipmentId: shipment.id,
+        trackingNumber: shipment.trackingNumber,
+        deliveryAgentId: shipment.deliveryAgentId,
+        status: status === 'delivered' ? 'delivered' : status === 'cancelled' || status === 'failed' ? order.status : 'dispatched',
+        deliveredAt: status === 'delivered' ? now : order.deliveredAt,
+        updatedAt: now,
+      };
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    }
+    return shipment;
   },
 
   // --- PRODUCTS (4. PRODUCT MANAGEMENT) ---
