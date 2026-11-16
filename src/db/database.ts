@@ -757,6 +757,15 @@ export const db = {
         return null;
       }
 
+      // Logistics accounts must remain signed out until the company is approved.
+      if (currentUser.accountType === 'logistics') {
+        const company = this.getLogisticsCompanyByOwner(currentUser.id);
+        if (currentUser.status !== 'active' || !company || company.approvalStatus !== 'approved') {
+          localStorage.removeItem(CURRENT_USER_KEY);
+          return null;
+        }
+      }
+
       return currentUser;
     } catch {
       localStorage.removeItem(CURRENT_USER_KEY);
@@ -813,8 +822,10 @@ export const db = {
     }
 
     const now = new Date().toISOString();
+    const normalizedWhatsApp = (companyData.whatsAppNumber || userData.whatsAppNumber || userData.phone).trim();
     const user: User = {
       ...userData,
+      whatsAppNumber: normalizedWhatsApp,
       id: `usr-logistics-${Date.now()}`,
       accountType: 'logistics',
       status: 'pending',
@@ -822,6 +833,8 @@ export const db = {
     };
     const company: LogisticsCompany = {
       ...companyData,
+      logo: companyData.logo?.trim() || undefined,
+      whatsAppNumber: normalizedWhatsApp,
       id: `log-${Date.now()}`,
       ownerUserId: user.id,
       approvalStatus: 'pending',
