@@ -130,6 +130,17 @@ export default function App() {
 
   // 4. BUY NOW: Open checkout specifically for selected product with variation pickers
   const handleBuyNow = (itemOrProduct: Product | CartItem) => {
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      showToast('Please login or register as a buyer to continue.');
+      return;
+    }
+    if (currentUser.accountType !== 'buyer') {
+      showToast('Only buyer accounts can place orders.');
+      return;
+    }
+
     let targetItem: CartItem;
 
     if ('product' in itemOrProduct) {
@@ -166,6 +177,16 @@ export default function App() {
   };
 
   const handleProceedCheckoutFromCart = () => {
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      showToast('Please login or register as a buyer to checkout.');
+      return;
+    }
+    if (currentUser.accountType !== 'buyer') {
+      showToast('Only buyer accounts can checkout.');
+      return;
+    }
     setCheckoutItems(cartItems);
     setCartDrawerOpen(false);
     setCheckoutModalOpen(true);
@@ -279,6 +300,15 @@ export default function App() {
     setSellerDashboardOpen(true);
   };
 
+  // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
+  const openAdminPanel = () => {
+    if (currentUser && currentUser.accountType !== 'admin') {
+      showToast('Access Restricted: Super Admin only.');
+      return;
+    }
+    setAdminPanelOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-[#E6007E] selection:text-white">
       {/* System Phase 4 Portal Bar: Connect Buyer, Seller & Super Admin */}
@@ -354,8 +384,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
-              // The admin modal must perform its own credential/role verification.
-              setAdminPanelOpen(true);
+              openAdminPanel();
             }}
             className="px-2.5 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
           >
@@ -385,7 +414,7 @@ export default function App() {
         }}
         onOpenDashboard={openBuyerDashboard}
         onOpenSellerDashboard={openSellerDashboard}
-        onOpenAdminPanel={() => setAdminPanelOpen(true)}
+        onOpenAdminPanel={openAdminPanel}
         onLogout={handleLogout}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -409,7 +438,7 @@ export default function App() {
             if (currentUser.accountType === 'seller') {
               setSellerDashboardOpen(true);
             } else if (currentUser.accountType === 'admin') {
-              setAdminPanelOpen(true);
+              openAdminPanel();
             } else {
               setBuyerDashboardOpen(true);
             }
@@ -658,7 +687,10 @@ export default function App() {
       {buyerDashboardOpen && currentUser?.accountType === 'buyer' && (
         <BuyerDashboard
           user={currentUser}
-          onUpdateUser={(updated) => setCurrentUser(updated)}
+          onUpdateUser={(updated) => {
+            db.setCurrentUser(updated);
+            setCurrentUser(updated);
+          }}
           onClose={() => setBuyerDashboardOpen(false)}
           onContinueShopping={() => {
             const el = document.getElementById('popular-products-section');
@@ -674,7 +706,7 @@ export default function App() {
           onClose={() => setSellerDashboardOpen(false)}
           seller={activeSellerUser}
           onProductUpdated={refreshLiveProducts}
-          onOpenSuperAdmin={() => setAdminPanelOpen(true)}
+          onOpenSuperAdmin={openAdminPanel}
         />
       )}
 
@@ -686,7 +718,13 @@ export default function App() {
           onDataChanged={refreshLiveProducts}
           currentUser={currentUser}
           onAdminLogin={(adminUser) => {
+            if (adminUser.accountType !== 'admin') {
+              showToast('Access Restricted: Super Admin only.');
+              return;
+            }
+            db.setCurrentUser(adminUser);
             setCurrentUser(adminUser);
+            setAdminPanelOpen(false);
             refreshLiveProducts();
           }}
         />
