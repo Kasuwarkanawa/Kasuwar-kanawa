@@ -101,10 +101,46 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
     }
   };
 
-  const updateStatus = (shipmentId: string, status: any) => {
-    db.updateShipmentStatus(shipmentId, status);
-    setNotice('Shipment status updated.');
-    refresh();
+  const updateStatus = (shipmentId: string, status: 'awaiting_pickup' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed') => {
+    const note = window.prompt(
+      status === 'delivered'
+        ? 'Enter delivery confirmation (recipient name, signature/reference, or proof link):'
+        : 'Add an optional update for the buyer:',
+      ''
+    );
+    // Cancel means the user decided not to make this status change.
+    if (note === null) return;
+    try {
+      db.updateShipmentStatus(shipmentId, status, note.trim() || undefined);
+      setNotice(status === 'delivered'
+        ? 'Shipment marked delivered. Delivery confirmation was added to its tracking update.'
+        : 'Shipment status and tracking update saved.');
+      refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not update shipment status.');
+    }
+  };
+
+  const toggleAgentStatus = (agent: (typeof agents)[number]) => {
+    const nextStatus = agent.status === 'active' ? 'inactive' : 'active';
+    try {
+      db.updateDeliveryAgent(agent.id, { status: nextStatus });
+      setNotice(`${agent.fullName} is now ${nextStatus}.`);
+      refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not update delivery agent.');
+    }
+  };
+
+  const removeAgent = (agent: (typeof agents)[number]) => {
+    if (!window.confirm(`Remove ${agent.fullName} from your delivery agents?`)) return;
+    try {
+      db.deleteDeliveryAgent(agent.id);
+      setNotice('Delivery agent removed.');
+      refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not remove delivery agent.');
+    }
   };
 
   const counts = [
@@ -168,7 +204,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
               <input value={vehicleType} onChange={e => setVehicleType(e.target.value)} placeholder="Vehicle type (optional)" className="border rounded-xl p-3" />
               <button className="sm:col-span-2 rounded-xl bg-[#0B172E] text-white p-3 font-bold">Save Delivery Agent</button>
             </form>}
-            {agents.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No delivery agents added yet.</div> : agents.map(agent => <div key={agent.id} className="bg-white rounded-xl border p-4 flex justify-between gap-3"><div><p className="font-bold text-slate-900">{agent.fullName}</p><p className="text-sm text-slate-500">{agent.phone} · {agent.whatsAppNumber}</p><p className="text-xs text-slate-500">{agent.vehicleType || 'Vehicle not specified'}</p></div><span className="text-xs font-bold text-emerald-700">{agent.status}</span></div>)}
+            {agents.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No delivery agents added yet.</div> : agents.map(agent => <div key={agent.id} className="bg-white rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div className="min-w-0"><p className="font-bold text-slate-900">{agent.fullName}</p><p className="text-sm text-slate-500 break-words">{agent.phone} · WhatsApp: {agent.whatsAppNumber || agent.phone}</p><p className="text-xs text-slate-500">{agent.vehicleType || 'Vehicle not specified'}</p><span className={`inline-flex mt-2 text-xs font-bold rounded-full px-2 py-1 ${agent.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{agent.status}</span></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => toggleAgentStatus(agent)} className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-700">{agent.status === 'active' ? 'Deactivate' : 'Activate'}</button><button type="button" onClick={() => removeAgent(agent)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600">Remove</button></div></div>)}
           </section>}
 
           {tab === 'shipments' && <section className="space-y-3">
@@ -177,7 +213,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
               <div className="flex flex-wrap justify-between gap-2"><div><p className="font-black text-slate-900">{shipment.trackingNumber}</p><p className="text-sm text-slate-500">Order: {shipment.orderId}</p></div><span className="rounded-full bg-pink-50 text-pink-700 px-3 py-1 text-xs font-bold">{statusLabel[shipment.status] || shipment.status}</span></div>
               <p className="text-sm text-slate-600">{shipment.recipientName} · {shipment.recipientPhone}</p>
               <p className="text-sm text-slate-600 flex gap-2"><MapPin size={16}/>{shipment.deliveryAddress.completeAddress}, {shipment.deliveryAddress.city}, {shipment.deliveryAddress.state}</p>
-              <div className="flex flex-wrap gap-2">{(['awaiting_pickup','picked_up','in_transit','out_for_delivery','delivered','failed'] as const).map(status => <button key={status} onClick={() => updateStatus(shipment.id, status)} className={`text-xs rounded-lg border px-2.5 py-2 ${shipment.status === status ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{statusLabel[status]}</button>)}</div>
+              {shipment.status === 'delivered' ? <p className="text-sm text-emerald-700 font-semibold">This shipment is delivered. Its tracking record is complete.</p> : <div className="flex flex-wrap gap-2">{(['awaiting_pickup','picked_up','in_transit','out_for_delivery','delivered','failed'] as const).map(status => <button key={status} type="button" onClick={() => updateStatus(shipment.id, status)} className={`text-xs rounded-lg border px-2.5 py-2 ${shipment.status === status ? 'bg-pink-600 text-white border-pink-600' : status === 'delivered' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}>{statusLabel[status]}</button>)}</div>}
             </div>)}
           </section>}
         </main>
