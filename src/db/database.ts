@@ -732,16 +732,27 @@ export const db = {
   },
 
   getCurrentUser(): User | null {
+    // A missing session means the visitor is logged out. Never auto-login a demo user.
     const raw = localStorage.getItem(CURRENT_USER_KEY);
-    if (!raw) {
-      const users = this.getUsers();
-      const defaultUser = users[0] || INITIAL_USERS[0];
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(defaultUser));
-      return defaultUser;
-    }
+    if (!raw) return null;
+
     try {
-      return JSON.parse(raw);
+      const savedUser = JSON.parse(raw) as User;
+      if (!savedUser || !savedUser.id) {
+        localStorage.removeItem(CURRENT_USER_KEY);
+        return null;
+      }
+
+      // Read the latest user record so profile and account-status changes take effect.
+      const currentUser = this.getUsers().find((user) => user.id === savedUser.id);
+      if (!currentUser || currentUser.status === 'suspended' || currentUser.status === 'rejected') {
+        localStorage.removeItem(CURRENT_USER_KEY);
+        return null;
+      }
+
+      return currentUser;
     } catch {
+      localStorage.removeItem(CURRENT_USER_KEY);
       return null;
     }
   },
@@ -755,6 +766,7 @@ export const db = {
   },
 
   logout(): void {
+    // Remove only the active login session; keep the user's account and order data.
     localStorage.removeItem(CURRENT_USER_KEY);
   },
 
