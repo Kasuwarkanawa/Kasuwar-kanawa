@@ -219,6 +219,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [logisticsLogo, setLogisticsLogo] = useState('');
   const [logisticsFee, setLogisticsFee] = useState('2500');
   const [logisticsAdminNotes, setLogisticsAdminNotes] = useState('');
+  const [selectedLogisticsAssignments, setSelectedLogisticsAssignments] = useState<Record<string, string>>({});
 
 
   const showNotification = (msg: string) => {
@@ -315,6 +316,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setLogisticsAdminNotes('');
     triggerRefresh();
     showNotification(status === 'approved' ? 'Logistics company approved.' : 'Logistics company rejected.');
+  };
+
+  const handleAssignOrderToLogistics = (orderId: string, currentCompanyId?: string) => {
+    const companyId = selectedLogisticsAssignments[orderId] || currentCompanyId || '';
+    if (!companyId) {
+      showNotification('Please select an approved logistics company.');
+      return;
+    }
+    try {
+      const updated = db.adminAssignOrderToLogistics(orderId, companyId, currentUser?.id);
+      if (!updated) {
+        showNotification('Order not found. Please refresh and try again.');
+        return;
+      }
+      setSelectedLogisticsAssignments((previous) => ({ ...previous, [orderId]: companyId }));
+      triggerRefresh();
+      showNotification('Order assigned to logistics company successfully.');
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not assign logistics company.');
+    }
+  };
+
+  const handleUnassignOrderFromLogistics = (orderId: string) => {
+    try {
+      const updated = db.adminUnassignOrderFromLogistics(orderId);
+      if (!updated) {
+        showNotification('Order not found. Please refresh and try again.');
+        return;
+      }
+      setSelectedLogisticsAssignments((previous) => {
+        const next = { ...previous };
+        delete next[orderId];
+        return next;
+      });
+      triggerRefresh();
+      showNotification('Logistics company removed from order.');
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not remove logistics assignment.');
+    }
   };
 
 
@@ -2005,6 +2045,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               {ord.paymentConfirmation.verifiedByAdmin ? '● Verified' : '○ Not Verified'}
                             </span>
                           </div>
+                        </div>
+
+                        <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Logistics Assignment</span>
+                            <span className={`text-[10px] font-bold ${ord.logisticsCompanyId ? 'text-emerald-700' : 'text-amber-700'}`}>
+                              {ord.logisticsCompanyName ? `Assigned: ${ord.logisticsCompanyName}` : 'Not assigned'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <select
+                              value={selectedLogisticsAssignments[ord.id] ?? ord.logisticsCompanyId ?? ''}
+                              onChange={(event) => setSelectedLogisticsAssignments((previous) => ({ ...previous, [ord.id]: event.target.value }))}
+                              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold"
+                              disabled={!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed'}
+                            >
+                              <option value="">Select approved logistics company</option>
+                              {approvedLogisticsCompanies.map((company) => (
+                                <option key={company.id} value={company.id}>{company.companyName}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignOrderToLogistics(ord.id, ord.logisticsCompanyId)}
+                              disabled={!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed'}
+                              className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {ord.logisticsCompanyId ? 'Update Logistics' : 'Assign Logistics'}
+                            </button>
+                            {ord.logisticsCompanyId && (
+                              <button
+                                type="button"
+                                onClick={() => handleUnassignOrderFromLogistics(ord.id)}
+                                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          {(!ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed') && (
+                            <p className="text-[10px] text-amber-700">Payment must be verified by Super Admin before logistics assignment.</p>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
