@@ -1100,7 +1100,6 @@ export const db = {
     if (status === 'picked_up' && !shipment.pickupAt) shipment.pickupAt = now;
     if (status === 'delivered') shipment.deliveredAt = now;
 
-    // Keep a complete, chronological shipment history without overwriting earlier events.
     const shipmentEvents = shipment.trackingTimeline || [];
     const lastEvent = shipmentEvents[shipmentEvents.length - 1];
     if (!lastEvent || lastEvent.title !== labels[status] || lastEvent.description !== (note || labels[status])) {
@@ -1115,24 +1114,25 @@ export const db = {
     shipments[index] = shipment;
     localStorage.setItem(LOGISTICS_SHIPMENTS_STORAGE_KEY, JSON.stringify(shipments));
 
-    // Mirror every logistics milestone into the buyer's order timeline.
+    // The active logistics shipment is the source of truth for delivery progress.
     const orders = this.getOrders();
     const orderIndex = orders.findIndex((item) => item.id === shipment.orderId);
     if (orderIndex >= 0) {
       const order = orders[orderIndex];
-      const milestoneTitles = [
+      const milestones = [
         'Awaiting Pickup',
         'Picked Up',
         'In Transit',
         'Out for Delivery',
         'Delivered',
       ];
-      const currentMilestoneIndex = status === 'failed' || status === 'cancelled'
+      const currentIndex = status === 'failed' || status === 'cancelled'
         ? -1
-        : milestoneTitles.indexOf(labels[status]);
-
+        : milestones.indexOf(labels[status]);
       const timeline = [...(order.trackingTimeline || [])];
-      milestoneTitles.forEach((title, milestoneIndex) => {
+
+      // Keep the delivery milestones in a single predictable sequence.
+      milestones.forEach((title, milestoneIndex) => {
         let step = timeline.find((entry) => entry.title === title);
         if (!step) {
           step = {
@@ -1145,16 +1145,27 @@ export const db = {
           };
           timeline.push(step);
         }
-        if (milestoneIndex <= currentMilestoneIndex) {
-          step.completed = true;
-          if (title === labels[status]) {
-            step.date = nowLabel;
-            step.description = note || labels[status];
-          } else if (step.date === 'Pending' || step.date === 'Pending Delivery') {
-            step.date = nowLabel;
-          }
+        const reached = milestoneIndex <= currentIndex;
+        step.completed = reached;
+        if (milestoneIndex === currentIndex) {
+          step.date = nowLabel;
+          step.description = note || labels[status];
+        } else if (reached && (step.date === 'Pending' || step.date === 'Pending Delivery')) {
+          step.date = nowLabel;
+        } else if (!reached) {
+          step.date = 'Pending';
         }
       });
+
+      // Dispatched means the parcel has actually been picked up by logistics.
+      const dispatched = timeline.find((entry) =>
+        entry.title === 'Dispatched' || entry.title === 'Dispatched to Rider'
+      );
+      if (dispatched) {
+        dispatched.completed = currentIndex >= 1;
+        dispatched.date = currentIndex >= 1 ? (dispatched.date === 'Pending' ? nowLabel : dispatched.date) : 'Pending';
+        if (currentIndex >= 1) dispatched.description = 'Package handed over to the logistics delivery agent.';
+      }
 
       if (status === 'failed' || status === 'cancelled') {
         const eventTitle = labels[status];
@@ -1168,6 +1179,36 @@ export const db = {
         }
       }
 
+      const orderStatus: OrderStatus =
+        status === 'delivered' ? 'delivered' :
+        status === 'failed' || status === 'cancelled' ? order.status :
+        'dispatched';
+
+      // Sort only known delivery milestones; retain the relative order of other order events.
+      const priority: Record<string, number> = {
+        'Order Placed': 0,
+        'Pending Verification': 1,
+        'Payment Confirmed': 2,
+        'Processing': 3,
+        'Processing & Quality Checked': 3,
+        'Awaiting Pickup': 4,
+        'Picked Up': 5,
+        'In Transit': 6,
+        'Out for Delivery': 7,
+        'Dispatched': 8,
+        'Dispatched to Rider': 8,
+        'Delivered': 9,
+        'Delivery Failed': 10,
+        'Cancelled': 11,
+      };
+      const orderedTimeline = timeline
+        .map((entry, originalIndex) => ({ entry, originalIndex }))
+        .sort((a, b) =>
+          (priority[a.entry.title] ?? 3.5) - (priority[b.entry.title] ?? 3.5) ||
+          a.originalIndex - b.originalIndex
+        )
+        .map(({ entry }) => entry);
+
       orders[orderIndex] = {
         ...order,
         logisticsCompanyId: shipment.logisticsCompanyId,
@@ -1175,9 +1216,9 @@ export const db = {
         shipmentId: shipment.id,
         trackingNumber: shipment.trackingNumber,
         deliveryAgentId: shipment.deliveryAgentId,
-        trackingTimeline: timeline,
-        status: status === 'delivered' ? 'delivered' : status === 'cancelled' || status === 'failed' ? order.status : 'dispatched',
-        deliveredAt: status === 'delivered' ? now : order.deliveredAt,
+        trackingTimeline: orderedTimeline,
+        status: orderStatus,
+        deliveredAt: status === 'delivered' ? now : (status === 'failed' || status === 'cancelled' ? undefined : order.deliveredAt),
         updatedAt: now,
       };
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
@@ -1428,6 +1469,17 @@ export const db = {
     const orders = this.getOrders();
     const index = orders.findIndex((o) => o.id === orderId);
     if (index === -1) return null;
+
+    if (status === 'delivered') {
+      const activeShipment = this.getLogisticsShipments().find((shipment) =>
+        shipment.orderId === orderId && shipment.status !== 'delivered' &&
+        shipment.status !== 'failed' && shipment.status !== 'cancelled'
+      );
+      if (activeShipment) {
+        // A logistics-managed order can only be marked delivered by its shipment status.
+        return orders[index];
+      }
+    }
 
     orders[index].status = status;
     orders[index].updatedAt = new Date().toISOString();
