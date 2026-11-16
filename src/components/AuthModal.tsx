@@ -141,15 +141,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }, 3000);
   };
 
-  const quickSwitchUser = (emailOrPhone: string) => {
-    const user = db.getUserByEmailOrPhone(emailOrPhone);
-    if (user) {
-      db.setCurrentUser(user);
-      onLoginSuccess(user);
-      onClose();
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
@@ -296,38 +287,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </div>
 
-              {/* Demo Accounts Quick Switcher for Easy Testing */}
-              <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs">
-                <span className="block font-bold text-slate-600 mb-1.5 text-[11px] uppercase tracking-wider">
-                  ⚡ Quick Test Demo Accounts:
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => quickSwitchUser('09060938835')}
-                    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] text-left hover:border-[#E6007E] transition-colors cursor-pointer"
-                  >
-                    <span className="font-bold block text-slate-800 truncate">Usman</span>
-                    <span className="text-[10px] text-pink-600 font-semibold">Buyer</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => quickSwitchUser('seller@kasuwarkanawa.com')}
-                    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] text-left hover:border-[#E6007E] transition-colors cursor-pointer"
-                  >
-                    <span className="font-bold block text-slate-800 truncate">Danladi</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold">Seller</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => quickSwitchUser('admin@kasuwarkanawa.com')}
-                    className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] text-left hover:border-[#E6007E] transition-colors cursor-pointer"
-                  >
-                    <span className="font-bold block text-slate-800 truncate">Admin</span>
-                    <span className="text-[10px] text-blue-600 font-semibold">CPanel</span>
-                  </button>
-                </div>
-              </div>
             </form>
           )}
 
