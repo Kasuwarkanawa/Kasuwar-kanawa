@@ -1,4 +1,4 @@
-export type AccountType = 'buyer' | 'seller' | 'admin';
+export type AccountType = 'buyer' | 'seller' | 'logistics' | 'admin';
 
 export interface User {
   id: string;
@@ -18,6 +18,87 @@ export interface User {
   status?: 'active' | 'pending' | 'suspended' | 'rejected';
   profileImage?: string;
   createdAt: string;
+}
+
+
+export type LogisticsApprovalStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+
+export type DeliveryStatus =
+  | 'awaiting_pickup'
+  | 'picked_up'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'failed'
+  | 'cancelled';
+
+export interface LogisticsServiceArea {
+  state: string;
+  cities: string[];
+  areas?: string[];
+}
+
+export interface LogisticsPricing {
+  state: string;
+  city: string;
+  fee: number;
+  currency?: 'NGN';
+}
+
+export interface LogisticsCompany {
+  id: string;
+  ownerUserId: string;
+  companyName: string;
+  logo?: string;
+  contactName: string;
+  phone: string;
+  whatsAppNumber?: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  serviceAreas: LogisticsServiceArea[];
+  pricing: LogisticsPricing[];
+  approvalStatus: LogisticsApprovalStatus;
+  adminNotes?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeliveryAgent {
+  id: string;
+  logisticsCompanyId: string;
+  fullName: string;
+  phone: string;
+  whatsAppNumber?: string;
+  email?: string;
+  vehicleType?: string;
+  vehiclePlateNumber?: string;
+  status: 'active' | 'inactive' | 'suspended';
+  createdAt: string;
+}
+
+export interface LogisticsShipment {
+  id: string;
+  trackingNumber: string;
+  orderId: string;
+  logisticsCompanyId: string;
+  deliveryAgentId?: string;
+  buyerId: string;
+  recipientName: string;
+  recipientPhone: string;
+  deliveryAddress: ShippingAddress;
+  deliveryFee: number;
+  status: DeliveryStatus;
+  trackingTimeline: TrackingStep[];
+  pickupAt?: string;
+  deliveredAt?: string;
+  deliveryProofImage?: string;
+  deliveryNotes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProductVariation {
@@ -139,6 +220,11 @@ export interface Order {
   sellerBusinessName?: string;
   sellerPhone: string;
   sellerWhatsApp: string;
+  logisticsCompanyId?: string;
+  logisticsCompanyName?: string;
+  shipmentId?: string;
+  trackingNumber?: string;
+  deliveryAgentId?: string;
   adminRejectionReason?: string;
   sellerRejectionReason?: string;
   dispatchedAt?: string;
