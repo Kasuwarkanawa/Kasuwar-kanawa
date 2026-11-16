@@ -907,10 +907,70 @@ export const db = {
 
   deleteDeliveryAgent(id: string): boolean {
     const agents = this.getDeliveryAgents();
-    const filtered = agents.filter((agent) => agent.id !== id);
-    if (filtered.length === agents.length) return false;
-    localStorage.setItem(DELIVERY_AGENTS_STORAGE_KEY, JSON.stringify(filtered));
+    if (!agents.some((agent) => agent.id === id)) return false;
+
+    // Keep delivery history valid: an agent assigned to an existing shipment
+    // cannot be deleted until the company reassigns or unassigns that shipment.
+    const isAssigned = this.getLogisticsShipments().some(
+      (shipment) => shipment.deliveryAgentId === id && shipment.status !== 'delivered' && shipment.status !== 'cancelled'
+    );
+    if (isAssigned) return false;
+
+    localStorage.setItem(DELIVERY_AGENTS_STORAGE_KEY, JSON.stringify(agents.filter((agent) => agent.id !== id)));
     return true;
+  },
+
+  assignShipmentAgent(
+    logisticsCompanyId: string,
+    shipmentId: string,
+    deliveryAgentId: string | null
+  ): LogisticsShipment | null {
+    const company = this.getLogisticsCompanyById(logisticsCompanyId);
+    if (!company || company.approvalStatus !== 'approved') {
+      throw new Error('Only an approved logistics company can assign delivery agents.');
+    }
+
+    const shipments = this.getLogisticsShipments();
+    const shipmentIndex = shipments.findIndex(
+      (item) => item.id === shipmentId && item.logisticsCompanyId === logisticsCompanyId
+    );
+    if (shipmentIndex < 0) return null;
+
+    if (deliveryAgentId) {
+      const agent = this.getDeliveryAgents(logisticsCompanyId).find((item) => item.id === deliveryAgentId);
+      if (!agent) throw new Error('The selected delivery agent does not belong to this company.');
+      if (shipments[shipmentIndex].status === 'delivered' || shipments[shipmentIndex].status === 'cancelled') {
+        throw new Error('A completed or cancelled shipment cannot be reassigned.');
+      }
+    }
+
+    const now = new Date().toISOString();
+    const shipment = {
+      ...shipments[shipmentIndex],
+      deliveryAgentId: deliveryAgentId || undefined,
+      updatedAt: now,
+      trackingTimeline: [
+        ...(shipments[shipmentIndex].trackingTimeline || []),
+        {
+          title: deliveryAgentId ? 'Delivery Agent Assigned' : 'Delivery Agent Unassigned',
+          date: now,
+          completed: true,
+          description: deliveryAgentId
+            ? `Delivery agent ${(this.getDeliveryAgents(logisticsCompanyId).find((item) => item.id === deliveryAgentId) as (DeliveryAgent & { name?: string; fullName?: string }) | undefined)?.name || (this.getDeliveryAgents(logisticsCompanyId).find((item) => item.id === deliveryAgentId) as (DeliveryAgent & { fullName?: string }) | undefined)?.fullName || 'the selected agent'} assigned.`
+            : 'The delivery agent assignment was removed.',
+        },
+      ],
+    };
+    shipments[shipmentIndex] = shipment;
+    localStorage.setItem(LOGISTICS_SHIPMENTS_STORAGE_KEY, JSON.stringify(shipments));
+
+    const orders = this.getOrders();
+    const orderIndex = orders.findIndex((item) => item.id === shipment.orderId);
+    if (orderIndex >= 0) {
+      orders[orderIndex] = { ...orders[orderIndex], deliveryAgentId: deliveryAgentId || undefined, updatedAt: now };
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    }
+    return shipment;
   },
 
   getLogisticsShipments(filters?: { logisticsCompanyId?: string; buyerId?: string; orderId?: string }): LogisticsShipment[] {
