@@ -119,16 +119,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     }
   };
 
-  const handleSimulateAdminApproval = (orderId: string) => {
-    const updated = db.adminApprovePayment(orderId);
-    if (updated) {
-      refreshOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(updated);
-      }
-    }
-  };
-
   const filteredOrders = orders.filter((o) => {
     if (selectedStatusTab === 'all') return true;
     return o.status === selectedStatusTab;
@@ -448,21 +438,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                   </div>
                                 )}
 
-                                {/* Simulation Button for Super Admin Approval */}
-                                {!order.paymentConfirmation.verifiedByAdmin && (
-                                  <div className="p-2.5 bg-slate-100 rounded-lg flex items-center justify-between text-xs">
-                                    <span className="text-slate-500">
-                                      (Demo Test Tool: Simulate Super Admin Verification)
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSimulateAdminApproval(order.id)}
-                                      className="px-3 py-1 bg-[#0B172E] hover:bg-slate-800 text-white font-bold rounded text-[11px] cursor-pointer"
-                                    >
-                                      Approve Payment as Admin
-                                    </button>
-                                  </div>
-                                )}
                               </div>
                             )}
 
