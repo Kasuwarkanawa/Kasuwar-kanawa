@@ -25,6 +25,7 @@ interface HeaderProps {
   onOpenDashboard: () => void;
   onOpenSellerDashboard?: () => void;
   onOpenAdminPanel?: () => void;
+  onOpenLogisticsDashboard?: () => void;
   onLogout: () => void;
   mobileMenuOpen: boolean;
   onToggleMobileMenu: () => void;
@@ -42,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDashboard,
   onOpenSellerDashboard,
   onOpenAdminPanel,
+  onOpenLogisticsDashboard,
   onLogout,
   mobileMenuOpen,
   onToggleMobileMenu,
@@ -311,6 +313,21 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                           <Store className="w-4 h-4" />
                           <span>Seller Dashboard (Kayayyaki & Orders)</span>
+                        </button>
+                      )}
+
+                      {/* LOGISTICS COMPANY MENU */}
+                      {currentUser.accountType === 'logistics' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeAccountMenu();
+                            onOpenLogisticsDashboard?.();
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-pink-50 text-[#E6007E] font-black flex items-center gap-2 cursor-pointer"
+                        >
+                          <Package className="w-4 h-4" />
+                          <span>Logistics Dashboard</span>
                         </button>
                       )}
 
