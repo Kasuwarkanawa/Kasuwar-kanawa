@@ -101,6 +101,20 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
     }
   };
 
+  const assignAgent = (shipmentId: string, agentId: string) => {
+    try {
+      const updated = db.assignShipmentAgent(company.id, shipmentId, agentId || null);
+      if (!updated) {
+        setNotice('Could not update the delivery agent. Check the shipment and selected agent.');
+        return;
+      }
+      setNotice(agentId ? 'Delivery agent assigned successfully.' : 'Delivery agent unassigned successfully.');
+      refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not assign delivery agent.');
+    }
+  };
+
   const updateStatus = (shipmentId: string, status: 'awaiting_pickup' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed') => {
     const note = window.prompt(
       status === 'delivered'
@@ -209,17 +223,64 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout })
 
           {tab === 'shipments' && <section className="space-y-3">
             <h2 className="font-black text-xl">Tracking & Shipments</h2>
-            {shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <div key={shipment.id} className="bg-white border rounded-2xl p-4 space-y-3">
-              <div className="flex flex-wrap justify-between gap-2"><div><p className="font-black text-slate-900">{shipment.trackingNumber}</p><p className="text-sm text-slate-500">Order: {shipment.orderId}</p></div><span className="rounded-full bg-pink-50 text-pink-700 px-3 py-1 text-xs font-bold">{statusLabel[shipment.status] || shipment.status}</span></div>
-              <p className="text-sm text-slate-600">{shipment.recipientName} · {shipment.recipientPhone}</p>
-              <p className="text-sm text-slate-600 flex gap-2"><MapPin size={16}/>{shipment.deliveryAddress.completeAddress}, {shipment.deliveryAddress.city}, {shipment.deliveryAddress.state}</p>
-              {shipment.status === 'delivered' ? <p className="text-sm text-emerald-700 font-semibold">This shipment is delivered. Its tracking record is complete.</p> : <div className="flex flex-wrap gap-2">{(['awaiting_pickup','picked_up','in_transit','out_for_delivery','delivered','failed'] as const).map(status => <button key={status} type="button" onClick={() => updateStatus(shipment.id, status)} className={`text-xs rounded-lg border px-2.5 py-2 ${shipment.status === status ? 'bg-pink-600 text-white border-pink-600' : status === 'delivered' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}>{statusLabel[status]}</button>)}</div>}
-            </div>)}
+            {shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <ShipmentManagementCard
+              key={shipment.id}
+              shipment={shipment}
+              agents={agents}
+              onAssign={agentId => assignAgent(shipment.id, agentId)}
+              onUpdateStatus={status => updateStatus(shipment.id, status)}
+            />)}
           </section>}
         </main>
       </div>
     </div>
   );
+};
+
+const ShipmentManagementCard: React.FC<{
+  shipment: ReturnType<typeof db.getLogisticsShipments>[number];
+  agents: ReturnType<typeof db.getDeliveryAgents>;
+  onAssign: (agentId: string) => void;
+  onUpdateStatus: (status: 'awaiting_pickup' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed') => void;
+}> = ({ shipment, agents, onAssign, onUpdateStatus }) => {
+  const [selectedAgentId, setSelectedAgentId] = useState(shipment.deliveryAgentId || '');
+  const assignedAgent = agents.find(agent => agent.id === shipment.deliveryAgentId);
+
+  return <div className="bg-white border rounded-2xl p-4 space-y-3">
+    <div className="flex flex-wrap justify-between gap-2">
+      <div>
+        <p className="font-black text-slate-900">{shipment.trackingNumber}</p>
+        <p className="text-sm text-slate-500">Order: {shipment.orderId}</p>
+      </div>
+      <span className="rounded-full bg-pink-50 text-pink-700 px-3 py-1 text-xs font-bold">{statusLabel[shipment.status] || shipment.status}</span>
+    </div>
+    <p className="text-sm text-slate-600">{shipment.recipientName} · {shipment.recipientPhone}</p>
+    <p className="text-sm text-slate-600 flex gap-2"><MapPin size={16}/>{shipment.deliveryAddress.completeAddress}, {shipment.deliveryAddress.city}, {shipment.deliveryAddress.state}</p>
+
+    {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && <>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+        <label className="block text-sm font-bold text-slate-800">Assigned Delivery Agent</label>
+        {assignedAgent && <p className="text-xs text-slate-600">Current: {assignedAgent.fullName} · {assignedAgent.phone}</p>}
+        {!assignedAgent && shipment.deliveryAgentId && <p className="text-xs text-amber-700">The previously assigned agent is no longer in this company agent list.</p>}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select value={selectedAgentId} onChange={event => setSelectedAgentId(event.target.value)} className="min-w-0 flex-1 border rounded-xl p-3 bg-white">
+            <option value="">Unassign agent</option>
+            {agents.filter(agent => agent.status === 'active' || agent.id === shipment.deliveryAgentId).map(agent => (
+              <option key={agent.id} value={agent.id}>{agent.fullName} · {agent.phone}{agent.status !== 'active' ? ' (Inactive)' : ''}</option>
+            ))}
+          </select>
+          <button type="button" onClick={() => onAssign(selectedAgentId)} disabled={selectedAgentId === (shipment.deliveryAgentId || '')} className="rounded-xl bg-[#0B172E] text-white px-4 py-3 font-bold disabled:opacity-50">Save Agent</button>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {(['awaiting_pickup','picked_up','in_transit','out_for_delivery','delivered','failed'] as const).map(status => (
+          <button key={status} type="button" onClick={() => onUpdateStatus(status)} className={`text-xs rounded-lg border px-2.5 py-2 ${shipment.status === status ? 'bg-pink-600 text-white border-pink-600' : status === 'delivered' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}>{statusLabel[status]}</button>
+        ))}
+      </div>
+    </>}
+    {shipment.status === 'delivered' && <p className="text-sm text-emerald-700 font-semibold">This shipment is delivered. Its tracking record is complete.</p>}
+    {shipment.status === 'cancelled' && <p className="text-sm text-slate-500 font-semibold">This shipment has been cancelled.</p>}
+  </div>;
 };
 
 const OrderShipmentCard: React.FC<{
