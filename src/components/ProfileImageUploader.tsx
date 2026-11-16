@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { Camera, Upload, Trash2, RefreshCw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { uploadProfileImage, validateImageFile } from '../utils/imageUpload';
 import { UserAvatar } from './UserAvatar';
@@ -28,6 +28,7 @@ export const ProfileImageUploader: React.FC<ProfileImageUploaderProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,11 +106,10 @@ export const ProfileImageUploader: React.FC<ProfileImageUploaderProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/jpg"
-              capture="user"
               disabled={disabled || uploading}
               onChange={handleFileChange}
               className="hidden"
-              id="profile-image-input-field"
+              id={inputId}
             />
 
             <button
