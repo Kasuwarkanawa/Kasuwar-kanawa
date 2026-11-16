@@ -936,22 +936,27 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                                     {ord.status === 'processing' && (
                                       <div className="space-y-1.5">
+                                        <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-purple-800 text-[11px]">
+                                          <strong>Processing:</strong> Ka shirya kayan buyer. Bayan ka gama, danna maɓallin da ke ƙasa domin a miƙa order ɗin ga Super Admin don Logistics.
+                                        </div>
                                         <button
                                           type="button"
                                           onClick={() => handleDispatchOrder(ord.id)}
                                           className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
                                         >
                                           <Truck className="w-4 h-4" />
-                                          <span>Mark as Dispatched</span>
+                                          <span>Ready for Dispatch / Logistics</span>
                                         </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenSellerReject(ord)}
-                                          className="w-full py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 cursor-pointer transition-all"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                          <span>Cancel / Reject Order</span>
-                                        </button>
+                                        {!ord.logisticsCompanyId && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenSellerReject(ord)}
+                                            className="w-full py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 cursor-pointer transition-all"
+                                          >
+                                            <X className="w-3.5 h-3.5" />
+                                            <span>Cancel / Reject Order</span>
+                                          </button>
+                                        )}
                                       </div>
                                     )}
 
@@ -959,17 +964,23 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                       <div className="space-y-1.5">
                                         {ord.dispatchedAt && (
                                           <div className="text-[10px] text-blue-700 font-medium text-center">
-                                            Dispatched at: {new Date(ord.dispatchedAt).toLocaleString()}
+                                            Ready / Dispatched at: {new Date(ord.dispatchedAt).toLocaleString()}
                                           </div>
                                         )}
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeliverOrder(ord.id)}
-                                          className="w-full py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
-                                        >
-                                          <CheckCircle className="w-4 h-4" />
-                                          <span>Mark as Delivered</span>
-                                        </button>
+                                        {ord.logisticsCompanyId ? (
+                                          <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-[11px] text-center">
+                                            <strong>Handed to Logistics workflow.</strong> Kamfanin Logistics ne kawai zai sabunta Picked Up, In Transit, Out for Delivery da Delivered. Seller ba zai iya tabbatar da Delivered ba.
+                                          </div>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeliverOrder(ord.id)}
+                                            className="w-full py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                                          >
+                                            <CheckCircle className="w-4 h-4" />
+                                            <span>Mark as Delivered</span>
+                                          </button>
+                                        )}
                                       </div>
                                     )}
                                   </>
