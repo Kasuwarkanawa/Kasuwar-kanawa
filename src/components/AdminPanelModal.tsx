@@ -93,6 +93,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     | 'ads'
     | 'reports'
     | 'deliveries'
+    | 'logistics'
   >('dashboard');
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -880,6 +881,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </div>
 
+            {/* Dashboard Summary Preview: keep key figures visible before the navigation grid */}
+            {activeTab === 'dashboard' && (
+              <div className="bg-white px-3 sm:px-4 pt-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: 'Users', value: allUsers.length, tab: 'users' },
+                    { label: 'Buyers', value: totalBuyers, tab: 'buyers' },
+                    { label: 'Sellers', value: totalSellers, tab: 'sellers' },
+                    { label: 'Orders', value: totalOrders, tab: 'orders' },
+                  ].map((item) => (
+                    <button
+                      key={item.tab}
+                      type="button"
+                      onClick={() => setActiveTab(item.tab as any)}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left hover:border-[#E6007E] transition-colors"
+                    >
+                      <p className="text-[11px] font-bold text-slate-500">{item.label}</p>
+                      <p className="text-xl font-black text-[#0B172E]">{item.value}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Admin Menu Grid (All 13 Comprehensive Tabs) */}
             <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 text-xs font-bold">
@@ -897,6 +922,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 { id: 'ads', label: 'Ads & Broadcast', icon: Megaphone, badge: allAds.length + allAnnouncements.length },
                 { id: 'reports', label: 'Reports', icon: Flag, badge: productReports.length + buyerReports.length + sellerReports.length },
                 { id: 'deliveries', label: 'Delivery Monitor', icon: Truck, badge: dispatchedAndDelivered.length },
+                { id: 'logistics', label: 'Logistics Management', icon: Truck, badge: null },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -2313,6 +2339,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
 
               {/* ============================================================ */}
+              {/* TAB: LOGISTICS MANAGEMENT - BATCH 1 */}
+              {activeTab === 'logistics' && (
+                <div className="space-y-4">
+                  <div className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#16274a] p-5 text-white">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-[#E6007E] p-3"><Truck className="h-6 w-6" /></div>
+                      <div>
+                        <h2 className="text-xl font-black">Logistics Management</h2>
+                        <p className="text-xs text-slate-300">Manage delivery companies and marketplace shipments</p>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm text-slate-200">
+                      Central control for logistics company registration, approval, delivery assignments and tracking.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { title: 'Add Logistics', detail: 'Register a logistics company from the admin panel', icon: Plus },
+                      { title: 'Registered Logistics', detail: 'View and manage logistics company profiles', icon: Building },
+                      { title: 'Registration Approvals', detail: 'Review and approve company applications', icon: CheckCircle },
+                      { title: 'All Deliveries', detail: 'Monitor shipments assigned to logistics companies', icon: Package },
+                      { title: 'Delivery Agents', detail: 'Manage drivers and delivery personnel', icon: Users },
+                      { title: 'Tracking & Reports', detail: 'Review shipment status and delivery history', icon: MapPin },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div key={item.title} className="rounded-xl border border-slate-200 bg-white p-4">
+                          <div className="mb-3 inline-flex rounded-lg bg-pink-50 p-2 text-[#E6007E]">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <h3 className="text-sm font-black text-slate-800">{item.title}</h3>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.detail}</p>
+                          <span className="mt-3 inline-block rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+                            Next batch
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    Batch 1 adds the Super Admin navigation and management overview. Registration, approval actions,
+                    company records and live tracking will be connected to the database in the next batches.
+                  </div>
+                </div>
+              )}
+
               {/* TAB 13: DELIVERY MONITORING (13. DELIVERY MONITORING) */}
               {/* ============================================================ */}
               {activeTab === 'deliveries' && (
