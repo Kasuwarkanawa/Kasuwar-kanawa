@@ -205,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => setAccountMenuOpen((previous) => !previous)}
                 aria-expanded={accountMenuOpen}
-                aria-label="Open account menu"
+                aria-label={currentUser ? "Open account menu" : "Open login and registration menu"}
                 className="flex items-center gap-1 sm:gap-2 py-1.5 px-1.5 sm:px-3 rounded-full hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
               >
                 {currentUser ? (
@@ -366,6 +366,19 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Mobile Logout Button - visible whenever a user is signed in */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
+                className="sm:hidden flex items-center justify-center w-9 h-9 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 active:scale-95 transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Mobile Login / Register Buttons */}
             {!currentUser && (
