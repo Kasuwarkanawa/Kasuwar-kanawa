@@ -14,7 +14,7 @@ import {
   KeyRound,
   ArrowRight,
 } from 'lucide-react';
-import { db } from '../db/database';
+import { authApi } from '../utils/authApi';
 import { User, AccountType } from '../types';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
@@ -59,150 +59,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Status message
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [resetSent, setResetSent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match. Please re-enter.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (accountType === 'seller' && !businessName.trim()) {
-      setError('Please provide your Business Name as a seller.');
-      return;
-    }
-
+    setSuccessMessage(null);
     if (accountType === 'logistics') {
-      if (!businessName.trim()) {
-        setError('Please provide your Logistics Company Name.');
-        return;
-      }
-      if (!whatsAppNumber.trim()) {
-        setError('Please provide your company WhatsApp number.');
-        return;
-      }
-      if (!companyLogo.trim()) {
-        setError('Please upload your Logistics Company Logo.');
-        return;
-      }
-      const fee = Number(deliveryFee);
-      if (!Number.isFinite(fee) || fee < 0) {
-        setError('Please enter a valid delivery fee.');
-        return;
-      }
-
-      const logisticsRes = db.registerLogisticsCompany(
-        {
-          fullName,
-          phone,
-          whatsAppNumber,
-          email,
-          password,
-          address: businessAddress || address,
-          businessAddress: businessAddress || address,
-          city,
-          state,
-          area,
-          profileImage: companyLogo,
-        },
-        {
-          companyName: businessName.trim(),
-          logo: companyLogo,
-          contactName: fullName.trim(),
-          phone,
-          whatsAppNumber: whatsAppNumber.trim(),
-          email,
-          address: businessAddress || address,
-          city,
-          state,
-          serviceAreas: [{ state, cities: [city], areas: area ? [area] : [] }],
-          pricing: [{ state, city, fee, currency: 'NGN' }],
-        }
-      );
-
-      if (!logisticsRes.success) {
-        setError(logisticsRes.error || 'Failed to submit logistics registration.');
-        return;
-      }
-      setSuccessMessage('Logistics registration submitted successfully. Your account is pending Super Admin approval. You can sign in after approval.');
+      setError('Logistics registration is being connected to the secure backend in a later phase. No local-only account has been created.');
       return;
     }
-
-    const res = db.registerUser({
-      fullName,
-      businessName: accountType === 'seller' ? businessName : undefined,
-      phone,
-      whatsAppNumber: accountType === 'seller' ? whatsAppNumber || phone : whatsAppNumber,
-      email,
-      password,
-      address,
-      businessAddress: accountType === 'seller' ? businessAddress || address : undefined,
-      city,
-      state,
-      area,
-      productCategory: accountType === 'seller' ? productCategory : undefined,
-      accountType,
-      profileImage: profileImage.trim() || undefined,
-    });
-
-    if (!res.success || !res.user) {
-      setError(res.error || 'Failed to register account.');
-      return;
+    if (password !== confirmPassword) { setError('Passwords do not match. Please re-enter.'); return; }
+    if (password.length < 10) { setError('Password must be at least 10 characters long.'); return; }
+    if (accountType === 'seller' && (!businessName.trim() || !productCategory.trim())) {
+      setError('Please provide your Business Name and Product Category as a seller.'); return;
     }
-
-    setSuccessMessage(`Account registered successfully as ${accountType.toUpperCase()}! Welcome, ${res.user.fullName}.`);
-    setTimeout(() => {
-      onLoginSuccess(res.user!);
-      onClose();
-    }, 1000);
+    setIsSubmitting(true);
+    try {
+      const result = await authApi.register({
+        fullName: fullName.trim(),
+        businessName: accountType === 'seller' ? businessName.trim() : undefined,
+        phone: phone.trim(),
+        whatsAppNumber: whatsAppNumber.trim() || phone.trim(),
+        email: email.trim(), password, address: address.trim(),
+        businessAddress: accountType === 'seller' ? (businessAddress.trim() || address.trim()) : undefined,
+        city: city.trim(), state: state.trim(), area: area.trim(),
+        productCategory: accountType === 'seller' ? productCategory : undefined,
+        accountType, profileImage: profileImage.trim() || undefined,
+      });
+      if (accountType === 'seller') {
+        setSuccessMessage(result.message || 'Seller registration received. Administrator approval is required before sign-in.');
+        return;
+      }
+      if (!result.user) { setSuccessMessage('Registration completed. Please sign in to continue.'); setMode('login'); return; }
+      setSuccessMessage('Account registered successfully! Welcome, ' + result.user.fullName + '.');
+      onLoginSuccess(result.user); onClose();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Registration failed. Please try again.');
+    } finally { setIsSubmitting(false); }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const user = db.getUserByEmailOrPhone(loginIdentifier);
-    if (!user) {
-      setError('No account found with this phone number or email.');
-      return;
-    }
-
-    if (user.password && user.password !== loginPassword) {
-      setError('Incorrect password. Please try again or use Forgot Password.');
-      return;
-    }
-    if (user.accountType === 'logistics' && user.status !== 'active') {
-      setError(user.status === 'rejected'
-        ? 'Your Logistics registration was rejected. Please contact the Super Admin.'
-        : 'Your Logistics account is awaiting Super Admin approval.');
-      return;
-    }
-
-    db.setCurrentUser(user);
-    setSuccessMessage(`Logged in successfully! Welcome back, ${user.fullName} (${user.accountType.toUpperCase()}).`);
-    setTimeout(() => {
-      onLoginSuccess(user);
-      onClose();
-    }, 800);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(null); setSuccessMessage(null); setIsSubmitting(true);
+    try {
+      const user = await authApi.login({ identifier: loginIdentifier.trim(), password: loginPassword });
+      setSuccessMessage('Logged in successfully! Welcome back, ' + user.fullName + '.');
+      onLoginSuccess(user); onClose();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Login failed. Please try again.');
+    } finally { setIsSubmitting(false); }
   };
 
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    setResetSent(true);
-    setTimeout(() => {
-      setResetSent(false);
-      setMode('login');
-    }, 3000);
+    setError('Password reset is not connected to the backend yet. Please contact the marketplace administrator for assistance.');
   };
 
   return (
@@ -336,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="submit"
                 className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                <span>Login to Account</span>
+                <span>{isSubmitting ? 'Please wait...' : 'Login to Account'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -574,7 +486,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <input
                       type="password"
                       required
-                      placeholder="Minimum 6 characters"
+                      placeholder="Minimum 10 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
@@ -680,7 +592,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="submit"
                 className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-3"
               >
-                <span>{accountType === 'logistics' ? 'Submit for Approval' : 'Complete Registration'}</span>
+                <span>{isSubmitting ? 'Please wait...' : accountType === 'logistics' ? 'Submit for Approval' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -719,12 +631,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {resetSent && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
-                  <span>Password reset instructions sent via SMS and Email!</span>
-                </div>
-              )}
 
               <button
                 type="submit"
