@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { sellerOnly } from '../middleware/auth.js';
@@ -10,7 +11,7 @@ const productSchema = z.object({
   name: z.string().trim().min(2).max(180), category: z.string().trim().min(1).max(120), price: z.number().positive(),
   originalPrice: z.number().nonnegative().optional(), discountPercentage: z.number().int().min(0).max(100).optional(),
   image: z.string().trim().min(1).max(1000), images: z.array(z.string().max(1000)).max(20).optional(),
-  colors: z.array(z.string().max(80)).max(50).optional(), sizes: z.array(z.string().max(80)).max(50).optional(), variations: z.array(z.unknown()).max(100).optional(),
+  colors: z.array(z.string().max(80)).max(50).optional(), sizes: z.array(z.string().max(80)).max(50).optional(), variations: z.array(z.object({ name: z.string().trim().min(1).max(120), options: z.array(z.string().trim().min(1).max(120)).max(50) }).strict()).max(100).optional(),
   badge: z.string().max(80).nullable().optional(), stockQuantity: z.number().int().min(0).max(100000).optional(),
   isFlashSale: z.boolean().optional(), isPopular: z.boolean().optional(), isNew: z.boolean().optional(), isSpecialOffer: z.boolean().optional(), description: z.string().max(10000).optional(),
 }).strict();
@@ -58,7 +59,7 @@ sellerRouter.post('/products', async (req, res, next) => {
     const product = await prisma.product.create({ data: {
       name: body.name, category: body.category, price: body.price, originalPrice: body.originalPrice ?? 0,
       discountPercentage: body.discountPercentage ?? 0, image: body.image, images: body.images ?? [],
-      colors: body.colors ?? [], sizes: body.sizes ?? [], variations: body.variations ?? [], badge: body.badge,
+      colors: body.colors ?? [], sizes: body.sizes ?? [], variations: (body.variations ?? []) as Prisma.InputJsonValue, badge: body.badge,
       stockQuantity: body.stockQuantity, isFlashSale: body.isFlashSale ?? false, isPopular: body.isPopular ?? false,
       isNew: body.isNew ?? false, isSpecialOffer: body.isSpecialOffer ?? false, description: body.description ?? '',
       sellerId: req.authUser!.id, approvalStatus: 'PENDING_APPROVAL',
@@ -73,7 +74,7 @@ sellerRouter.patch('/products/:id', async (req, res, next) => {
     if (!existing) return res.status(404).json({ error: 'Product not found.' });
     const updated = await prisma.product.update({
       where: { id: existing.id },
-      data: { ...body, ...(body.images ? { images: body.images } : {}), ...(body.colors ? { colors: body.colors } : {}), ...(body.sizes ? { sizes: body.sizes } : {}), ...(body.variations ? { variations: body.variations as never } : {}), approvalStatus: 'PENDING_APPROVAL' },
+      data: { ...body, ...(body.images ? { images: body.images } : {}), ...(body.colors ? { colors: body.colors } : {}), ...(body.sizes ? { sizes: body.sizes } : {}), ...(body.variations ? { variations: body.variations as Prisma.InputJsonValue } : {}), approvalStatus: 'PENDING_APPROVAL' },
       include: productInclude,
     });
     return res.json(serializeProduct(updated));
