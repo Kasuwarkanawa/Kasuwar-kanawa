@@ -1,8 +1,12 @@
 import { Role, User } from '@prisma/client';
 
 export function serializeUser(user: User) {
-  const { passwordHash: _passwordHash, role, ...safe } = user;
-  return { ...safe, accountType: role === Role.BUYER ? 'buyer' : role === Role.SELLER ? 'seller' : 'admin' };
+  const { passwordHash: _passwordHash, role, status, ...safe } = user;
+  return {
+    ...safe,
+    status: status.toLowerCase(),
+    accountType: role === Role.BUYER ? 'buyer' : role === Role.SELLER ? 'seller' : 'admin',
+  };
 }
 
 export function serializeProduct(product: any) {
