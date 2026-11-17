@@ -1,0 +1,38 @@
+name: Bootstrap Supabase Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_fresh_database:
+        description: Confirm this is a NEW, EMPTY Supabase database (db push may alter schema)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    if: ${{ inputs.confirm_fresh_database }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
+      ADMIN_FULL_NAME: ${{ secrets.ADMIN_FULL_NAME }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run prisma:generate
+      - name: Create schema on the confirmed empty database
+        run: npx prisma db push
+      - name: Create the initial Super Admin
+        run: npm run db:seed
