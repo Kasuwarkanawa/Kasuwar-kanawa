@@ -68,6 +68,17 @@ export const authApi = {
     return result.user;
   },
 
+  async loginAdmin(credentials: AuthCredentials): Promise<User> {
+    const result = await request<AuthResponse>('/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+    if (!result.success || !result.user || result.user.accountType !== 'admin') {
+      throw new Error(result.error || 'Super Admin authentication failed.');
+    }
+    return result.user;
+  },
+
   async register(data: RegistrationData): Promise<AuthResponse> {
     const result = await request<AuthResponse>('/auth/register', {
       method: 'POST',
