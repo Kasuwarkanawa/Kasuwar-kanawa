@@ -46,6 +46,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { db } from '../db/database';
+import { authApi } from '../utils/authApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 import {
@@ -102,8 +103,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Authentication State for Super Admin Gate
-  const [adminUsername, setAdminUsername] = useState('admin@kasuwarkanawa.com');
-  const [adminPassword, setAdminPassword] = useState('adminpassword');
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -362,22 +363,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const isSuperAdmin = currentUser?.accountType === 'admin';
 
   // Handle Admin Login Action
-  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError(null);
-
-    setTimeout(() => {
-      const res = db.adminLogin(adminUsername, adminPassword);
+    try {
+      const user = await authApi.loginAdmin({ identifier: adminUsername.trim(), password: adminPassword });
+      if (onAdminLogin) onAdminLogin(user);
+      triggerRefresh();
+      showNotification(`Welcome back, ${user.fullName}! Super Admin access granted.`);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Super Admin authentication failed.');
+    } finally {
       setIsLoggingIn(false);
-      if (res.success && res.user) {
-        if (onAdminLogin) onAdminLogin(res.user);
-        triggerRefresh();
-        showNotification(`Welcome back, ${res.user.fullName}! Super Admin access granted.`);
-      } else {
-        setLoginError(res.error || 'Authentication failed. Please verify Super Admin credentials.');
-      }
-    }, 400);
+    }
   };
 
   // Data queries from database
