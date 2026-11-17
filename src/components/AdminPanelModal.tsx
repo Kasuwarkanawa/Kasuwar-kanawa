@@ -926,7 +926,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         required
                         value={adminUsername}
                         onChange={(e) => setAdminUsername(e.target.value)}
-                        placeholder="admin@kasuwarkanawa.com"
+                        placeholder="Enter your Super Admin email or phone"
                         className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                       />
                     </div>
@@ -974,20 +974,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     )}
                   </button>
 
-                  {/* Demo Quick-Fill Helper */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Default Super Admin:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdminUsername('admin@kasuwarkanawa.com');
-                        setAdminPassword('adminpassword');
-                      }}
-                      className="text-[#E6007E] font-bold hover:underline cursor-pointer"
-                    >
-                      Fill Default Credentials
-                    </button>
-                  </div>
                 </form>
               </div>
             </div>
