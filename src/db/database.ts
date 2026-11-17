@@ -236,24 +236,6 @@ const INITIAL_USERS: User[] = [
     profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-10-20T14:00:00Z',
   },
-  {
-    id: 'usr-admin-1',
-    fullName: 'Super Admin Kano CPanel',
-    businessName: 'Kasuwar Kanawa HQ CPanel',
-    phone: '08000000000',
-    whatsAppNumber: '2348000000000',
-    email: 'admin@kasuwarkanawa.com',
-    password: 'adminpassword',
-    address: 'Kasuwar Kanawa Central Hub, Kano',
-    businessAddress: 'Kasuwar Kanawa Central Hub, Kano State',
-    city: 'Kano City',
-    state: 'Kano State',
-    area: 'Kano Municipal',
-    accountType: 'admin',
-    status: 'active',
-    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
-    createdAt: '2026-09-01T12:00:00Z',
-  },
 ];
 
 // Helper to seed products with seller IDs & approved state
@@ -596,37 +578,6 @@ export const db = {
     );
   },
 
-  adminLogin(identifier: string, password: string): { success: boolean; user?: User; error?: string } {
-    const clean = identifier.trim().toLowerCase();
-    const users = this.getUsers();
-    const adminUser = users.find(
-      (u) =>
-        (u.email.toLowerCase() === clean || u.phone.replace(/\s+/g, '') === clean.replace(/\s+/g, '')) &&
-        u.accountType === 'admin'
-    );
-
-    if (!adminUser) {
-      if (clean === 'admin' || clean === 'admin@kasuwarkanawa.com') {
-        const fallback = users.find((u) => u.accountType === 'admin') || INITIAL_USERS.find((u) => u.accountType === 'admin');
-        if (fallback && (password === 'adminpassword' || password === 'admin' || password === 'password123')) {
-          this.setCurrentUser(fallback);
-          return { success: true, user: fallback };
-        }
-      }
-      return { success: false, error: 'Access Denied: Only authorized Super Admin can log in to CPanel.' };
-    }
-
-    if (adminUser.status === 'suspended' || adminUser.status === 'rejected') {
-      return { success: false, error: `Account ${adminUser.status}. Contact system administrator.` };
-    }
-
-    if (adminUser.password && adminUser.password !== password && password !== 'adminpassword' && password !== 'admin') {
-      return { success: false, error: 'Incorrect Super Admin password. Please check credentials.' };
-    }
-
-    this.setCurrentUser(adminUser);
-    return { success: true, user: adminUser };
-  },
 
   adminAddUser(userData: Omit<User, 'id' | 'createdAt'>): User {
     const users = this.getUsers();
