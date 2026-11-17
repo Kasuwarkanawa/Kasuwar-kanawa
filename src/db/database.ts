@@ -170,7 +170,6 @@ const INITIAL_USERS: User[] = [
     phone: '09060938835',
     whatsAppNumber: '2349060938835',
     email: 'usmannafiu46688@gmail.com',
-    password: 'password123',
     address: 'No. 14 Bompai Road, Nassarawa GRA',
     businessAddress: '',
     city: 'Kano City',
@@ -187,7 +186,6 @@ const INITIAL_USERS: User[] = [
     phone: '08031234567',
     whatsAppNumber: '2348031234567',
     email: 'fatima.garba@gmail.com',
-    password: 'password123',
     address: 'Plot 88 Zoo Road, Housing Estate',
     businessAddress: '',
     city: 'Kano City',
@@ -205,7 +203,6 @@ const INITIAL_USERS: User[] = [
     phone: '07066300079',
     whatsAppNumber: '2347066300079',
     email: 'seller@kasuwarkanawa.com',
-    password: 'password123',
     address: 'Shop 42, Block B, Kasuwar Kwari Textiles Market',
     businessAddress: 'Shop 42, Block B, Kasuwar Kwari Market, Kano State',
     city: 'Kano City',
@@ -224,7 +221,6 @@ const INITIAL_USERS: User[] = [
     phone: '08023456789',
     whatsAppNumber: '2348023456789',
     email: 'seller2@kasuwarkanawa.com',
-    password: 'password123',
     address: 'Shop 18, Digital Plaza, Farm Center GSM Market',
     businessAddress: 'Shop 18, Digital Plaza, Farm Center GSM Village, Kano State',
     city: 'Kano City',
@@ -530,16 +526,25 @@ export const db = {
   getUsers(): User[] {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
+      const safeUsers = INITIAL_USERS.map(({ password: _legacyPassword, ...user }) => user);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(safeUsers));
+      return safeUsers;
     }
     try {
       const parsed: User[] = JSON.parse(raw);
       let updated = false;
+      // Remove legacy demo passwords from records saved by older frontend versions.
+      parsed.forEach((user) => {
+        if ('password' in user) {
+          delete user.password;
+          updated = true;
+        }
+      });
       INITIAL_USERS.forEach((initUser) => {
         const existing = parsed.find((u) => u.id === initUser.id || u.email.toLowerCase() === initUser.email.toLowerCase());
         if (!existing) {
-          parsed.push(initUser);
+          const { password: _legacyPassword, ...safeUser } = initUser;
+          parsed.push(safeUser);
           updated = true;
         } else if (!existing.profileImage && initUser.profileImage) {
           existing.profileImage = initUser.profileImage;
@@ -557,7 +562,7 @@ export const db = {
       }
       return parsed;
     } catch {
-      return INITIAL_USERS;
+      return INITIAL_USERS.map(({ password: _legacyPassword, ...user }) => user);
     }
   },
 
