@@ -12,7 +12,7 @@ Example:
 VITE_API_URL=https://your-backend-host.example/api
 ```
 
-For local development, the client uses `http://localhost:4000/api` when `VITE_API_URL` is not set. In production, it falls back to same-origin `/api`; this requires a reverse proxy that routes `/api` to the backend. A static GitHub Pages deployment cannot host the Express API, so configure the real backend URL before building the production frontend.
+For local development, the client uses `http://localhost:4000/api` when `VITE_API_URL` is not set. In production, it falls back to same-origin `/api`; this requires a reverse proxy that routes `/api` to the backend. A static GitHub Pages deployment cannot host the Express API, so configure the real backend URL before building the production frontend. For the repository deployment workflow, add a GitHub Actions repository secret named `VITE_API_URL` under **Settings → Secrets and variables → Actions**; the workflow passes that value into the Vite build.
 
 ## Backend configuration
 
@@ -26,7 +26,7 @@ Set these values in the backend hosting provider (never commit real secrets):
 - `ADMIN_EMAIL`, `ADMIN_PHONE`, `ADMIN_FULL_NAME`
 - `ADMIN_PASSWORD` to a unique secret of at least 12 characters
 
-Run the Prisma migrations and seed the Super Admin from the backend environment before enabling admin access.
+Run the Prisma migrations and seed the Super Admin from the backend environment before enabling admin access. The backend must allow the exact frontend origin in `FRONTEND_ORIGIN`. Because the session is cookie-based, deploy frontend and backend under a compatible same-site arrangement where possible; cross-site cookie policies can affect browser session persistence.
 
 ## Supported account flows in this phase
 
