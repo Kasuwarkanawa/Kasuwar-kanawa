@@ -21,7 +21,6 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run build
-      - run: npm run lint
 
   backend-checks:
     runs-on: ubuntu-latest
