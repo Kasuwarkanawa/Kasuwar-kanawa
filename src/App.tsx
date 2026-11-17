@@ -26,6 +26,7 @@ import { ProductCard } from './components/ProductCard';
 import { PRODUCTS } from './data/products';
 import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, Announcement } from './types';
 import { db } from './db/database';
+import { authApi } from './utils/authApi';
 import { CheckCircle2, Search, X, Shield, Store, UserCheck, ArrowRight, ShieldCheck, ShoppingBag } from 'lucide-react';
 
 export default function App() {
@@ -52,7 +53,7 @@ export default function App() {
   }, []);
 
   // User session state (Phase 3 & 4)
-  const [currentUser, setCurrentUser] = useState<User | null>(() => db.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Modal views
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -98,6 +99,19 @@ export default function App() {
       setToastMessage(null);
     }, 2800);
   };
+
+  // Restore the authenticated user from the server-side HTTP-only session cookie.
+  useEffect(() => {
+    let active = true;
+    authApi.currentUser()
+      .then((user) => {
+        if (active) setCurrentUser(user);
+      })
+      .catch(() => {
+        if (active) showToast('Authentication service is unavailable. Please try again shortly.');
+      });
+    return () => { active = false; };
+  }, []);
 
   // Add to cart from basic card or detailed modal (Section 1)
   const handleAddToCart = (itemOrProduct: Product | CartItem) => {
@@ -215,18 +229,21 @@ export default function App() {
     showToast(`Welcome, ${user.fullName}!`);
   };
 
-  const handleLogout = () => {
-    // Clear the persisted session through the database layer and close protected views.
-    db.logout();
-    setCurrentUser(null);
-    setBuyerDashboardOpen(false);
-    setSellerDashboardOpen(false);
-    setLogisticsDashboardOpen(false);
-    setAdminPanelOpen(false);
-    setAuthModalOpen(false);
-    setCheckoutModalOpen(false);
-    setCartDrawerOpen(false);
-    showToast('Signed out successfully.');
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      setCurrentUser(null);
+      setBuyerDashboardOpen(false);
+      setSellerDashboardOpen(false);
+      setLogisticsDashboardOpen(false);
+      setAdminPanelOpen(false);
+      setAuthModalOpen(false);
+      setCheckoutModalOpen(false);
+      setCartDrawerOpen(false);
+      showToast('Signed out successfully.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to sign out. Please try again.');
+    }
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -735,7 +752,6 @@ export default function App() {
         <BuyerDashboard
           user={currentUser}
           onUpdateUser={(updated) => {
-            db.setCurrentUser(updated);
             setCurrentUser(updated);
           }}
           onClose={() => setBuyerDashboardOpen(false)}
@@ -779,7 +795,6 @@ export default function App() {
               showToast('Access Restricted: Super Admin only.');
               return;
             }
-            db.setCurrentUser(adminUser);
             setCurrentUser(adminUser);
             setAdminPanelOpen(false);
             refreshLiveProducts();
