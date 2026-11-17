@@ -120,7 +120,8 @@ ordersRouter.post('/:id/payment-confirmation', ...buyerOnly, async (req, res, ne
     const data = z.object({ senderName: z.string().trim().min(2).max(120), transactionReference: z.string().trim().min(3).max(160) }).strict().parse(req.body);
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id } });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (order.paymentMethod !== PaymentMethod.opay || ![OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected].includes(order.status)) {
+    const paymentConfirmationStatuses: OrderStatus[] = [OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected];
+    if (order.paymentMethod !== PaymentMethod.opay || !paymentConfirmationStatuses.includes(order.status)) {
       return res.status(409).json({ error: 'Payment confirmation is not available for this order.' });
     }
     const now = new Date();
@@ -151,7 +152,8 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
       dispatched: [OrderStatus.processing], delivered: [OrderStatus.dispatched],
       rejected: [OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.payment_confirmed],
     };
-    if (!allowed[status].includes(order.status)) return res.status(409).json({ error: `Cannot change order from ${order.status} to ${status}.` });
+    const allowedStatuses = allowed[status];
+    if (!allowedStatuses || !allowedStatuses.includes(order.status)) return res.status(409).json({ error: `Cannot change order from ${order.status} to ${status}.` });
     const now = new Date();
     const nextStatus = status as OrderStatus;
     const trackingSort = status === 'processing' ? 2 : status === 'dispatched' ? 3 : status === 'delivered' ? 4 : 1;
@@ -179,7 +181,8 @@ ordersRouter.post('/:id/cancel', ...buyerOnly, async (req, res, next) => {
   try {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (![OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification].includes(order.status)) return res.status(409).json({ error: 'This order can no longer be cancelled.' });
+    const cancellableStatuses: OrderStatus[] = [OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification];
+    if (!cancellableStatuses.includes(order.status)) return res.status(409).json({ error: 'This order can no longer be cancelled.' });
     const now = new Date();
     const cancelled = await prisma.$transaction(async tx => {
       const changed = await tx.order.updateMany({ where: { id: order.id, buyerId: req.authUser!.id, status: order.status }, data: { status: OrderStatus.cancelled } });
