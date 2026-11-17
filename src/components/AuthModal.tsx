@@ -71,6 +71,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Logistics registration is being connected to the secure backend in a later phase. No local-only account has been created.');
       return;
     }
+    if (accountType !== 'buyer' && accountType !== 'seller') {
+      setError('This account type cannot be self-registered.');
+      return;
+    }
     if (password !== confirmPassword) { setError('Passwords do not match. Please re-enter.'); return; }
     if (password.length < 10) { setError('Password must be at least 10 characters long.'); return; }
     if (accountType === 'seller' && (!businessName.trim() || !productCategory.trim())) {
