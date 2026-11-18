@@ -6,7 +6,7 @@ services:
     plan: free
     branch: chatgpt-access-test-2026-11-17
     rootDir: backend
-    buildCommand: npm install && npm run prisma:generate && npm run build
+    buildCommand: npm install --include=dev && npm run prisma:generate && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
