@@ -1095,11 +1095,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Quick action: Suspend reported user
-  const handleSuspendReportedUser = (userId: string, name: string) => {
-    if (window.confirm(`Suspend account of "${name}"?`)) {
-      db.adminSetUserStatus(userId, 'suspended');
-      showNotification(`Account of ${name} has been SUSPENDED.`);
+  const handleSuspendReportedUser = async (userId: string, name: string) => {
+    if (!window.confirm(`Suspend account of "${name}"?`)) return;
+    try {
+      await marketplaceApi.adminUsers.setStatus(userId, 'SUSPENDED');
+      showNotification(`Account of ${name} has been suspended in the database.`);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not suspend this account.');
     }
   };
 
