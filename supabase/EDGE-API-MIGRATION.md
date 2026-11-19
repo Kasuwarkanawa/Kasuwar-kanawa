@@ -1,6 +1,6 @@
 # Supabase Edge API migration — Phase 1
 
-Status: **Edge Function deployed (version 2, ACTIVE); GitHub Pages production has not been switched over.**
+Status: **Edge Function deployed (version 3, ACTIVE); GitHub Pages production has not been switched over.**
 
 ## Safety boundary
 - Work branch: `chatgpt-access-test-2026-11-17`
@@ -35,8 +35,8 @@ All callable RPC functions are executable by `service_role` only; anon and authe
 
 ## Verified so far
 - Deno Edge API type-check: passed.
-- Frontend build and backend checks: passed on the working branch.
-- Edge Function deployment: version 2, status ACTIVE.
+- Frontend build and backend checks: passed on the working branch (latest completed Phase 1 Checks run succeeded).
+- Edge Function deployment: version 3, status ACTIVE.
 - Database permission check: service_role-only execution for checkout, order-state, rate-limit and first-Admin RPCs; anon/authenticated cannot execute them.
 - Public tables: anon/authenticated SELECT grants remain zero.
 - Security advisor reports the expected INFO notice for RLS-enabled tables without policies. Direct table privileges are revoked from anon/authenticated, and all application access goes through the authenticated Edge API.
