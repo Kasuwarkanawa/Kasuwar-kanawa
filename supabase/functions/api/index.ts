@@ -477,12 +477,12 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/admin/categories" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({name:z.string().trim().min(2).max(120),hausaName:z.string().trim().max(120).optional(),description:z.string().trim().max(1000).optional(),iconName:z.string().trim().max(80).optional(),image:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
-    const id=crypto.randomUUID();const {data,error}=await db.from("Category").insert({id,...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
+    const id=crypto.randomUUID();const {data,error}=await db.from("Category").insert({id,...b,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
   const categoryAdminMatch=path.match(/^\/admin\/categories\/([^/]+)$/);
   if(categoryAdminMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({name:z.string().trim().min(2).max(120).optional(),hausaName:z.string().trim().max(120).nullable().optional(),description:z.string().trim().max(1000).nullable().optional(),iconName:z.string().trim().max(80).nullable().optional(),image:z.string().trim().max(1000).nullable().optional()}).strict().parse(await bodyJson(req));
-    const {data,error}=await db.from("Category").update(b).eq("id",decodeURIComponent(categoryAdminMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
+    const {data,error}=await db.from("Category").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(categoryAdminMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
   }
   if(categoryAdminMatch && method==="DELETE") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(categoryAdminMatch[1]);const {count,error}=await db.from("Product").select("id",{count:"exact",head:true}).eq("categoryId",id);if(error)throw error;if((count??0)>0)fail("This category still has products and cannot be deleted.",409);
@@ -495,7 +495,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/content/admin/announcements" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().min(1).max(5000),type:z.string().trim().max(40).default("info"),isPublished:z.boolean().default(false)}).parse(await bodyJson(req));
-    const {data,error}=await db.from("Announcement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
+    const {data,error}=await db.from("Announcement").insert({id:crypto.randomUUID(),...b,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
   const annMatch=path.match(/^\/content\/admin\/announcements\/([^/]+)$/);
   if(annMatch && method==="PATCH") {
@@ -508,7 +508,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/content/admin/advertisements" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().max(2000),badge:z.string().max(80).optional(),image:z.string().trim().min(1).max(1000),linkText:z.string().max(100).optional(),linkUrl:z.string().max(1000).optional(),discountTag:z.string().max(80).optional(),isActive:z.boolean().default(true)}).parse(await bodyJson(req));
-    const {data,error}=await db.from("Advertisement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
+    const {data,error}=await db.from("Advertisement").insert({id:crypto.randomUUID(),...b,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
   const adMatch=path.match(/^\/content\/admin\/advertisements\/([^/]+)$/);
   if(adMatch && method==="PATCH") {
