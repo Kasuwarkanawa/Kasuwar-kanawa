@@ -1,5 +1,45 @@
-import {createRoot} from 'react-dom/client';
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+type BoundaryState = { error: Error | null };
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
+  state: BoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): BoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[Kasuwar Kanawa render error]', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <main style={{ minHeight: '100vh', padding: '32px 20px', background: '#f8fafc', color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>
+          <section style={{ maxWidth: 720, margin: '8vh auto', padding: 24, background: '#fff', border: '1px solid #fecdd3', borderRadius: 16 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#be185d' }}>Kasuwar Kanawa — An samu matsalar bude shafin</h1>
+            <p style={{ marginTop: 12 }}>An kama kuskuren da ya hana shafin nunawa. Aika wannan bayanin ga mai kula da website domin gyara.</p>
+            <pre style={{ marginTop: 16, padding: 14, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: '#f1f5f9', borderRadius: 8, fontSize: 12 }}>{this.state.error.message}{'\n'}{this.state.error.stack || ''}</pre>
+            <button onClick={() => window.location.reload()} style={{ marginTop: 18, padding: '12px 18px', border: 0, borderRadius: 8, background: '#e6007e', color: '#fff', fontWeight: 700 }}>Sake bude website</button>
+          </section>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  document.body.textContent = 'Kasuwar Kanawa: ba a samu root element ba (missing #root).';
+} else {
+  createRoot(rootElement).render(
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
+}
