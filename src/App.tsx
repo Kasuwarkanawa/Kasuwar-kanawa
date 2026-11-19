@@ -23,7 +23,6 @@ import { Footer } from './components/Footer';
 import { AnnouncementsSection } from './components/AnnouncementsSection';
 import { NewsletterSection } from './components/NewsletterSection';
 import { ProductCard } from './components/ProductCard';
-import { PRODUCTS } from './data/products';
 import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, Announcement } from './types';
 import { db } from './db/database';
 import { authApi } from './utils/authApi';
@@ -76,18 +75,12 @@ export default function App() {
 
   // Cart state with database persistence (Phase 5)
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    // Never preload demo/sample products into a real buyer's cart.
+    // Checkout accepts only products returned by the approved backend catalogue.
     const saved = db.getCart();
-    if (saved && saved.length > 0) return saved;
-    return [
-      {
-        id: `cart-${PRODUCTS[0].id}-Ceramic White-Standard Case-6 Months Standard`,
-        product: PRODUCTS[0],
-        quantity: 1,
-        selectedColor: 'Ceramic White',
-        selectedSize: 'Standard Case',
-        selectedVariation: '6 Months Standard',
-      },
-    ];
+    return (saved || []).filter(
+      (item) => !item.product.id.startsWith('sample-') && !item.product.id.startsWith('prod-')
+    );
   });
 
   // Items currently being checked out (supports both whole cart and single Buy Now product)
