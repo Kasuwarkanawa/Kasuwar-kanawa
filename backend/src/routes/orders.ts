@@ -169,7 +169,8 @@ ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['im
   try {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id } });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (order.paymentMethod !== PaymentMethod.opay || ![OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected].includes(order.status)) return res.status(409).json({ error: 'Receipt upload is not available for this order.' });
+    const receiptUploadStatuses: OrderStatus[] = [OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected];
+    if (order.paymentMethod !== PaymentMethod.opay || !receiptUploadStatuses.includes(order.status)) return res.status(409).json({ error: 'Receipt upload is not available for this order.' });
     const contentType = req.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '';
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     const bytes = Buffer.isBuffer(req.body) ? req.body as Buffer : Buffer.alloc(0);
@@ -187,7 +188,7 @@ ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['im
     const paymentConfirmation = { ...previous, receiptPath: path, receiptMimeType: contentType, receiptUploadedAt: now.toISOString(), confirmedByBuyer: true, verifiedByAdmin: false, verifiedAt: null, adminNotes: null };
     const updated = await prisma.order.update({ where: { id: order.id }, data: { status: OrderStatus.pending_verification, paymentConfirmation: paymentConfirmation as Prisma.InputJsonValue }, include: orderInclude });
     await prisma.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Receipt Submitted', dateLabel: formatDate(now), completed: false, description: 'Payment receipt submitted for Admin verification.' } });
-    return res.json(serializeOrder(updated));
+    return res.json(serializeForBuyer(updated));
   } catch (error) { return next(error); }
 });
 
@@ -224,7 +225,7 @@ ordersRouter.patch('/admin/:id/cod-approval', ...adminOnly, async (req, res, nex
 
 ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
   try {
-    const { status, reason } = z.object({ status: z.enum(['processing', 'dispatched', 'delivered', 'rejected']), reason: z.string().trim().max(1000).optional() }).strict().parse(req.body);
+    const { status, reason } = z.object({ status: z.enum(['processing', 'rejected']), reason: z.string().trim().max(1000).optional() }).strict().parse(req.body);
     const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (status === 'rejected' && !reason) return res.status(400).json({ error: 'A reason is required to reject an order.' });
@@ -236,20 +237,17 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
     }
     const allowed: Record<string, OrderStatus[]> = {
       processing: [OrderStatus.pending_order, OrderStatus.payment_confirmed],
-      dispatched: [OrderStatus.processing], delivered: [OrderStatus.dispatched],
       rejected: [OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.payment_confirmed],
     };
     const allowedStatuses = allowed[status];
     if (!allowedStatuses || !allowedStatuses.includes(order.status)) return res.status(409).json({ error: `Cannot change order from ${order.status} to ${status}.` });
     const now = new Date();
     const nextStatus = status as OrderStatus;
-    const trackingSort = status === 'processing' ? 2 : status === 'dispatched' ? 3 : status === 'delivered' ? 4 : 1;
+    const trackingSort = status === 'processing' ? 2 : 1;
     const updated = await prisma.$transaction(async tx => {
       const changes: Prisma.OrderUpdateManyMutationInput = {
         status: nextStatus,
         ...(status === 'rejected' ? { sellerRejectionReason: reason } : {}),
-        ...(status === 'dispatched' ? { dispatchedAt: now } : {}),
-        ...(status === 'delivered' ? { deliveredAt: now } : {}),
       };
       const changed = await tx.order.updateMany({ where: { id: order.id, sellerId: req.authUser!.id, status: order.status }, data: changes });
       if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
@@ -334,7 +332,7 @@ ordersRouter.patch('/admin/:id/logistics-update', ...adminOnly, async (req, res,
         ...(body.status === 'delivered' ? { status: OrderStatus.delivered, deliveredAt: now } : {}),
       }});
       await tx.orderTrackingStep.create({ data: {
-        orderId: order.id, title: labels[body.status], dateLabel: formatDate(now),
+        orderId: order.id, title: labels[body.status]!, dateLabel: formatDate(now),
         completed: body.status !== 'failed', description: body.notes,
         sortOrder: 6 + order.trackingTimeline.length,
       }});
