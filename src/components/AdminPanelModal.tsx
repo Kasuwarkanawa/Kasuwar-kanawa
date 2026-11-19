@@ -936,6 +936,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleSaveFlashSale = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (fsProductIds.length === 0) { showNotification('Select at least one approved product for the Flash Sale.'); return; }
+    if (new Date(fsEndTime) <= new Date(fsStartTime)) { showNotification('Flash Sale end time must be after its start time.'); return; }
     const payload = {
       title: fsTitle.trim(),
       description: fsDescription.trim(),
