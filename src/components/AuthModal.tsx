@@ -31,7 +31,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLoginSuccess,
   initialMode = 'login',
 }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'bootstrap'>(initialMode);
   const [accountType, setAccountType] = useState<AccountType>('buyer');
 
   // Form states
@@ -55,6 +55,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Login states
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [setupToken, setSetupToken] = useState('');
+  const [adminFullName, setAdminFullName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPhone, setAdminPhone] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
 
   // Status message
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +122,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } finally { setIsSubmitting(false); }
   };
 
+  const handleBootstrapAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    if (adminPassword.length < 12) { setError('Admin password must be at least 12 characters.'); return; }
+    if (adminPassword !== adminConfirmPassword) { setError('Admin passwords do not match.'); return; }
+    setIsSubmitting(true);
+    try {
+      const user = await authApi.bootstrapAdmin({
+        setupToken: setupToken.trim(),
+        fullName: adminFullName.trim(),
+        email: adminEmail.trim(),
+        phone: adminPhone.trim(),
+        password: adminPassword,
+      });
+      setSetupToken('');
+      setAdminPassword('');
+      setAdminConfirmPassword('');
+      setSuccessMessage('First Super Admin account created successfully.');
+      onLoginSuccess(user);
+      onClose();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'First Admin setup failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
     setError('Password reset is not connected to the backend yet. Please contact the marketplace administrator for assistance.');
@@ -136,9 +170,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               <h3 className="font-extrabold text-base">
                 {mode === 'login'
-                  ? 'Buyer Login'
+                  ? 'Buyer & Admin Login'
                   : mode === 'register'
                   ? 'Buyer, Seller & Logistics Registration'
+                  : mode === 'bootstrap'
+                  ? 'First Super Admin Setup'
                   : 'Reset Password'}
               </h3>
               <p className="text-xs text-pink-200 font-medium">KASUWAR KANAWA • AREWA SAI DAN AREWA</p>
@@ -153,7 +189,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Tab switchers */}
-        {mode !== 'forgot' && (
+        {(mode === 'login' || mode === 'register') && (
           <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-bold">
             <button
               type="button"
@@ -266,7 +302,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   Create Buyer Account
                 </button>
               </div>
+              <div className="pt-2 text-center">
+                <button type="button" onClick={() => { setMode('bootstrap'); setError(null); setSuccessMessage(null); }} className="text-[11px] font-semibold text-slate-500 hover:text-[#E6007E] underline">
+                  First-time Super Admin setup
+                </button>
+              </div>
 
+            </form>
+          )}
+
+          {/* First Admin setup is available only while no Super Admin exists and requires a private setup token. */}
+          {mode === 'bootstrap' && (
+            <form onSubmit={handleBootstrapAdmin} className="space-y-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                One-time setup only. First add <strong>BOOTSTRAP_ADMIN_TOKEN</strong> to Supabase Edge Function Secrets. The token and password are sent directly to the secure backend and are not saved in the browser.
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Private setup token</label>
+                <input required type="password" autoComplete="off" value={setupToken} onChange={(e)=>setSetupToken(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs focus:border-[#E6007E] focus:outline-hidden" placeholder="Paste the token you saved in Supabase" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Admin full name</label>
+                <input required minLength={2} value={adminFullName} onChange={(e)=>setAdminFullName(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div><label className="mb-1 block text-xs font-bold text-slate-700">Admin email</label><input required type="email" value={adminEmail} onChange={(e)=>setAdminEmail(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
+                <div><label className="mb-1 block text-xs font-bold text-slate-700">Admin phone</label><input required type="tel" value={adminPhone} onChange={(e)=>setAdminPhone(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
+              </div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Strong password (12+ characters)</label><input required type="password" minLength={12} autoComplete="new-password" value={adminPassword} onChange={(e)=>setAdminPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Confirm password</label><input required type="password" minLength={12} autoComplete="new-password" value={adminConfirmPassword} onChange={(e)=>setAdminConfirmPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
+              <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-[#E6007E] py-3 text-sm font-black text-white disabled:opacity-50">{isSubmitting ? 'Creating secure Admin account…' : 'Create First Super Admin'}</button>
+              <button type="button" onClick={()=>{setMode('login');setError(null);}} className="w-full py-2 text-xs font-bold text-slate-500">Back to login</button>
             </form>
           )}
 
