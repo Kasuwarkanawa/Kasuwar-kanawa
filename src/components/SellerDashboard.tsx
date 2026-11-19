@@ -606,6 +606,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
               </div>
 
+              {(productsLoading || productsError) && (
+                <div className={`mb-3 rounded-xl px-4 py-3 text-xs font-semibold ${productsError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                  {productsLoading ? 'Loading products from the secure marketplace database…' : productsError}
+                </div>
+              )}
               {/* Products List Table / Cards */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                 {filteredProducts.length === 0 ? (
