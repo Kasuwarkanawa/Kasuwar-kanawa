@@ -30,6 +30,17 @@ export type SellerProductInput = Pick<Product, 'name' | 'category' | 'price' | '
   Partial<Pick<Product, 'originalPrice' | 'discountPercentage' | 'images' | 'colors' | 'sizes' | 'variations' | 'badge' | 'stockQuantity' | 'isFlashSale' | 'isPopular' | 'isNew' | 'isSpecialOffer' | 'description'>>;
 
 export const marketplaceApi = {
+  catalog: {
+    list: (params: { search?: string; category?: string; take?: number; skip?: number } = {}) => {
+      const query = new URLSearchParams();
+      if (params.search) query.set('search', params.search);
+      if (params.category) query.set('category', params.category);
+      if (params.take) query.set('take', String(params.take));
+      if (params.skip) query.set('skip', String(params.skip));
+      const suffix = query.toString();
+      return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
+    },
+  },
   sellerProducts: {
     list: () => request<Product[]>('/seller/products'),
     create: (product: SellerProductInput) => request<Product>('/seller/products', {
