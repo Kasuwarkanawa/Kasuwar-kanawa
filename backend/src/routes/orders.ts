@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { uploadPaymentReceipt, createPaymentReceiptUrl } from '../lib/paymentReceiptStorage.js';
 import { OrderStatus, PaymentMethod, Prisma } from '@prisma/client';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { adminOnly, buyerOnly, requireAuth, sellerOnly } from '../middleware/auth.js';
@@ -139,7 +139,7 @@ ordersRouter.post('/:id/payment-confirmation', ...buyerOnly, async (req, res, ne
 });
 
 
-ordersRouter.post('/:id/payment-receipt', ...buyerOnly, async (req, res, next) => {
+ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], limit: '5mb' }), async (req, res, next) => {
   try {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id } });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
@@ -203,6 +203,7 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (status === 'rejected' && !reason) return res.status(400).json({ error: 'A reason is required to reject an order.' });
     const payment = paymentValue(order.paymentConfirmation);
+    if (order.paymentMethod === PaymentMethod.cod && status !== 'rejected' && payment.adminApproved !== true) return res.status(409).json({ error: 'COD order must be approved by Admin before fulfillment.' });
     if (order.paymentMethod === PaymentMethod.opay && status !== 'rejected' && (order.status !== OrderStatus.payment_confirmed || payment.verifiedByAdmin !== true)) {
       return res.status(409).json({ error: 'OPay payment must be verified by Super Admin before fulfillment.' });
     }
@@ -261,7 +262,7 @@ ordersRouter.patch('/admin/:id/payment-verification', ...adminOnly, async (req, 
     const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     const previous = paymentValue(order.paymentConfirmation);
-    if (order.paymentMethod !== PaymentMethod.opay || order.status !== OrderStatus.pending_verification || previous.confirmedByBuyer !== true) {
+    if (order.paymentMethod !== PaymentMethod.opay || order.status !== OrderStatus.pending_verification || previous.confirmedByBuyer !== true || typeof previous.receiptPath !== 'string') {
       return res.status(409).json({ error: 'Order is not awaiting OPay payment verification.' });
     }
     const now = new Date();
