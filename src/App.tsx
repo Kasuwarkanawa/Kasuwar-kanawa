@@ -27,6 +27,7 @@ import { PRODUCTS } from './data/products';
 import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, Announcement } from './types';
 import { db } from './db/database';
 import { authApi } from './utils/authApi';
+import { marketplaceApi } from './utils/marketplaceApi';
 import { CheckCircle2, Search, X, Shield, Store, UserCheck, ArrowRight, ShieldCheck, ShoppingBag } from 'lucide-react';
 
 export default function App() {
@@ -36,21 +37,28 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Dynamic products list (only approved products appear on public marketplace)
-  const [liveProducts, setLiveProducts] = useState<Product[]>(() =>
-    db.getProducts({ approvedOnly: true })
-  );
+  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
 
   // Phase 7: Live Flash Sales, Promotional Advertisements & Announcements from Database
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(() => db.getActiveFlashSale());
   const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>(() => db.getActivePromotionalAds());
   const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>(() => db.getPublishedAnnouncements());
 
-  const refreshLiveProducts = useCallback(() => {
-    setLiveProducts(db.getProducts({ approvedOnly: true }));
+  const refreshLiveProducts = useCallback(async () => {
+    try {
+      const products = await marketplaceApi.catalog.list({ take: 100 });
+      setLiveProducts(products);
+    } catch {
+      showToast('Unable to load the live product catalog. Please refresh and try again.');
+    }
     setActiveFlashSale(db.getActiveFlashSale());
     setActivePromotions(db.getActivePromotionalAds());
     setPublishedAnnouncements(db.getPublishedAnnouncements());
   }, []);
+
+  useEffect(() => {
+    void refreshLiveProducts();
+  }, [refreshLiveProducts]);
 
   // User session state (Phase 3 & 4)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
