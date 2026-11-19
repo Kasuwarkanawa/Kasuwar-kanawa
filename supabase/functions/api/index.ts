@@ -250,15 +250,15 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if (reviewsMatch && method === "POST") {
     const auth = await requireRole(req,["BUYER"]);
-    const data = z.object({rating:z.number().int().min(1).max(5),comment:z.string().trim().min(1).max(2000)}).strict().parse(await bodyJson(req));
+    const reviewInput = z.object({rating:z.number().int().min(1).max(5),comment:z.string().trim().min(1).max(2000)}).strict().parse(await bodyJson(req));
     const productId = decodeURIComponent(reviewsMatch[1]);
     const {data:product} = await db.from("Product").select("id").eq("id",productId).eq("approvalStatus","APPROVED").maybeSingle();
     if (!product) fail("Product not found.",404);
     const {data:purchase} = await db.from("OrderItem").select("id,order:Order!OrderItem_orderId_fkey!inner(id)").eq("productId",productId).eq("order.buyerId",auth.user.id).eq("order.status","delivered").maybeSingle();
     if (!purchase) fail("A completed purchase is required to review this product.",403);
-    const {data,error} = await db.from("ProductReview").insert({id:crypto.randomUUID(),productId,buyerId:auth.user.id,...data}).select("*,buyer:User!ProductReview_buyerId_fkey(fullName)").single();
+    const {data:review,error} = await db.from("ProductReview").insert({id:crypto.randomUUID(),productId,buyerId:auth.user.id,...reviewInput}).select("*,buyer:User!ProductReview_buyerId_fkey(fullName)").single();
     if (error) throw error;
-    return reply(data,201,origin);
+    return reply(review,201,origin);
   }
   const reportMatch = path.match(/^\/products\/([^/]+)\/reports$/);
   if (reportMatch && method === "POST") {
@@ -506,7 +506,8 @@ async function dispatch(req: Request, origin: string | null) {
     const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
     const {quantity}=z.object({quantity:z.number().int().min(1).max(100)}).strict().parse(await bodyJson(req));
     const {data:item}=await db.from("CartItem").select("*,cart:Cart!CartItem_cartId_fkey(userId),product:Product!CartItem_productId_fkey(stockQuantity,approvalStatus)").eq("id",id).maybeSingle();
-    if(!item || item.cart?.userId!==auth.user.id)fail("Cart item not found.",404);
+    const cartOwnerId = Array.isArray(item?.cart) ? item.cart[0]?.userId : item?.cart?.userId;
+    if(!item || cartOwnerId!==auth.user.id)fail("Cart item not found.",404);
     if(item.product?.approvalStatus!=="APPROVED" || item.product.stockQuantity<quantity)fail("Product is unavailable or requested quantity exceeds stock.",409);
     const {error}=await db.from("CartItem").update({quantity}).eq("id",id);if(error)throw error;return reply({success:true},200,origin);
   }
