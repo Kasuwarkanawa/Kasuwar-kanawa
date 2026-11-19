@@ -612,7 +612,8 @@ async function dispatch(req: Request, origin: string | null) {
     const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
     const {quantity}=z.object({quantity:z.number().int().min(1).max(100)}).strict().parse(await bodyJson(req));
     const {data:item}=await db.from("CartItem").select("*,cart:Cart!CartItem_cartId_fkey(userId),product:Product!CartItem_productId_fkey(stockQuantity,approvalStatus)").eq("id",id).maybeSingle();
-    const cartOwnerId = item?.cart?.[0]?.userId;
+    const cartRelation:any = item?.cart;
+    const cartOwnerId = Array.isArray(cartRelation) ? cartRelation[0]?.userId : cartRelation?.userId;
     if(!item || cartOwnerId!==auth.user.id)fail("Cart item not found.",404);
     if(item.product?.approvalStatus!=="APPROVED" || item.product.stockQuantity<quantity)fail("Product is unavailable or requested quantity exceeds stock.",409);
     const {error}=await db.from("CartItem").update({quantity}).eq("id",id);if(error)throw error;return reply({success:true},200,origin);
