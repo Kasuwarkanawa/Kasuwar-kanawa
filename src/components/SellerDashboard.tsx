@@ -94,6 +94,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
@@ -115,6 +118,26 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       .finally(() => { if (active) setOrdersLoading(false); });
     return () => { active = false; };
   }, [isOpen, seller.id, refreshKey]);
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setReportsLoading(true);
+    marketplaceApi.sellerReports.buyerReports()
+      .then((reports) => {
+        if (active) {
+          setBuyerReports(reports.map((report: any) => ({
+            ...report,
+            buyerName: report.buyerName || report.buyer?.fullName || 'Buyer',
+            buyerPhone: report.buyerPhone || report.buyer?.phone || '',
+          })));
+          setReportsError(null);
+        }
+      })
+      .catch((error) => { if (active) setReportsError(error instanceof Error ? error.message : 'Unable to load buyer reports.'); })
+      .finally(() => { if (active) setReportsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
   const triggerRefresh = () => {
     setRefreshKey((k) => k + 1);
     if (onProductUpdated) onProductUpdated();
@@ -123,11 +146,18 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   if (!isOpen) return null;
 
   // Retrieve fresh seller data
-  const stats = db.getSellerStats(seller.id);
-  // Seller orders must come from the authenticated backend API.
-  // Do not fall back to browser LocalStorage: it is not an authoritative or secure order source.
+  // Seller dashboard metrics and sales ledger are derived from authenticated backend data.
   const allSellerOrders = [...sellerOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const buyerReports = db.getBuyerReports(seller.id);
+  const deliveredSellerOrders = allSellerOrders.filter((order) => order.status === 'delivered');
+  const stats = {
+    totalProductsListed: sellerProducts.length,
+    totalProductsSold: deliveredSellerOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0),
+    totalOrders: allSellerOrders.length,
+    paidOrders: allSellerOrders.filter((order) => order.paymentConfirmation?.verifiedByAdmin === true || order.paymentConfirmation?.adminApproved === true).length,
+    pendingOrders: allSellerOrders.filter((order) => ['pending_order', 'pending_payment', 'pending_verification'].includes(order.status)).length,
+    deliveredOrders: deliveredSellerOrders.length,
+    totalRevenue: deliveredSellerOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0),
+  };
 
   // Filter orders
   const filteredOrders = allSellerOrders.filter((ord) => {
@@ -286,27 +316,24 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     triggerRefresh();
   };
 
-  // Submit Buyer Report
-  const handleSubmitBuyerReport = (e: React.FormEvent) => {
+  // Submit buyer reports to the authenticated backend; the server verifies seller/order ownership and Admin approval.
+  const handleSubmitBuyerReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportingOrder) return;
-
-    db.submitBuyerReport({
-      sellerId: seller.id,
-      sellerName: seller.fullName,
-      sellerBusinessName: seller.businessName || 'Seller Store',
-      buyerId: reportingOrder.buyerId,
-      buyerName: reportingOrder.buyerName,
-      buyerPhone: reportingOrder.buyerPhone,
-      orderNumber: reportingOrder.orderNumber,
-      reason: reportReason,
-      details: reportDetails,
-    });
-
-    setReportingOrder(null);
-    setReportDetails('');
-    alert('Buyer report submitted successfully to Super Admin for verification.');
-    triggerRefresh();
+    try {
+      await marketplaceApi.sellerReports.reportBuyer({
+        buyerId: reportingOrder.buyerId,
+        orderId: reportingOrder.id,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportingOrder(null);
+      setReportDetails('');
+      alert('Buyer report submitted successfully to Super Admin for verification.');
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to submit buyer report.');
+    }
   };
 
   return (
@@ -1165,8 +1192,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   Completed Sales Record
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {sellerOrders
-                    .filter((o) => o.status === 'delivered')
+                  {deliveredSellerOrders
                     .map((ord) => (
                       <div key={ord.id} className="p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div>
@@ -1181,7 +1207,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         </div>
                       </div>
                     ))}
-                  {allSellerOrders.filter((o) => o.status === 'delivered').length === 0 && (
+                  {deliveredSellerOrders.length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-xs">
                       No completed orders yet. Delivered orders will appear here in your sales ledger.
                     </div>
@@ -1204,7 +1230,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               </div>
 
               <div className="space-y-3">
-                {buyerReports.length === 0 ? (
+                {reportsLoading ? (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">Loading buyer reports…</div>
+                ) : reportsError ? (
+                  <div className="bg-red-50 p-4 rounded-2xl border border-red-200 text-red-700 text-xs">{reportsError}</div>
+                ) : buyerReports.length === 0 ? (
                   <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
                     No buyer reports submitted. You can report suspicious buyers directly from the Order Management tab.
                   </div>
