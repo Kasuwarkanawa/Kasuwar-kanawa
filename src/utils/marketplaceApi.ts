@@ -140,6 +140,8 @@ export const marketplaceApi = {
   },
   adminProducts: {
     pending: () => request<Product[]>('/admin/products/pending?take=100'),
+    update: (id: string, data: Partial<Product>) => request<Product>(`/admin/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ success: boolean }>(`/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     setApproval: (id: string, status: 'APPROVED' | 'REJECTED') => request<Product>(`/admin/products/${encodeURIComponent(id)}/approval`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
