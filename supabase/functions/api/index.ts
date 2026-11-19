@@ -406,6 +406,15 @@ async function dispatch(req: Request, origin: string | null) {
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
     const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
   }
+
+  const adminUserProfileMatch=path.match(/^[/]admin[/]users[/]([^/]+)$/);
+  if(adminUserProfileMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminUserProfileMatch[1]);
+    const b=z.object({fullName:z.string().trim().min(2).max(120).optional(),email:z.string().trim().email().max(254).optional(),phone:z.string().trim().min(7).max(24).optional(),whatsAppNumber:z.string().trim().min(7).max(24).nullable().optional(),address:z.string().trim().max(300).optional(),businessAddress:z.string().trim().max(300).nullable().optional(),businessName:z.string().trim().max(120).nullable().optional(),city:z.string().trim().max(100).optional(),state:z.string().trim().max(100).optional(),area:z.string().trim().max(100).optional(),profileImage:z.string().url().max(1000).nullable().optional()}).strict().parse(await bodyJson(req));
+    const update:any={...b,updatedAt:new Date().toISOString()};if(update.email)update.email=update.email.toLowerCase();if(update.phone)update.phone=update.phone.replace(/[\s()-]/g,"");if(update.whatsAppNumber)update.whatsAppNumber=update.whatsAppNumber.replace(/[\s()-]/g,"");
+    const {data,error}=await db.from("User").update(update).eq("id",id).neq("role","SUPER_ADMIN").select("*").single();if(error)throw error;return reply({user:safeUser(data)},200,origin);
+  }
+
   const adminUserMatch=path.match(/^\/admin\/users\/([^/]+)\/status$/);
   if(adminUserMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminUserMatch[1]);
