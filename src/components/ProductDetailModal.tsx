@@ -13,8 +13,8 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Product, ProductReview, CartItem, User } from '../types';
-import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
+import { marketplaceApi } from '../utils/marketplaceApi';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -55,6 +55,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Report Modal state
   const [isReporting, setIsReporting] = useState(false);
@@ -66,71 +67,53 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [addedAnimation, setAddedAnimation] = useState(false);
 
   useEffect(() => {
-    if (product) {
-      setSelectedImage(product.image);
-      setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
-      setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
-      setSelectedVariation(
-        product.variations && product.variations[0]?.options.length
-          ? product.variations[0].options[0]
-          : ''
-      );
-      setQuantity(1);
-      setReviews(db.getReviews(product.id));
-      setReviewSubmitted(false);
-      setIsReporting(false);
-      setReportSuccess(false);
-    }
+    if (!product) return;
+    let active = true;
+    setSelectedImage(product.image);
+    setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
+    setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
+    setSelectedVariation(product.variations && product.variations[0]?.options.length ? product.variations[0].options[0] : '');
+    setQuantity(1);
+    setReviews([]);
+    setReviewError(null);
+    setReviewSubmitted(false);
+    setIsReporting(false);
+    setReportSuccess(false);
+    marketplaceApi.catalog.reviews(product.id)
+      .then((items) => { if (active) setReviews(items); })
+      .catch((error) => { if (active) setReviewError(error instanceof Error ? error.message : 'Unable to load product reviews.'); });
+    return () => { active = false; };
   }, [product]);
 
   // Early return ONLY after all hooks have been declared unconditionally
   if (!isOpen || !product) return null;
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      onRequireLogin();
-      return;
-    }
+    if (!currentUser) { onRequireLogin(); return; }
     if (!newComment.trim()) return;
-
-    const created = db.addReview({
-      productId: product.id,
-      buyerId: currentUser.id,
-      buyerName: currentUser.fullName,
-      rating: newRating,
-      comment: newComment.trim(),
-    });
-
-    setReviews([created, ...reviews]);
-    setNewComment('');
-    setReviewSubmitted(true);
-    setTimeout(() => setReviewSubmitted(false), 3000);
+    try {
+      const created = await marketplaceApi.catalog.submitReview(product.id, { rating: newRating, comment: newComment.trim() });
+      setReviews((items) => [created, ...items]);
+      setNewComment('');
+      setReviewError(null);
+      setReviewSubmitted(true);
+      setTimeout(() => setReviewSubmitted(false), 3000);
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : 'Unable to submit review. A delivered order is required.');
+    }
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      onRequireLogin();
-      return;
+    if (!currentUser) { onRequireLogin(); return; }
+    try {
+      await marketplaceApi.catalog.report(product.id, { reason: reportReason, details: reportDetails });
+      setReportSuccess(true);
+      setTimeout(() => { setIsReporting(false); setReportSuccess(false); setReportDetails(''); }, 2500);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to submit product report.');
     }
-
-    db.submitReport({
-      productId: product.id,
-      productName: product.name,
-      buyerId: currentUser.id,
-      buyerName: currentUser.fullName,
-      buyerPhone: currentUser.phone,
-      reason: reportReason,
-      details: reportDetails,
-    });
-
-    setReportSuccess(true);
-    setTimeout(() => {
-      setIsReporting(false);
-      setReportSuccess(false);
-      setReportDetails('');
-    }, 2500);
   };
 
   const currentCartItem: CartItem = {
