@@ -103,6 +103,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
+  const [backendOrders, setBackendOrders] = useState<Order[]>([]);
+  const [backendOrdersError, setBackendOrdersError] = useState<string | null>(null);
+  const [receiptLinks, setReceiptLinks] = useState<Record<string, string>>({});
+  const [receiptBusy, setReceiptBusy] = useState<string | null>(null);
   const [pendingProductsLoading, setPendingProductsLoading] = useState(false);
   const [pendingProductsError, setPendingProductsError] = useState<string | null>(null);
   const [productDecisionBusy, setProductDecisionBusy] = useState<string | null>(null);
@@ -115,6 +119,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       .then((products) => { if (active) { setPendingBackendProducts(products); setPendingProductsError(null); } })
       .catch((error) => { if (active) setPendingProductsError(error instanceof Error ? error.message : 'Unable to load pending products.'); })
       .finally(() => { if (active) setPendingProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    marketplaceApi.orders.adminAll()
+      .then((orders) => { if (active) { setBackendOrders(orders as Order[]); setBackendOrdersError(null); } })
+      .catch((error) => { if (active) setBackendOrdersError(error instanceof Error ? error.message : 'Unable to load backend orders.'); });
     return () => { active = false; };
   }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
 
@@ -399,7 +412,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Data queries from database
   const allUsers = db.getUsers();
   const allProducts = db.getProducts();
-  const allOrders = db.getOrders();
+  const localOrders = db.getOrders();
+  const orderMap = new Map<string, Order>();
+  for (const order of [...localOrders, ...backendOrders]) orderMap.set(order.id, order);
+  const allOrders = [...orderMap.values()];
   const allCategories = db.getCategories();
   const productReports = db.getReports();
   const buyerReports = db.getBuyerReports();
@@ -679,7 +695,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Payment Handlers (OPay)
-  const handleConfirmPayment = (orderId: string) => {
+  const handleConfirmPayment = async (orderId: string) => {
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveOpay(orderId, 'approve') as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('Payment confirmed by Super Admin. Buyer and Seller order status updated.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to verify payment.');
+      }
+      return;
+    }
     db.adminApprovePayment(orderId);
     showNotification('Payment CONFIRMED! Order updated for Buyer and Seller.');
     triggerRefresh();
@@ -690,8 +716,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setRejectionReason('Payment transfer reference could not be verified in official OPay portal.');
   };
 
-  const handleConfirmRejectPayment = () => {
+  const handleConfirmRejectPayment = async () => {
     if (!rejectingOrder) return;
+    if (backendOrders.some((order) => order.id === rejectingOrder.id)) {
+      try {
+        const updated = await marketplaceApi.orders.approveOpay(rejectingOrder.id, 'reject', rejectionReason) as Order;
+        setBackendOrders((items) => items.map((order) => order.id === rejectingOrder.id ? updated : order));
+        showNotification('Payment rejected. Buyer will see the rejection status.');
+        setRejectingOrder(null);
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to reject payment.');
+      }
+      return;
+    }
     db.adminRejectPayment(rejectingOrder.id, rejectionReason);
     showNotification('Payment REJECTED. Buyer notified of rejection reason.');
     setRejectingOrder(null);
@@ -699,19 +736,38 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Order Handlers
-  const handleApproveOrder = (orderId: string) => {
+  const handleApproveOrder = async (orderId: string) => {
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveCod(orderId, 'approve') as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('COD order approved. Seller can now see Buyer delivery details.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to approve COD order.');
+      }
+      return;
+    }
     db.adminApproveOrder(orderId);
     showNotification('Order APPROVED and sent to Seller for processing.');
     triggerRefresh();
   };
 
-  const handleRejectOrder = (orderId: string) => {
+  const handleRejectOrder = async (orderId: string) => {
     const reason = window.prompt('Enter reason for rejecting this order:', 'Order rejected by Super Admin in CPanel.');
-    if (reason) {
-      db.adminRejectOrder(orderId, reason);
-      showNotification('Order REJECTED.');
-      triggerRefresh();
+    if (!reason) return;
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveCod(orderId, 'reject', reason) as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('COD order rejected.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to reject COD order.');
+      }
+      return;
     }
+    db.adminRejectOrder(orderId, reason);
+    showNotification('Order REJECTED.');
+    triggerRefresh();
   };
 
   // Category Handlers (Kano Markets)
