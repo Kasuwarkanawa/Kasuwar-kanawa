@@ -42,6 +42,7 @@ export const marketplaceApi = {
     },
   },
   orders: {
+    mine: () => request<any[]>('/orders/mine?take=100'),
     create: (data: {
       items: Array<{ productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }>;
       paymentMethod: 'opay' | 'cod';
