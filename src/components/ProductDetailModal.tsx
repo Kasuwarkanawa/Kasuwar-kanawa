@@ -4,8 +4,6 @@ import {
   Star,
   ShoppingCart,
   Zap,
-  Phone,
-  MessageCircle,
   ShieldAlert,
   Send,
   Check,
@@ -154,13 +152,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     onBuyNow(currentCartItem);
   };
 
-  // WhatsApp Link
-  const sellerPhoneClean = (product.sellerWhatsApp || '2349060938835').replace(/[^0-9]/g, '');
-  const whatsAppMessage = encodeURIComponent(
-    `Salam, I am interested in purchasing "${product.name}" (${formatPrice(product.price)}) on Kasuwar Kanawa. Color: ${selectedColor || 'Default'}, Size/Option: ${selectedSize || 'Standard'}. Is it currently in stock?`
-  );
-  const whatsAppLink = `https://wa.me/${sellerPhoneClean}?text=${whatsAppMessage}`;
-
   const allImages = [product.image, ...(product.images || [])];
   const uniqueImages = Array.from(new Set(allImages));
 
@@ -227,31 +218,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Direct Seller Contact & WhatsApp Box */}
-              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Verified Seller:</span>
-                  <span className="font-extrabold text-[#0B172E]">{product.sellerName || 'Kasuwar Kanawa Merchant'}</span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Phone Number:</span>
-                  <a href={`tel:${product.sellerPhone || '09060938835'}`} className="font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    <span>{product.sellerPhone || '09060938835'}</span>
-                  </a>
-                </div>
-
-                {/* Direct WhatsApp Button */}
-                <a
-                  href={whatsAppLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 px-3 bg-[#25D366] hover:bg-[#20BD5A] text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-1"
-                >
-                  <MessageCircle className="w-4 h-4 fill-white" />
-                  <span>Chat Seller on WhatsApp</span>
-                </a>
+              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-bold">Verified Seller:</span>
+                <span className="font-extrabold text-[#0B172E]">{product.sellerName || 'Kasuwar Kanawa Merchant'}</span>
               </div>
             </div>
 
