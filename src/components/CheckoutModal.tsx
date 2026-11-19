@@ -216,10 +216,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         senderName.trim(),
         transactionRef.trim(),
       ) as Order;
-      setCreatedOrder(updatedOrder);
-      await marketplaceApi.orders.uploadReceipt(createdOrder.id, paymentReceipt);
+      const receiptOrder = await marketplaceApi.orders.uploadReceipt(createdOrder.id, paymentReceipt) as Order;
+      setCreatedOrder(receiptOrder);
       db.clearCart();
-      onOrderSuccess(updatedOrder);
+      onOrderSuccess(receiptOrder);
       setStep('success');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to submit payment confirmation. Please try again.');
