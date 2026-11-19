@@ -110,11 +110,13 @@ contentRouter.post('/admin/flash-sales', ...adminOnly, async (req, res, next) =>
 
 contentRouter.patch('/admin/flash-sales/:id', ...adminOnly, async (req, res, next) => {
   try {
+    const flashSaleId = req.params.id;
+    if (!flashSaleId) return res.status(404).json({ error: 'Flash sale not found.' });
     const body = flashSaleBaseSchema.partial().parse(req.body);
     if (body.startTime && body.endTime && new Date(body.endTime) <= new Date(body.startTime)) {
       return res.status(400).json({ error: 'Flash sale end time must be after its start time.' });
     }
-    const current = await prisma.flashSale.findUnique({ where: { id: req.params.id }, select: { id: true, startTime: true, endTime: true } });
+    const current = await prisma.flashSale.findUnique({ where: { id: flashSaleId }, select: { id: true, startTime: true, endTime: true } });
     if (!current) return res.status(404).json({ error: 'Flash sale not found.' });
     const startTime = body.startTime ? new Date(body.startTime) : current.startTime;
     const endTime = body.endTime ? new Date(body.endTime) : current.endTime;
@@ -125,13 +127,13 @@ contentRouter.patch('/admin/flash-sales/:id', ...adminOnly, async (req, res, nex
       if (validProducts.length !== productIds.length) {
         return res.status(400).json({ error: 'Every selected flash sale product must exist and be approved.' });
       }
-      await prisma.flashSaleProduct.deleteMany({ where: { flashSaleId: req.params.id } });
+      await prisma.flashSaleProduct.deleteMany({ where: { flashSaleId } });
       if (productIds.length) {
-        await prisma.flashSaleProduct.createMany({ data: productIds.map((productId) => ({ flashSaleId: req.params.id, productId })) });
+        await prisma.flashSaleProduct.createMany({ data: productIds.map((productId) => ({ flashSaleId, productId })) });
       }
     }
     const sale = await prisma.flashSale.update({
-      where: { id: req.params.id },
+      where: { id: flashSaleId },
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
