@@ -760,6 +760,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           {/* 3. ORDER MANAGEMENT TAB */}
           {activeTab === 'orders' && (
+            <>
             {ordersError && <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{ordersError}</div>}
             {ordersLoading && <div className="mx-4 flex items-center gap-2 text-xs font-semibold text-slate-500"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading secure orders…</div>}
             <div className="space-y-4">
@@ -1105,6 +1106,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* 4. SALES & REVENUE HISTORY TAB */}
