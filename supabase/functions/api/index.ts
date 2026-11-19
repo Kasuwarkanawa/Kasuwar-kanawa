@@ -143,6 +143,15 @@ async function dispatch(req: Request, origin: string | null) {
   const path = url.pathname.replace(/^\/functions\/v1\/api/, "").replace(/^\/api/, "") || "/";
   const method = req.method.toUpperCase();
 
+
+  if (path.startsWith("/auth/") && method === "POST") {
+    const ip = req.headers.get("cf-connecting-ip") ?? (req.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+    const bucket = "auth:" + await sha256(ip + ":" + path);
+    const {data:allowed,error} = await db.rpc("edge_consume_rate_limit",{p_bucket:bucket,p_limit:30,p_window_seconds:900});
+    if(error) throw error;
+    if(!allowed) fail("Too many authentication attempts. Try again later.",429);
+  }
+
   if (method === "GET" && path === "/health") {
     const { error } = await db.from("Category").select("id", { head: true, count: "exact" });
     return error ? reply({status:"error",database:"unavailable"},503,origin) : reply({status:"ok",database:"connected",runtime:"supabase-edge"},200,origin);
