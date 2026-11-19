@@ -263,6 +263,86 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
+// Seller records the hand-off to a logistics provider after Admin payment/COD approval.
+ordersRouter.patch('/:id/logistics-handoff', ...sellerOnly, async (req, res, next) => {
+  try {
+    const body = z.object({
+      logisticsCompanyName: z.string().trim().min(2).max(160),
+      trackingNumber: z.string().trim().min(3).max(100),
+      notes: z.string().trim().max(1000).optional(),
+    }).strict().parse(req.body);
+    const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    const payment = paymentValue(order.paymentConfirmation);
+    const approved = order.paymentMethod === PaymentMethod.cod
+      ? payment.adminApproved === true
+      : order.status === OrderStatus.payment_confirmed && payment.verifiedByAdmin === true;
+    if (!approved) return res.status(409).json({ error: 'Admin must approve the order before logistics hand-off.' });
+    if (order.status !== OrderStatus.processing) return res.status(409).json({ error: 'Seller must mark the order as processing before logistics hand-off.' });
+    if (order.trackingNumber) return res.status(409).json({ error: 'A logistics tracking number has already been assigned.' });
+    const now = new Date();
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.order.updateMany({
+        where: { id: order.id, sellerId: req.authUser!.id, status: OrderStatus.processing, trackingNumber: null },
+        data: { status: OrderStatus.dispatched, logisticsCompanyName: body.logisticsCompanyName, trackingNumber: body.trackingNumber, logisticsStatus: 'handed_to_logistics', dispatchedAt: now },
+      });
+      if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
+      await tx.orderTrackingStep.create({ data: {
+        orderId: order.id, title: 'Handed to Logistics', dateLabel: formatDate(now), completed: true,
+        description: body.notes || `Seller handed the parcel to ${body.logisticsCompanyName}. Tracking: ${body.trackingNumber}`,
+        sortOrder: 5,
+      }});
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
+    return res.json(serializeOrder(updated));
+  } catch (error) { return next(error); }
+});
+
+// Admin records verified logistics updates. Every update is appended to the permanent order timeline.
+ordersRouter.patch('/admin/:id/logistics-update', ...adminOnly, async (req, res, next) => {
+  try {
+    const body = z.object({
+      status: z.enum(['picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed']),
+      notes: z.string().trim().min(2).max(1000),
+    }).strict().parse(req.body);
+    const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!order.trackingNumber || !order.logisticsCompanyName || order.logisticsStatus !== 'handed_to_logistics' && !['picked_up', 'in_transit'].includes(order.logisticsStatus ?? '')) {
+      return res.status(409).json({ error: 'Seller must record the logistics hand-off before tracking updates.' });
+    }
+    if (order.status === OrderStatus.delivered || order.status === OrderStatus.cancelled || order.status === OrderStatus.rejected) {
+      return res.status(409).json({ error: 'This order is already closed.' });
+    }
+    const allowedNext: Record<string, string[]> = {
+      handed_to_logistics: ['picked_up', 'in_transit', 'failed'],
+      picked_up: ['in_transit', 'failed'],
+      in_transit: ['out_for_delivery', 'failed'],
+      out_for_delivery: ['delivered', 'failed'],
+      failed: ['in_transit', 'out_for_delivery'],
+    };
+    const current = order.logisticsStatus || 'handed_to_logistics';
+    if (!allowedNext[current]?.includes(body.status)) return res.status(409).json({ error: `Cannot change logistics status from ${current} to ${body.status}.` });
+    const now = new Date();
+    const labels: Record<string, string> = {
+      picked_up: 'Picked Up by Logistics', in_transit: 'In Transit',
+      out_for_delivery: 'Out for Delivery', delivered: 'Delivered', failed: 'Delivery Attempt Failed',
+    };
+    const updated = await prisma.$transaction(async tx => {
+      await tx.order.update({ where: { id: order.id }, data: {
+        logisticsStatus: body.status,
+        ...(body.status === 'delivered' ? { status: OrderStatus.delivered, deliveredAt: now } : {}),
+      }});
+      await tx.orderTrackingStep.create({ data: {
+        orderId: order.id, title: labels[body.status], dateLabel: formatDate(now),
+        completed: body.status !== 'failed', description: body.notes,
+        sortOrder: 6 + order.trackingTimeline.length,
+      }});
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
+    return res.json(serializeOrder(updated));
+  } catch (error) { return next(error); }
+});
+
 ordersRouter.post('/:id/cancel', ...buyerOnly, async (req, res, next) => {
   try {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id }, include: orderInclude });
