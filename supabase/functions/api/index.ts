@@ -233,10 +233,10 @@ async function dispatch(req: Request, origin: string | null) {
   if (method === "GET" && path === "/categories") {
     const [{data:categories,error},{data:products}] = await Promise.all([
       db.from("Category").select("*").order("name"),
-      db.from("Product").select("categoryId").eq("approvalStatus","APPROVED"),
+      db.from("Product").select("category,categoryId").eq("approvalStatus","APPROVED"),
     ]);
     if (error) throw error;
-    return reply((categories ?? []).map(c=>({...c,_count:{products:(products ?? []).filter(p=>p.categoryId===c.id).length}})),200,origin);
+    return reply((categories ?? []).map(c=>({...c,_count:{products:(products ?? []).filter(p=>p.categoryId===c.id || p.category===c.name).length}})),200,origin);
   }
   const productMatch = path.match(/^\/products\/([^/]+)$/);
   if (method === "GET" && productMatch) {
@@ -344,7 +344,8 @@ async function dispatch(req: Request, origin: string | null) {
       isFlashSale:z.boolean().optional(),isPopular:z.boolean().optional(),isNew:z.boolean().optional(),isSpecialOffer:z.boolean().optional(),description:z.string().max(10000).optional(),
     }).strict().parse(await bodyJson(req));
     const now=new Date().toISOString();
-    const row={id:crypto.randomUUID(),...s,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:s.isNew??false,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
+    const {data:category}=await db.from("Category").select("id").eq("name",s.category).maybeSingle();
+    const row={id:crypto.randomUUID(),...s,categoryId:category?.id??null,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:s.isNew??false,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
     const {data,error}=await db.from("Product").insert(row).select("*").single(); if(error) throw error;
     return reply(serializeProduct(data),201,origin);
   }
@@ -353,6 +354,7 @@ async function dispatch(req: Request, origin: string | null) {
     const input=await bodyJson(req); const allowed=["name","category","price","originalPrice","discountPercentage","image","images","colors","sizes","variations","badge","stockQuantity","isFlashSale","isPopular","isNew","isSpecialOffer","description"];
     const update:any={}; for(const k of allowed) if(Object.prototype.hasOwnProperty.call(input,k)) update[k]=input[k];
     if(!Object.keys(update).length) fail("At least one product field is required.",400);
+    if(update.category){const {data:category}=await db.from("Category").select("id").eq("name",update.category).maybeSingle();update.categoryId=category?.id??null;}
     const {data:existing}=await db.from("Product").select("id").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
     if(!existing) fail("Product not found.",404);
     update.approvalStatus="PENDING_APPROVAL"; update.updatedAt=new Date().toISOString();
@@ -441,7 +443,8 @@ async function dispatch(req: Request, origin: string | null) {
   if(adminProductMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
     const b=z.object({name:z.string().trim().min(2).max(180).optional(),category:z.string().trim().min(1).max(120).optional(),price:z.number().positive().optional(),originalPrice:z.number().nonnegative().optional(),discountPercentage:z.number().int().min(0).max(100).optional(),image:z.string().trim().min(1).max(1000).optional(),description:z.string().max(10000).optional(),stockQuantity:z.number().int().min(0).max(100000).optional(),isFlashSale:z.boolean().optional(),isPopular:z.boolean().optional(),isNew:z.boolean().optional(),isSpecialOffer:z.boolean().optional()}).strict().parse(await bodyJson(req));
-    const {data,error}=await db.from("Product").update({...b,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();if(error)throw error;return reply(serializeProduct(data),200,origin);
+    const update:any={...b,updatedAt:new Date().toISOString()};if(update.category){const {data:category}=await db.from("Category").select("id").eq("name",update.category).maybeSingle();update.categoryId=category?.id??null;}
+    const {data,error}=await db.from("Product").update(update).eq("id",id).select("*").single();if(error)throw error;return reply(serializeProduct(data),200,origin);
   }
   if(adminProductMatch && method==="DELETE") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
