@@ -239,6 +239,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showFirstAdminSetup, setShowFirstAdminSetup] = useState(false);
+  const [setupToken, setSetupToken] = useState('');
+  const [setupFullName, setSetupFullName] = useState('');
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupPhone, setSetupPhone] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [isSettingUpAdmin, setIsSettingUpAdmin] = useState(false);
 
   // Filter & Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -420,6 +427,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       setLoginError(error instanceof Error ? error.message : 'Super Admin authentication failed.');
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleFirstAdminSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSettingUpAdmin(true);
+    setLoginError(null);
+    try {
+      const user = await authApi.bootstrapAdmin({
+        setupToken: setupToken.trim(),
+        fullName: setupFullName.trim(),
+        email: setupEmail.trim(),
+        phone: setupPhone.trim(),
+        password: setupPassword,
+      });
+      if (onAdminLogin) onAdminLogin(user);
+      showNotification('First Super Admin account created successfully.');
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'First Super Admin setup failed.');
+    } finally {
+      setIsSettingUpAdmin(false);
     }
   };
 
@@ -1106,6 +1134,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </button>
 
                 </form>
+
+                <div className="mt-5 border-t border-slate-200 pt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => { setShowFirstAdminSetup((value) => !value); setLoginError(null); }}
+                    className="text-xs font-black text-[#E6007E] hover:underline"
+                  >
+                    {showFirstAdminSetup ? 'Return to Super Admin login' : 'First-time Super Admin registration'}
+                  </button>
+                </div>
+
+                {showFirstAdminSetup && (
+                  <form onSubmit={handleFirstAdminSetup} className="mt-4 space-y-3 border-t border-pink-100 pt-4">
+                    <div>
+                      <h3 className="text-sm font-black text-[#0B172E]">Create the first Super Admin</h3>
+                      <p className="mt-1 text-[11px] text-slate-500">This one-time setup is protected by the private setup token configured in Supabase.</p>
+                    </div>
+                    <input required value={setupToken} onChange={(e) => setSetupToken(e.target.value)} type="password" autoComplete="off" placeholder="Supabase first-admin setup token" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E6007E] focus:outline-hidden" />
+                    <input required value={setupFullName} onChange={(e) => setSetupFullName(e.target.value)} placeholder="Full name" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E6007E] focus:outline-hidden" />
+                    <input required type="email" value={setupEmail} onChange={(e) => setSetupEmail(e.target.value)} placeholder="Admin email address" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E6007E] focus:outline-hidden" />
+                    <input required type="tel" value={setupPhone} onChange={(e) => setSetupPhone(e.target.value)} placeholder="Phone number" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E6007E] focus:outline-hidden" />
+                    <input required minLength={12} type="password" autoComplete="new-password" value={setupPassword} onChange={(e) => setSetupPassword(e.target.value)} placeholder="Strong password (at least 12 characters)" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-[#E6007E] focus:outline-hidden" />
+                    <button type="submit" disabled={isSettingUpAdmin} className="w-full rounded-xl bg-[#0B172E] px-4 py-3 text-xs font-black text-white shadow-md disabled:opacity-60">
+                      {isSettingUpAdmin ? 'Creating secure Super Admin account…' : 'Create First Super Admin'}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
