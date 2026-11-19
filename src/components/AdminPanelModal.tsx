@@ -104,6 +104,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
   const [backendOrders, setBackendOrders] = useState<Order[]>([]);
+  const [backendUsers, setBackendUsers] = useState<User[]>([]);
+  const [backendCategories, setBackendCategories] = useState<Category[]>([]);
+  const [backendAnnouncements, setBackendAnnouncements] = useState<Announcement[]>([]);
   const [backendOrdersError, setBackendOrdersError] = useState<string | null>(null);
   const [backendBuyerReports, setBackendBuyerReports] = useState<BuyerReport[]>([]);
   const [backendProductReports, setBackendProductReports] = useState<ProductReport[]>([]);
@@ -121,6 +124,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState<string | null>(null);
   const [promotionSaving, setPromotionSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    Promise.all([
+      marketplaceApi.adminUsers.list({ take: 100 }),
+      marketplaceApi.adminCategories.list(),
+      marketplaceApi.content.adminAnnouncements(),
+    ])
+      .then(([users, categories, announcements]) => {
+        if (!active) return;
+        setBackendUsers(users as User[]);
+        setBackendCategories(categories);
+        setBackendAnnouncements(announcements);
+      })
+      .catch((error) => {
+        if (active) showNotification(error instanceof Error ? error.message : 'Unable to load Admin records from Supabase.');
+      });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
 
   useEffect(() => {
     if (!isOpen || currentUser?.accountType !== 'admin') return;
@@ -533,23 +556,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Data queries from database
-  const allUsers = db.getUsers();
-  const allProducts = db.getProducts();
-  const localOrders = db.getOrders();
-  const orderMap = new Map<string, Order>();
-  for (const order of [...localOrders, ...backendOrders]) orderMap.set(order.id, order);
-  const allOrders = [...orderMap.values()];
-  const allCategories = db.getCategories();
+  const allUsers = backendUsers;
+  const allProducts = [...backendApprovedProducts, ...pendingBackendProducts];
+  const allOrders = backendOrders;
+  const allCategories = backendCategories;
   const productReports = backendProductReports;
   const buyerReports = backendBuyerReports;
   const sellerReports = backendSellerReports;
   const allFlashSales = backendFlashSales;
   const allAds = backendPromotions;
-  const allAnnouncements = db.getAnnouncements();
-  const dispatchedAndDelivered = db.getDispatchedAndDeliveredOrders();
-  const logisticsCompanies = db.getLogisticsCompanies();
-  const logisticsAgents = db.getDeliveryAgents();
-  const logisticsShipments = db.getLogisticsShipments();
+  const allAnnouncements = backendAnnouncements;
+  const dispatchedAndDelivered = backendOrders.filter((order) => ['dispatched', 'delivered'].includes(order.status));
+  const logisticsCompanies: LogisticsCompany[] = [];
+  const logisticsAgents: DeliveryAgent[] = [];
+  const logisticsShipments: LogisticsShipment[] = [];
   const pendingLogisticsCompanies = logisticsCompanies.filter((company) => company.approvalStatus === 'pending');
   const approvedLogisticsCompanies = logisticsCompanies.filter((company) => company.approvalStatus === 'approved');
 
