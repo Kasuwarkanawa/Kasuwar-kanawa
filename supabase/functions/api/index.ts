@@ -302,8 +302,8 @@ async function dispatch(req: Request, origin: string | null) {
     const input=await bodyJson(req); const update:any={};
     for(const key of allowed) if(Object.prototype.hasOwnProperty.call(input,key)) update[key]=input[key];
     if(!Object.keys(update).length) fail("At least one profile field is required.",400);
-    if(update.phone) update.phone=String(update.phone).replace(/[\\s()-]/g,"");
-    if(update.whatsAppNumber) update.whatsAppNumber=String(update.whatsAppNumber).replace(/[\\s()-]/g,"");
+    if(update.phone) update.phone=String(update.phone).replace(/[\s()-]/g,"");
+    if(update.whatsAppNumber) update.whatsAppNumber=String(update.whatsAppNumber).replace(/[\s()-]/g,"");
     update.updatedAt=new Date().toISOString();
     const {data,error}=await db.from("User").update(update).eq("id",auth.user.id).select("*").single();
     if(error) throw error; return reply({user:safeUser(data)},200,origin);
@@ -315,7 +315,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("Product").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false});
     if(error) throw error; return reply(await withProductDetails(data ?? []),200,origin);
   }
-  const sellerProductMatch=path.match(/^\\/seller\\/products\\/([^/]+)$/);
+  const sellerProductMatch=path.match(/^\/seller\/products\/([^/]+)$/);
   if(path==="/seller/products" && method==="POST") {
     const auth=await requireRole(req,["SELLER"]);
     const s=z.object({
@@ -397,7 +397,7 @@ async function dispatch(req: Request, origin: string | null) {
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
     const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
   }
-  const adminUserMatch=path.match(/^\\/admin\\/users\\/([^/]+)\\/status$/);
+  const adminUserMatch=path.match(/^\/admin\/users\/([^/]+)\/status$/);
   if(adminUserMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminUserMatch[1]);
     const {status}=z.object({status:z.enum(["ACTIVE","SUSPENDED","REJECTED"])}).strict().parse(await bodyJson(req));
@@ -411,7 +411,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("Product").select("*").eq("approvalStatus","PENDING_APPROVAL").order("createdAt",{ascending:true}).range(skip,skip+take-1);
     if(error)throw error;return reply(await withProductDetails(data??[]),200,origin);
   }
-  const approvalMatch=path.match(/^\\/admin\\/products\\/([^/]+)\\/approval$/);
+  const approvalMatch=path.match(/^\/admin\/products\/([^/]+)\/approval$/);
   if(approvalMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(approvalMatch[1]);const {status}=z.object({status:z.enum(["APPROVED","REJECTED"])}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Product").update({approvalStatus:status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();
@@ -426,7 +426,7 @@ async function dispatch(req: Request, origin: string | null) {
       load("SellerReport","*,buyer:User!SellerReport_buyerId_fkey(id,fullName,phone),seller:User!SellerReport_sellerId_fkey(id,fullName,businessName,phone)"),
     ]);return reply({products,buyers,sellers},200,origin);
   }
-  const reportUpdate=path.match(/^\\/admin\\/reports\\/(product|buyer|seller)\\/([^/]+)$/);
+  const reportUpdate=path.match(/^\/admin\/reports\/(product|buyer|seller)\/([^/]+)$/);
   if(reportUpdate && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const [,type,id]=reportUpdate;
     const b=z.object({status:z.enum(["pending","reviewed","resolved","approved","rejected"]),adminNotes:z.string().trim().max(2000).optional()}).strict().parse(await bodyJson(req));
@@ -442,7 +442,7 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().min(1).max(5000),type:z.string().trim().max(40).default("info"),isPublished:z.boolean().default(false)}).parse(await bodyJson(req));
     const {data,error}=await db.from("Announcement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
-  const annMatch=path.match(/^\\/content\\/admin\\/announcements\\/([^/]+)$/);
+  const annMatch=path.match(/^\/content\/admin\/announcements\/([^/]+)$/);
   if(annMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().min(1).max(5000).optional(),type:z.string().trim().max(40).optional(),isPublished:z.boolean().optional()}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Announcement").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(annMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
@@ -455,7 +455,7 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().max(2000),badge:z.string().max(80).optional(),image:z.string().trim().min(1).max(1000),linkText:z.string().max(100).optional(),linkUrl:z.string().max(1000).optional(),discountTag:z.string().max(80).optional(),isActive:z.boolean().default(true)}).parse(await bodyJson(req));
     const {data,error}=await db.from("Advertisement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
-  const adMatch=path.match(/^\\/content\\/admin\\/advertisements\\/([^/]+)$/);
+  const adMatch=path.match(/^\/content\/admin\/advertisements\/([^/]+)$/);
   if(adMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().max(2000).optional(),badge:z.string().max(80).nullable().optional(),image:z.string().trim().min(1).max(1000).optional(),linkText:z.string().max(100).nullable().optional(),linkUrl:z.string().max(1000).nullable().optional(),discountTag:z.string().max(80).nullable().optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Advertisement").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(adMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
@@ -492,7 +492,7 @@ async function dispatch(req: Request, origin: string | null) {
     else {const r=await db.from("CartItem").insert({id:crypto.randomUUID(),cartId:cart.id,productId:b.productId,quantity:b.quantity,selectedColor:b.selectedColor??null,selectedSize:b.selectedSize??null,selectedVariation:b.selectedVariation??null});if(r.error)throw r.error;}
     return reply({success:true},201,origin);
   }
-  const cartItemMatch=path.match(/^\\/cart\\/items\\/([^/]+)$/);
+  const cartItemMatch=path.match(/^\/cart\/items\/([^/]+)$/);
   if(cartItemMatch && method==="PATCH") {
     const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
     const {quantity}=z.object({quantity:z.number().int().min(1).max(100)}).strict().parse(await bodyJson(req));
@@ -545,13 +545,13 @@ async function dispatch(req: Request, origin: string | null) {
     const order=await getOrder(data);if(!order)throw new Error("Updated order could not be loaded.");
     return order;
   }
-  const paymentConfirmMatch=path.match(/^\\/orders\\/([^/]+)\\/payment-confirmation$/);
+  const paymentConfirmMatch=path.match(/^\/orders\/([^/]+)\/payment-confirmation$/);
   if(paymentConfirmMatch && method==="POST") {
     const auth=await requireRole(req,["BUYER"]);const b=z.object({senderName:z.string().trim().min(2).max(120),transactionReference:z.string().trim().min(3).max(160)}).strict().parse(await bodyJson(req));
     const order=await runOrderAction(decodeURIComponent(paymentConfirmMatch[1]),auth,"submit_payment",b);
     return reply(orderForBuyer(order),200,origin);
   }
-  const receiptUploadMatch=path.match(/^\\/orders\\/([^/]+)\\/payment-receipt$/);
+  const receiptUploadMatch=path.match(/^\/orders\/([^/]+)\/payment-receipt$/);
   if(receiptUploadMatch && method==="POST") {
     const auth=await requireRole(req,["BUYER"]);const orderId=decodeURIComponent(receiptUploadMatch[1]);
     const {data:existing}=await db.from("Order").select("id,buyerId,paymentMethod,status,paymentConfirmation").eq("id",orderId).maybeSingle();
@@ -576,7 +576,7 @@ async function dispatch(req: Request, origin: string | null) {
       throw error;
     }
   }
-  const receiptAdminMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/payment-receipt$/);
+  const receiptAdminMatch=path.match(/^\/orders\/admin\/([^/]+)\/payment-receipt$/);
   if(receiptAdminMatch && method==="GET") {
     await requireRole(req,["SUPER_ADMIN"]);const orderId=decodeURIComponent(receiptAdminMatch[1]);
     const {data:order}=await db.from("Order").select("id,paymentConfirmation").eq("id",orderId).maybeSingle();
@@ -586,35 +586,35 @@ async function dispatch(req: Request, origin: string | null) {
     if(error || !data?.signedUrl)throw error??new Error("Could not create secure receipt link.");
     return reply({url:data.signedUrl,expiresIn:300},200,origin);
   }
-  const codApprovalMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/cod-approval$/);
+  const codApprovalMatch=path.match(/^\/orders\/admin\/([^/]+)\/cod-approval$/);
   if(codApprovalMatch && method==="PATCH") {
     const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({decision:z.enum(["approve","reject"]),adminNotes:z.string().trim().min(2).max(1000).optional()}).strict().parse(await bodyJson(req));
     if(b.decision==="reject"&&!b.adminNotes)fail("A rejection reason is required.",400);
     const order=await runOrderAction(decodeURIComponent(codApprovalMatch[1]),auth,"cod_approval",b);return reply(serializeOrder(order),200,origin);
   }
-  const sellerStatusMatch=path.match(/^\\/orders\\/([^/]+)\\/status$/);
+  const sellerStatusMatch=path.match(/^\/orders\/([^/]+)\/status$/);
   if(sellerStatusMatch && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);const b=z.object({status:z.enum(["processing","rejected"]),reason:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
     if(b.status==="rejected"&&!b.reason)fail("A reason is required to reject an order.",400);
     const order=await runOrderAction(decodeURIComponent(sellerStatusMatch[1]),auth,"seller_status",{status:b.status,notes:b.reason});
     return reply(orderForSeller(order),200,origin);
   }
-  const handoffMatch=path.match(/^\\/orders\\/([^/]+)\\/logistics-handoff$/);
+  const handoffMatch=path.match(/^\/orders\/([^/]+)\/logistics-handoff$/);
   if(handoffMatch && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);const b=z.object({logisticsCompanyName:z.string().trim().min(2).max(160),trackingNumber:z.string().trim().min(3).max(100),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
     const order=await runOrderAction(decodeURIComponent(handoffMatch[1]),auth,"logistics_handoff",b);return reply(orderForSeller(order),200,origin);
   }
-  const logisticsMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/logistics-update$/);
+  const logisticsMatch=path.match(/^\/orders\/admin\/([^/]+)\/logistics-update$/);
   if(logisticsMatch && method==="PATCH") {
     const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().min(2).max(1000)}).strict().parse(await bodyJson(req));
     const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);return reply(serializeOrder(order),200,origin);
   }
-  const cancelMatch=path.match(/^\\/orders\\/([^/]+)\\/cancel$/);
+  const cancelMatch=path.match(/^\/orders\/([^/]+)\/cancel$/);
   if(cancelMatch && method==="POST") {
     const auth=await requireRole(req,["BUYER"]);const order=await runOrderAction(decodeURIComponent(cancelMatch[1]),auth,"cancel",{});
     return reply(orderForBuyer(order),200,origin);
   }
-  const verifyMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/payment-verification$/);
+  const verifyMatch=path.match(/^\/orders\/admin\/([^/]+)\/payment-verification$/);
   if(verifyMatch && method==="PATCH") {
     const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({decision:z.enum(["approve","reject"]),adminNotes:z.string().trim().min(2).max(1000).optional()}).strict().parse(await bodyJson(req));
     if(b.decision==="reject"&&!b.adminNotes)fail("A reason is required to reject payment.",400);
@@ -640,7 +640,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(linkError){await db.from("FlashSale").delete().eq("id",sale.id);throw linkError;}
     return reply(serializeSale({...sale,products:productIds.map(productId=>({productId}))}),201,origin);
   }
-  const flashIdMatch=path.match(/^\\/content\\/admin\\/flash-sales\\/([^/]+)$/);
+  const flashIdMatch=path.match(/^\/content\/admin\/flash-sales\/([^/]+)$/);
   if(flashIdMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(flashIdMatch[1]);
     const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().max(2000).optional(),discountPercentage:z.number().int().min(1).max(100).optional(),startTime:z.string().datetime().optional(),endTime:z.string().datetime().optional(),productIds:z.array(z.string().trim().min(1).max(128)).min(1).max(100).optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
@@ -673,7 +673,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").order("createdAt",{ascending:false}).range(skip,skip+take-1);
     if(error)throw error;return reply((data??[]).map(serializeOrder),200,origin);
   }
-  const orderIdMatch=path.match(/^\\/orders\\/([^/]+)$/);
+  const orderIdMatch=path.match(/^\/orders\/([^/]+)$/);
   if(orderIdMatch && method==="GET") {
     const auth=await requireRole(req,["BUYER","SELLER","SUPER_ADMIN"]);const id=decodeURIComponent(orderIdMatch[1]);
     let q=db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("id",id);
