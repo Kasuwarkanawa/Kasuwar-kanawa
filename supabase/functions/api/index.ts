@@ -236,7 +236,7 @@ async function dispatch(req: Request, origin: string | null) {
       db.from("Product").select("category,categoryId").eq("approvalStatus","APPROVED"),
     ]);
     if (error) throw error;
-    return reply((categories ?? []).map(c=>({...c,_count:{products:(products ?? []).filter(p=>p.categoryId===c.id || p.category===c.name).length}})),200,origin);
+    return reply((categories ?? []).map(c=>{const itemCount=(products ?? []).filter(p=>p.categoryId===c.id || p.category===c.name).length;return {...c,itemCount,_count:{products:itemCount}};}),200,origin);
   }
   const productMatch = path.match(/^\/products\/([^/]+)$/);
   if (method === "GET" && productMatch) {
