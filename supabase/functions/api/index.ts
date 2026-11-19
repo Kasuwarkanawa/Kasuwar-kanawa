@@ -723,7 +723,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(new Date(b.endTime??current.endTime)<=new Date(b.startTime??current.startTime))fail("Flash sale end time must be after its start time.",400);
     if(b.productIds){const ids=[...new Set(b.productIds)];const {data:products,error}=await db.from("Product").select("id").in("id",ids).eq("approvalStatus","APPROVED");if(error)throw error;if((products??[]).length!==ids.length)fail("Every selected flash sale product must exist and be approved.",400);
       const del=await db.from("FlashSaleProduct").delete().eq("flashSaleId",id);if(del.error)throw del.error;const add=await db.from("FlashSaleProduct").insert(ids.map(productId=>({flashSaleId:id,productId})));if(add.error)throw add.error;}
-    const patch:any={};for(const k of ["title","description","discountPercentage","startTime","endTime","isActive"])if((b as any)[k]!==undefined)patch[k]=(b as any)[k];patch.updatedAt=new Date().toISOString();
+    const patch:any={};for(const k of ["title","description","discountPercentage","startTime","endTime","isActive"])if((b as any)[k]!==undefined)patch[k]=(b as any)[k];
     const {data:sale,error}=await db.from("FlashSale").update(patch).eq("id",id).select("*").single();if(error)throw error;
     const {data:links,error:linkError}=await db.from("FlashSaleProduct").select("productId").eq("flashSaleId",id);if(linkError)throw linkError;
     return reply(serializeSale({...sale,products:links??[]}),200,origin);
