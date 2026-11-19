@@ -529,8 +529,17 @@ async function dispatch(req: Request, origin: string | null) {
     const b=z.object({productId:z.string().min(1),quantity:z.number().int().min(1).max(100),selectedColor:z.string().trim().max(120).optional(),selectedSize:z.string().trim().max(120).optional(),selectedVariation:z.string().trim().max(120).optional()}).strict().parse(await bodyJson(req));
     const {data:product}=await db.from("Product").select("id,stockQuantity").eq("id",b.productId).eq("approvalStatus","APPROVED").maybeSingle();
     if(!product)fail("Product not found or unavailable.",404);if(product.stockQuantity<b.quantity)fail("Requested quantity is not available in stock.",409);
-    let {data:cart,error:cartError}=await db.from("Cart").upsert({id:crypto.randomUUID(),userId:auth.user.id,updatedAt:new Date().toISOString()},{onConflict:"userId"}).select("*").single();
+    let {data:cart,error:cartError}=await db.from("Cart").select("id").eq("userId",auth.user.id).maybeSingle();
     if(cartError)throw cartError;
+    if(!cart) {
+      const created=await db.from("Cart").insert({id:crypto.randomUUID(),userId:auth.user.id,updatedAt:new Date().toISOString()}).select("id").single();
+      if(created.error && created.error.code!=="23505")throw created.error;
+      if(created.data)cart=created.data;
+      else {
+        const retry=await db.from("Cart").select("id").eq("userId",auth.user.id).single();
+        if(retry.error)throw retry.error;cart=retry.data;
+      }
+    }
     let q=db.from("CartItem").select("*").eq("cartId",cart.id).eq("productId",b.productId);
     q=b.selectedColor===undefined?q.is("selectedColor",null):q.eq("selectedColor",b.selectedColor);
     q=b.selectedSize===undefined?q.is("selectedSize",null):q.eq("selectedSize",b.selectedSize);
