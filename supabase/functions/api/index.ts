@@ -3,7 +3,13 @@ import bcrypt from "npm:bcryptjs@3.0.2";
 import { z } from "npm:zod@3.25.76";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SERVICE_ROLE_KEY = (() => {
+  try {
+    const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    if (typeof secretKeys.default === "string") return secretKeys.default;
+  } catch { /* fall back to legacy service_role key */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+})();
 const configuredPublishableKeys = (() => {
   const keys = new Set<string>();
   const single = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
