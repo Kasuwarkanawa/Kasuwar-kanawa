@@ -694,6 +694,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     triggerRefresh();
   };
 
+  const handleLoadBackendReceipt = async (orderId: string) => {
+    setReceiptBusy(orderId);
+    try {
+      const result = await marketplaceApi.orders.receiptUrl(orderId);
+      setReceiptLinks((previous) => ({ ...previous, [orderId]: result.url }));
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to open payment receipt.');
+    } finally {
+      setReceiptBusy(null);
+    }
+  };
+
   // Payment Handlers (OPay)
   const handleConfirmPayment = async (orderId: string) => {
     if (backendOrders.some((order) => order.id === orderId)) {
@@ -2043,6 +2055,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 <span className="text-[10px] text-slate-500 block">
                                   Sender: {ord.paymentConfirmation.senderName || ord.buyerName}
                                 </span>
+                                {backendOrders.some((item) => item.id === ord.id) && (
+                                  <div className="mt-2">
+                                    {ord.paymentConfirmation.receiptPath ? (
+                                      receiptLinks[ord.id] ? (
+                                        <a href={receiptLinks[ord.id]} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-blue-700 underline">
+                                          Open private receipt (expires in 5 minutes)
+                                        </a>
+                                      ) : (
+                                        <button type="button" onClick={() => handleLoadBackendReceipt(ord.id)} disabled={receiptBusy === ord.id} className="rounded-lg bg-blue-100 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 disabled:opacity-50">
+                                          {receiptBusy === ord.id ? 'Loading receipt…' : 'View uploaded receipt'}
+                                        </button>
+                                      )
+                                    ) : (
+                                      <span className="text-[10px] font-semibold text-amber-700">Buyer has not uploaded a receipt yet.</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -2059,7 +2088,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleConfirmPayment(ord.id)}
-                                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
+                                  disabled={backendOrders.some((item) => item.id === ord.id) && !ord.paymentConfirmation.receiptPath}
+                                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-black rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                   <span>Confirm OPay Payment</span>
@@ -2079,6 +2109,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* ============================================================ */}
               {activeTab === 'orders' && (
                 <div className="space-y-4">
+                  {backendOrdersError && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{backendOrdersError} Some saved local order records may still appear.</div>}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 max-w-sm">
                       <Search className="w-4 h-4 text-slate-400" />
@@ -2226,22 +2257,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center gap-1.5">
                             {ord.status !== 'rejected' && ord.status !== 'delivered' && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRejectOrder(ord.id)}
-                                  className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer"
-                                >
-                                  Reject Order
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveOrder(ord.id)}
-                                  className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer"
-                                >
-                                  Approve Order
-                                </button>
-                              </>
+                              backendOrders.some((item) => item.id === ord.id)
+                                ? ord.paymentMethod === 'cod' && ord.status === 'pending_order' && (
+                                    <>
+                                      <button type="button" onClick={() => handleRejectOrder(ord.id)} className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer">Reject COD</button>
+                                      <button type="button" onClick={() => handleApproveOrder(ord.id)} className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer">Approve COD & Release Buyer Details</button>
+                                    </>
+                                  )
+                                : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRejectOrder(ord.id)}
+                                        className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer"
+                                      >
+                                        Reject Order
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleApproveOrder(ord.id)}
+                                        className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer"
+                                      >
+                                        Approve Order
+                                      </button>
+                                    </>
+                                  )
                             )}
                           </div>
                         </div>
