@@ -41,6 +41,18 @@ export const marketplaceApi = {
       return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
     },
   },
+  orders: {
+    create: (data: {
+      items: Array<{ productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }>;
+      paymentMethod: 'opay' | 'cod';
+      shippingAddress: { fullName: string; phoneNumber: string; state: string; city: string; area: string; completeAddress: string };
+    }) => request<any>('/orders', { method: 'POST', body: JSON.stringify(data) }),
+    confirmOpay: (id: string, senderName: string, transactionReference: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/payment-confirmation`, {
+        method: 'POST',
+        body: JSON.stringify({ senderName, transactionReference }),
+      }),
+  },
   adminProducts: {
     pending: () => request<Product[]>('/admin/products/pending?take=100'),
     setApproval: (id: string, status: 'APPROVED' | 'REJECTED') => request<Product>(`/admin/products/${encodeURIComponent(id)}/approval`, {
