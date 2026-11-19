@@ -604,8 +604,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         sellerId: seller?.id,
         sellerName: seller?.fullName,
         sellerBusinessName: seller?.businessName,
-        sellerPhone: seller?.phone,
-        sellerWhatsApp: seller?.whatsAppNumber,
       });
       showNotification(`Product "${prodName}" updated successfully!`);
     } else {
@@ -622,8 +620,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         sellerId: seller?.id || 'usr-seller-1',
         sellerName: seller?.fullName || 'Alhaji Danladi Merchant',
         sellerBusinessName: seller?.businessName || 'Danladi Textiles & Brocade Hub',
-        sellerPhone: seller?.phone || '07066300079',
-        sellerWhatsApp: seller?.whatsAppNumber || '2347066300079',
         isApproved: true,
         approvalStatus: 'approved',
         inStock: true,
