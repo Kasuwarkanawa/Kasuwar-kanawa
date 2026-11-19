@@ -91,6 +91,31 @@ const registerSchema = z.object({
 }).strict();
 const loginSchema = z.object({ identifier: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) }).strict();
 
+
+async function getOrder(orderId:string) {
+  const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("id",orderId).maybeSingle();
+  if(error) throw error; return data;
+}
+function serializeOrder(order:any) {
+  const timeline=[...(order.trackingTimeline??[])].sort((a,b)=>a.sortOrder-b.sortOrder);
+  return {...order,subtotal:Number(order.subtotal),deliveryFee:Number(order.deliveryFee),totalAmount:Number(order.totalAmount),
+    items:(order.items??[]).map((item:any)=>({id:item.id,quantity:item.quantity,selectedColor:item.selectedColor,selectedSize:item.selectedSize,selectedVariation:item.selectedVariation,product:{...(item.productSnapshot??{}),price:Number(item.unitPrice)}})),
+    trackingTimeline:timeline.map((step:any)=>({title:step.title,date:step.dateLabel,completed:step.completed,description:step.description}))};
+}
+function orderForBuyer(order:any) {
+  const result=serializeOrder(order); delete result.sellerPhone; delete result.sellerWhatsApp;
+  if(result.paymentConfirmation && typeof result.paymentConfirmation==="object") delete result.paymentConfirmation.receiptPath;
+  return result;
+}
+function orderForSeller(order:any) {
+  const result=serializeOrder(order), payment=order.paymentConfirmation??{};
+  const approved=order.paymentMethod==="opay" ? order.status==="payment_confirmed" && payment.verifiedByAdmin===true : payment.adminApproved===true;
+  delete result.sellerPhone; delete result.sellerWhatsApp;
+  if(!approved){delete result.buyerName;delete result.buyerEmail;delete result.buyerPhone;delete result.shippingAddress;}
+  if(result.paymentConfirmation && typeof result.paymentConfirmation==="object") delete result.paymentConfirmation.receiptPath;
+  return result;
+}
+
 function serializeProduct(product: any, seller?: any, reviews: any[] = []) {
   const ratings = reviews.map(r => Number(r.rating)).filter(Number.isFinite);
   const { price, originalPrice, stockQuantity, approvalStatus, ...rest } = product;
@@ -438,6 +463,80 @@ async function dispatch(req: Request, origin: string | null) {
   if(adMatch && method==="DELETE") {await requireRole(req,["SUPER_ADMIN"]);const {error}=await db.from("Advertisement").delete().eq("id",decodeURIComponent(adMatch[1]));if(error)throw error;return reply({success:true},200,origin);}
   if(path==="/content/admin/newsletter" && method==="GET") {
     await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("NewsletterSubscription").select("*").order("createdAt",{ascending:false}).limit(500);if(error)throw error;return reply(data??[],200,origin);
+  }
+
+
+  // Persistent buyer cart.
+  if(path==="/cart" && method==="GET") {
+    const auth=await requireRole(req,["BUYER"]);
+    const {data:cart}=await db.from("Cart").select("id").eq("userId",auth.user.id).maybeSingle();
+    if(!cart) return reply({items:[]},200,origin);
+    const {data:items,error}=await db.from("CartItem").select("*").eq("cartId",cart.id).order("id");
+    if(error)throw error;
+    const products=await withProductDetails(await (async()=>{const ids=(items??[]).map(i=>i.productId);if(!ids.length)return [];const r=await db.from("Product").select("*").in("id",ids);if(r.error)throw r.error;return r.data??[];})());
+    return reply({items:(items??[]).map(i=>({id:i.id,quantity:i.quantity,selectedColor:i.selectedColor,selectedSize:i.selectedSize,selectedVariation:i.selectedVariation,product:products.find(p=>p.id===i.productId)}))},200,origin);
+  }
+  if(path==="/cart/items" && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);
+    const b=z.object({productId:z.string().min(1),quantity:z.number().int().min(1).max(100),selectedColor:z.string().trim().max(120).optional(),selectedSize:z.string().trim().max(120).optional(),selectedVariation:z.string().trim().max(120).optional()}).strict().parse(await bodyJson(req));
+    const {data:product}=await db.from("Product").select("id,stockQuantity").eq("id",b.productId).eq("approvalStatus","APPROVED").maybeSingle();
+    if(!product)fail("Product not found or unavailable.",404);if(product.stockQuantity<b.quantity)fail("Requested quantity is not available in stock.",409);
+    let {data:cart,error:cartError}=await db.from("Cart").upsert({id:crypto.randomUUID(),userId:auth.user.id,updatedAt:new Date().toISOString()},{onConflict:"userId"}).select("*").single();
+    if(cartError)throw cartError;
+    let q=db.from("CartItem").select("*").eq("cartId",cart.id).eq("productId",b.productId);
+    q=b.selectedColor===undefined?q.is("selectedColor",null):q.eq("selectedColor",b.selectedColor);
+    q=b.selectedSize===undefined?q.is("selectedSize",null):q.eq("selectedSize",b.selectedSize);
+    q=b.selectedVariation===undefined?q.is("selectedVariation",null):q.eq("selectedVariation",b.selectedVariation);
+    const {data:match,error}=await q.maybeSingle();if(error)throw error;
+    if(match){if(match.quantity+b.quantity>product.stockQuantity)fail("Requested quantity is not available in stock.",409);const r=await db.from("CartItem").update({quantity:match.quantity+b.quantity}).eq("id",match.id);if(r.error)throw r.error;}
+    else {const r=await db.from("CartItem").insert({id:crypto.randomUUID(),cartId:cart.id,productId:b.productId,quantity:b.quantity,selectedColor:b.selectedColor??null,selectedSize:b.selectedSize??null,selectedVariation:b.selectedVariation??null});if(r.error)throw r.error;}
+    return reply({success:true},201,origin);
+  }
+  const cartItemMatch=path.match(/^\\/cart\\/items\\/([^/]+)$/);
+  if(cartItemMatch && method==="PATCH") {
+    const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
+    const {quantity}=z.object({quantity:z.number().int().min(1).max(100)}).strict().parse(await bodyJson(req));
+    const {data:item}=await db.from("CartItem").select("*,cart:Cart!CartItem_cartId_fkey(userId),product:Product!CartItem_productId_fkey(stockQuantity,approvalStatus)").eq("id",id).maybeSingle();
+    if(!item || item.cart?.userId!==auth.user.id)fail("Cart item not found.",404);
+    if(item.product?.approvalStatus!=="APPROVED" || item.product.stockQuantity<quantity)fail("Product is unavailable or requested quantity exceeds stock.",409);
+    const {error}=await db.from("CartItem").update({quantity}).eq("id",id);if(error)throw error;return reply({success:true},200,origin);
+  }
+  if(cartItemMatch && method==="DELETE") {
+    const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
+    const {data:item}=await db.from("CartItem").select("id,cart:Cart!CartItem_cartId_fkey(userId)").eq("id",id).maybeSingle();
+    if(!item || item.cart?.userId!==auth.user.id)fail("Cart item not found.",404);
+    const {error}=await db.from("CartItem").delete().eq("id",id);if(error)throw error;return reply({success:true},200,origin);
+  }
+  if(path==="/cart" && method==="DELETE") {
+    const auth=await requireRole(req,["BUYER"]);const {data:cart}=await db.from("Cart").select("id").eq("userId",auth.user.id).maybeSingle();
+    if(cart){const {error}=await db.from("CartItem").delete().eq("cartId",cart.id);if(error)throw error;}
+    return reply({items:[]},200,origin);
+  }
+
+  // Order read endpoints. Sensitive fields are filtered per role.
+  if(path==="/orders/mine" && method==="GET") {
+    const auth=await requireRole(req,["BUYER"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
+    const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("buyerId",auth.user.id).order("createdAt",{ascending:false}).range(skip,skip+take-1);
+    if(error)throw error;return reply((data??[]).map(orderForBuyer),200,origin);
+  }
+  if(path==="/orders/seller/mine" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
+    const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).range(skip,skip+take-1);
+    if(error)throw error;return reply((data??[]).map(orderForSeller),200,origin);
+  }
+  if(path==="/orders/admin/all" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
+    const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").order("createdAt",{ascending:false}).range(skip,skip+take-1);
+    if(error)throw error;return reply((data??[]).map(serializeOrder),200,origin);
+  }
+  const orderIdMatch=path.match(/^\\/orders\\/([^/]+)$/);
+  if(orderIdMatch && method==="GET") {
+    const auth=await requireRole(req,["BUYER","SELLER","SUPER_ADMIN"]);const id=decodeURIComponent(orderIdMatch[1]);
+    let q=db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("id",id);
+    if(id.startsWith("KN-"))q=db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)").eq("orderNumber",id);
+    const {data,error}=await q.maybeSingle();if(error)throw error;
+    if(!data || (auth.user.role!=="SUPER_ADMIN" && data.buyerId!==auth.user.id && data.sellerId!==auth.user.id))fail("Order not found.",404);
+    return reply(auth.user.role==="BUYER"?orderForBuyer(data):auth.user.role==="SELLER"?orderForSeller(data):serializeOrder(data),200,origin);
   }
 
   return reply({error:"API route is not yet migrated to Supabase Edge Functions.",route:`${method} ${path}`},501,origin);
