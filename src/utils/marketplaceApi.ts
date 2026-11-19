@@ -55,6 +55,11 @@ export const marketplaceApi = {
         method: 'PATCH',
         body: JSON.stringify({ logisticsCompanyName, trackingNumber, notes }),
       }),
+    updateLogisticsStatus: (id: string, status: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed', notes: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/logistics-update`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, notes }),
+      }),
     approveOpay: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
       request<any>(`/orders/admin/${encodeURIComponent(id)}/payment-verification`, {
         method: 'PATCH',
