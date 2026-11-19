@@ -3548,6 +3548,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700">Choose approved products for this Flash Sale</label>
+                {backendApprovedProducts.length === 0 ? (
+                  <p className="rounded-lg bg-amber-50 p-3 text-amber-800">No approved backend products are available yet. Approve seller products first.</p>
+                ) : (
+                  <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+                    {backendApprovedProducts.map((product) => (
+                      <label key={product.id} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-50">
+                        <input type="checkbox" checked={fsProductIds.includes(product.id)} onChange={(event) => setFsProductIds((previous) => event.target.checked ? [...previous, product.id] : previous.filter((id) => id !== product.id))} />
+                        <span className="min-w-0 flex-1 truncate">{product.name}</span>
+                        <span className="shrink-0 text-slate-500">₦{Number(product.price).toLocaleString()}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
