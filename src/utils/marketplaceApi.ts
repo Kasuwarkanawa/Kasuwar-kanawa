@@ -1,8 +1,6 @@
 import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport } from '../types';
+import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
-const viteEnv = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string; DEV?: boolean } }).env;
-const configuredApiUrl = viteEnv?.VITE_API_URL?.trim();
-const API_BASE_URL = (configuredApiUrl || (viteEnv?.DEV ? 'http://localhost:4000/api' : '/api')).replace(/\/$/, '');
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -11,6 +9,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       credentials: 'include',
       headers: {
+        apikey: SUPABASE_PUBLIC_KEY,
         ...(init.body instanceof FormData || init.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }),
         ...init.headers,
       },
