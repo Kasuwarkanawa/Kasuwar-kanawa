@@ -15,7 +15,7 @@ The Phase 1 PostgreSQL schema is provisioned in the linked Supabase project. It 
 
 The five Kano marketplace categories (Kwari, Singa, Kurmi, Farm Center, and Wasu Kasuwanni) are seeded. No demo buyers, sellers, products, or orders have been inserted.
 
-All 18 public tables have RLS enabled. Direct table access is revoked from `anon` and `authenticated`; the current Express API is expected to enforce the application session and role rules and connect using a trusted server-side PostgreSQL credential. Do not expose database credentials or the Supabase service-role key in frontend code.
+All 18 public tables have RLS enabled. Direct table privileges are revoked from `anon` and `authenticated`; the Supabase Edge API is the application access boundary. Never expose database credentials or the Supabase secret/service-role key in frontend code.
 
 The `public.rls_auto_enable()` SECURITY DEFINER function remains attached to its PostgreSQL DDL event trigger, but execution was revoked from `PUBLIC`, `anon`, and `authenticated`.
 
@@ -28,22 +28,38 @@ A private Storage bucket named `payment-receipts` is provisioned with a 5 MB fil
 - `image/webp`
 - `application/pdf`
 
-There are no client Storage object policies. Receipt upload and 5-minute signed URL creation must be performed by the trusted backend with `SUPABASE_SERVICE_ROLE_KEY`. Never put this key in Vite variables or commit it to Git.
+There are no client Storage object policies. Receipt upload and five-minute signed URL creation are performed only by the trusted Edge API using a server-side secret key.
 
-## Backend configuration still required
+## Supabase Edge API
 
-The Express/Prisma API needs these server-side settings:
+The `api` Edge Function is deployed and ACTIVE (version 2):
 
-- `DATABASE_URL`: Supabase PostgreSQL connection string (prefer the Supabase pooler when the runtime requires it).
-- `SUPABASE_URL`: project URL.
-- `SUPABASE_SERVICE_ROLE_KEY`: server-only secret used for private receipt storage.
-- `FRONTEND_ORIGIN`: exact GitHub Pages origin, including the repository path is not part of the origin; configure the origin only.
-- `ADMIN_EMAIL`, `ADMIN_PHONE`, `ADMIN_FULL_NAME`, `ADMIN_PASSWORD`: used by the protected bootstrap workflow to create the first Super Admin. Password must be at least 12 characters.
+`https://efirbpzfimzmpchsovbz.supabase.co/functions/v1/api`
 
-The database currently has no Super Admin account. Do not create a default or weak password.
+The function uses:
+- Supabase's default server-side secret key (prefers `SUPABASE_SECRET_KEYS.default`, with legacy `SUPABASE_SERVICE_ROLE_KEY` fallback).
+- The project's publishable key on the browser `apikey` header.
+- Exact CORS origin: `https://kasuwarkanawa.github.io`.
+- Custom `kk_session` HttpOnly, Secure, SameSite=None cookie sessions.
+- bcrypt password hashes, role checks, and database-backed auth rate limiting.
+- Transactional checkout and order-state RPC functions.
+- Private receipt storage and Admin-only short-lived signed URLs.
 
-## Important deployment boundary
+The function is configured with `verify_jwt = false` because it validates the publishable key and custom session cookie inside the handler. Do not remove those checks.
 
-GitHub Pages serves static frontend files; it does not run the current Express/Node API. Supabase PostgreSQL and Storage are ready, but the Express API still needs a runtime endpoint, or the API must be deliberately migrated to Supabase Edge Functions. Do not set `VITE_API_URL` to `/api` on GitHub Pages and assume it will execute the Express server.
+## First Super Admin
 
-The active implementation branch is `chatgpt-access-test-2026-11-17`. Do not merge to `main` or deploy production as part of this database setup.
+There is **no Super Admin account yet**. The database includes a one-time, serialized bootstrap function and the Edge API exposes `POST /auth/bootstrap-admin`.
+
+Before creating the first Admin:
+1. Set `BOOTSTRAP_ADMIN_TOKEN` (at least 32 random characters) in Supabase Dashboard → Edge Function Secrets.
+2. Follow [ADMIN-BOOTSTRAP.md](./ADMIN-BOOTSTRAP.md).
+3. Use a strong Admin password of at least 12 characters. Do not place it or the setup token in source control or chat.
+
+The bootstrap endpoint refuses further first-Admin creation once a Super Admin exists.
+
+## Deployment boundary
+
+The current working branch is `chatgpt-access-test-2026-11-17`. It contains the frontend API wiring and GitHub Pages build configuration for the Edge API, but the branch has **not** been merged to `main`. The current live GitHub Pages site therefore has not been switched to this new backend yet.
+
+Do not merge PR #2 or update production without the user's explicit approval. Complete the health/browser-cookie smoke test, first Admin setup, and end-to-end checkout/payment/logistics tests before calling Phase 1 complete.
