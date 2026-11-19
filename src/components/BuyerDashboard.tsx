@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User as UserIcon,
   Phone,
@@ -22,6 +22,7 @@ import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
+import { marketplaceApi } from '../utils/marketplaceApi';
 
 interface BuyerDashboardProps {
   user: User;
@@ -53,6 +54,8 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'orders' | 'profile'>('orders');
   const [selectedStatusTab, setSelectedStatusTab] = useState<OrderStatus | 'all'>('all');
   const [orders, setOrders] = useState<Order[]>(db.getOrders(user.id));
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Edit Profile State
@@ -70,9 +73,26 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   const [transactionRef, setTransactionRef] = useState('');
   const [confirmSuccess, setConfirmSuccess] = useState(false);
 
-  const refreshOrders = () => {
-    setOrders(db.getOrders(user.id));
+  const refreshOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const backendOrders = await marketplaceApi.orders.mine() as Order[];
+      const legacyOrders = db.getOrders(user.id);
+      const merged = new Map<string, Order>();
+      for (const order of [...legacyOrders, ...backendOrders]) merged.set(order.id, order);
+      setOrders([...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Could not refresh orders from the secure server.');
+      setOrders(db.getOrders(user.id));
+    } finally {
+      setOrdersLoading(false);
+    }
   };
+
+  useEffect(() => {
+    void refreshOrders();
+  }, [user.id]);
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +245,16 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           {/* TAB 1: BUYER ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
+              {ordersError && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  {ordersError} Showing saved orders from this device where available.
+                </div>
+              )}
+              {ordersLoading && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading your secure order history…
+                </div>
+              )}
               {/* Order Status Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
                 {ORDER_STATUS_TABS.map((tab) => {
