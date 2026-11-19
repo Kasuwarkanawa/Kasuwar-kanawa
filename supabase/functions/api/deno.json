@@ -1,0 +1,8 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {},
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true
+  }
+}

@@ -1,0 +1,190 @@
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview } from '../types';
+import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
+
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: {
+        apikey: SUPABASE_PUBLIC_KEY,
+        ...(init.body instanceof FormData || init.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }),
+        ...init.headers,
+      },
+    });
+  } catch {
+    throw new Error('Unable to reach Kasuwar Kanawa services. Check the connection and try again.');
+  }
+
+  const result = await response.json().catch(() => null) as (T & { error?: string; message?: string }) | null;
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || `Marketplace request failed (${response.status}).`);
+  }
+  return result as T;
+}
+
+export type SellerProductInput = Pick<Product, 'name' | 'category' | 'price' | 'image'> &
+  Partial<Pick<Product, 'originalPrice' | 'discountPercentage' | 'images' | 'colors' | 'sizes' | 'variations' | 'badge' | 'stockQuantity' | 'isFlashSale' | 'isPopular' | 'isNew' | 'isSpecialOffer' | 'description'>>;
+
+export const marketplaceApi = {
+  catalog: {
+    reviews: (productId: string) => request<ProductReview[]>(`/products/${encodeURIComponent(productId)}/reviews`),
+    submitReview: (productId: string, data: { rating: number; comment: string }) => request<ProductReview>(`/products/${encodeURIComponent(productId)}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
+    report: (productId: string, data: { reason: string; details: string }) => request<any>(`/products/${encodeURIComponent(productId)}/reports`, { method: 'POST', body: JSON.stringify(data) }),
+    list: (params: { search?: string; category?: string; take?: number; skip?: number } = {}) => {
+      const query = new URLSearchParams();
+      if (params.search) query.set('search', params.search);
+      if (params.category) query.set('category', params.category);
+      if (params.take) query.set('take', String(params.take));
+      if (params.skip) query.set('skip', String(params.skip));
+      const suffix = query.toString();
+      return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
+    },
+  },
+  categories: {
+    list: () => request<Category[]>('/categories'),
+  },
+  adminCategories: {
+    list: () => request<Category[]>('/admin/categories'),
+    create: (data: Partial<Category> & { name: string }) => request<Category>('/admin/categories', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Category>) => request<Category>(`/admin/categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ success: boolean }>(`/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+  buyer: {
+    profile: () => request<{ user: any }>('/buyer/profile'),
+    updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/buyer/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+  seller: {
+    profile: () => request<{ user: any }>('/seller/profile'),
+    updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/seller/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+  cart: {
+    list: () => request<{ items: CartItem[] }>('/cart'),
+    add: (data: { productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }) =>
+      request<{ success: boolean }>('/cart/items', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, quantity: number) =>
+      request<{ success: boolean }>(`/cart/items/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ quantity }) }),
+    remove: (id: string) =>
+      request<{ success: boolean }>(`/cart/items/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clear: () => request<{ items: CartItem[] }>('/cart', { method: 'DELETE' }),
+  },
+  orders: {
+    mine: () => request<any[]>('/orders/mine?take=100'),
+    adminAll: () => request<any[]>('/orders/admin/all?take=100'),
+    sellerMine: () => request<any[]>('/orders/seller/mine?take=100'),
+    sellerStatus: (id: string, status: 'processing' | 'rejected', reason?: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, reason }),
+      }),
+    logisticsHandoff: (id: string, logisticsCompanyName: string, trackingNumber: string, notes?: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/logistics-handoff`, {
+        method: 'PATCH',
+        body: JSON.stringify({ logisticsCompanyName, trackingNumber, notes }),
+      }),
+    updateLogisticsStatus: (id: string, status: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed', notes: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/logistics-update`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, notes }),
+      }),
+    approveOpay: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/payment-verification`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision, adminNotes }),
+      }),
+    approveCod: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/cod-approval`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision, adminNotes }),
+      }),
+    receiptUrl: (id: string) =>
+      request<{ url: string; expiresIn: number }>(`/orders/admin/${encodeURIComponent(id)}/payment-receipt`),
+    create: (data: {
+      items: Array<{ productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }>;
+      paymentMethod: 'opay' | 'cod';
+      shippingAddress: { fullName: string; phoneNumber: string; state: string; city: string; area: string; completeAddress: string };
+    }) => request<any>('/orders', { method: 'POST', body: JSON.stringify(data) }),
+    confirmOpay: (id: string, senderName: string, transactionReference: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/payment-confirmation`, {
+        method: 'POST',
+        body: JSON.stringify({ senderName, transactionReference }),
+      }),
+    uploadReceipt: (id: string, file: File) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/payment-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      }),
+  },
+  content: {
+    publicPromotions: () => request<PromotionalAdvertisement[]>('/content/advertisements'),
+    publicFlashSales: () => request<FlashSale[]>('/content/flash-sales'),
+    publicAnnouncements: () => request<Announcement[]>('/content/announcements'),
+    adminPromotions: () => request<PromotionalAdvertisement[]>('/content/admin/advertisements'),
+    createPromotion: (data: Omit<PromotionalAdvertisement, 'id' | 'createdAt'>) =>
+      request<PromotionalAdvertisement>('/content/admin/advertisements', { method: 'POST', body: JSON.stringify(data) }),
+    updatePromotion: (id: string, data: Partial<Omit<PromotionalAdvertisement, 'id' | 'createdAt'>>) =>
+      request<PromotionalAdvertisement>(`/content/admin/advertisements/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deletePromotion: (id: string) =>
+      request<{ success: boolean }>(`/content/admin/advertisements/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    adminFlashSales: () => request<FlashSale[]>('/content/admin/flash-sales'),
+    createFlashSale: (data: Omit<FlashSale, 'id' | 'createdAt'>) =>
+      request<FlashSale>('/content/admin/flash-sales', { method: 'POST', body: JSON.stringify(data) }),
+    updateFlashSale: (id: string, data: Partial<Omit<FlashSale, 'id' | 'createdAt'>>) =>
+      request<FlashSale>(`/content/admin/flash-sales/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteFlashSale: (id: string) =>
+      request<{ success: boolean }>(`/content/admin/flash-sales/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    adminAnnouncements: () => request<Announcement[]>('/content/admin/announcements'),
+    createAnnouncement: (data: Omit<Announcement, 'id' | 'createdAt'>) => request<Announcement>('/content/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
+    updateAnnouncement: (id: string, data: Partial<Omit<Announcement, 'id' | 'createdAt'>>) => request<Announcement>(`/content/admin/announcements/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteAnnouncement: (id: string) => request<{ success: boolean }>(`/content/admin/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+  adminProducts: {
+    pending: () => request<Product[]>('/admin/products/pending?take=100'),
+    update: (id: string, data: Partial<Product>) => request<Product>(`/admin/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ success: boolean }>(`/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    setApproval: (id: string, status: 'APPROVED' | 'REJECTED') => request<Product>(`/admin/products/${encodeURIComponent(id)}/approval`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  },
+  adminUsers: {
+    list: (params: { role?: 'BUYER' | 'SELLER'; status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'; take?: number; skip?: number } = {}) => {
+      const query = new URLSearchParams();
+      if (params.role) query.set('role', params.role);
+      if (params.status) query.set('status', params.status);
+      if (params.take) query.set('take', String(params.take));
+      if (params.skip) query.set('skip', String(params.skip));
+      return request<any[]>(`/admin/users?${query.toString()}`);
+    },
+    updateProfile: (id: string, data: Record<string, unknown>) => request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
+      request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  },
+  adminReports: {
+    list: () => request<{ products: any[]; buyers: any[]; sellers: any[] }>('/admin/reports?take=100'),
+    update: (type: 'product' | 'buyer' | 'seller', id: string, status: 'pending' | 'reviewed' | 'resolved' | 'approved' | 'rejected', adminNotes?: string) =>
+      request<any>(`/admin/reports/${type}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status, adminNotes }) }),
+  },
+  sellerReports: {
+    buyerReports: () => request<Array<BuyerReport & { buyer?: { id: string; fullName: string; phone: string } }>>('/seller/reports/buyers'),
+    reportBuyer: (data: { buyerId: string; orderId: string; reason: string; details: string }) =>
+      request<BuyerReport>('/seller/reports/buyers', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  sellerProducts: {
+    list: () => request<Product[]>('/seller/products'),
+    create: (product: SellerProductInput) => request<Product>('/seller/products', {
+      method: 'POST',
+      body: JSON.stringify(product),
+    }),
+    update: (id: string, product: Partial<SellerProductInput>) => request<Product>(`/seller/products/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(product),
+    }),
+    remove: (id: string) => request<{ success: boolean }>(`/seller/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  },
+};

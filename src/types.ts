@@ -132,8 +132,6 @@ export interface Product {
   sellerId?: string;
   sellerName?: string;
   sellerBusinessName?: string;
-  sellerPhone?: string;
-  sellerWhatsApp?: string;
   isApproved?: boolean;
   approvalStatus?: 'approved' | 'pending_approval' | 'rejected';
 }
@@ -188,8 +186,12 @@ export interface PaymentConfirmation {
   confirmedByBuyer: boolean;
   confirmedAt?: string;
   verifiedByAdmin: boolean;
+  adminApproved?: boolean;
   verifiedAt?: string;
   adminNotes?: string;
+  receiptPath?: string;
+  receiptMimeType?: string;
+  receiptUploadedAt?: string;
 }
 
 export interface TrackingStep {
@@ -229,6 +231,9 @@ export interface Order {
   sellerRejectionReason?: string;
   dispatchedAt?: string;
   deliveredAt?: string;
+  logisticsCompanyName?: string;
+  trackingNumber?: string;
+  logisticsStatus?: 'handed_to_logistics' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed';
   createdAt: string;
   updatedAt: string;
 }

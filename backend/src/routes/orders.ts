@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
+import { uploadPaymentReceipt, createPaymentReceiptUrl } from '../lib/paymentReceiptStorage.js';
 import { OrderStatus, PaymentMethod, Prisma } from '@prisma/client';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { adminOnly, buyerOnly, requireAuth, sellerOnly } from '../middleware/auth.js';
@@ -23,6 +24,32 @@ const paymentValue = (value: Prisma.JsonValue) => value && typeof value === 'obj
 const fail = (message: string, statusCode: number) => Object.assign(new Error(message), { statusCode });
 const orderNumber = () => `KN-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 const formatDate = (date: Date) => date.toLocaleString('en-NG');
+
+const serializeForBuyer = (order: any) => {
+  const result = serializeOrder(order) as any;
+  result.sellerPhone = undefined;
+  result.sellerWhatsApp = undefined;
+  if (result.paymentConfirmation && typeof result.paymentConfirmation === 'object') result.paymentConfirmation.receiptPath = undefined;
+  return result;
+};
+const serializeForSeller = (order: any) => {
+  const result = serializeOrder(order) as any;
+  const payment = paymentValue(order.paymentConfirmation);
+  const approved = order.paymentMethod === PaymentMethod.opay
+    ? order.status === OrderStatus.payment_confirmed && payment.verifiedByAdmin === true
+    : payment.adminApproved === true;
+  result.sellerPhone = undefined;
+  result.sellerWhatsApp = undefined;
+  if (!approved) {
+    result.buyerName = undefined;
+    result.buyerEmail = undefined;
+    result.buyerPhone = undefined;
+    result.shippingAddress = undefined;
+  }
+  if (result.paymentConfirmation && typeof result.paymentConfirmation === 'object') result.paymentConfirmation.receiptPath = undefined;
+  return result;
+};
+
 
 ordersRouter.post('/', ...buyerOnly, async (req, res, next) => {
   try {
@@ -81,7 +108,7 @@ ordersRouter.post('/', ...buyerOnly, async (req, res, next) => {
         }, include: orderInclude,
       });
     });
-    return res.status(201).json(serializeOrder(order));
+    return res.status(201).json(serializeForBuyer(order));
   } catch (error) { return next(error); }
 });
 
@@ -89,14 +116,14 @@ ordersRouter.get('/mine', ...buyerOnly, async (req, res, next) => {
   try {
     const page = pagingSchema.parse(req.query);
     const orders = await prisma.order.findMany({ where: { buyerId: req.authUser!.id }, include: orderInclude, orderBy: { createdAt: 'desc' }, take: page.take, skip: page.skip });
-    return res.json(orders.map(serializeOrder));
+    return res.json(orders.map(serializeForBuyer));
   } catch (error) { return next(error); }
 });
 ordersRouter.get('/seller/mine', ...sellerOnly, async (req, res, next) => {
   try {
     const page = pagingSchema.parse(req.query);
     const orders = await prisma.order.findMany({ where: { sellerId: req.authUser!.id }, include: orderInclude, orderBy: { createdAt: 'desc' }, take: page.take, skip: page.skip });
-    return res.json(orders.map(serializeOrder));
+    return res.json(orders.map(serializeForSeller));
   } catch (error) { return next(error); }
 });
 ordersRouter.get('/admin/all', ...adminOnly, async (req, res, next) => {
@@ -111,7 +138,7 @@ ordersRouter.get('/:id', requireAuth, async (req, res, next) => {
     const order = await prisma.order.findFirst({ where: { OR: [{ id: req.params.id }, { orderNumber: req.params.id }] }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (req.authUser!.role !== 'SUPER_ADMIN' && order.buyerId !== req.authUser!.id && order.sellerId !== req.authUser!.id) return res.status(404).json({ error: 'Order not found.' });
-    return res.json(serializeOrder(order));
+    return res.json(req.authUser!.role === 'BUYER' ? serializeForBuyer(order) : req.authUser!.role === 'SELLER' ? serializeForSeller(order) : serializeOrder(order));
   } catch (error) { return next(error); }
 });
 
@@ -120,7 +147,8 @@ ordersRouter.post('/:id/payment-confirmation', ...buyerOnly, async (req, res, ne
     const data = z.object({ senderName: z.string().trim().min(2).max(120), transactionReference: z.string().trim().min(3).max(160) }).strict().parse(req.body);
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id } });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (order.paymentMethod !== PaymentMethod.opay || ![OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected].includes(order.status)) {
+    const paymentConfirmationStatuses: OrderStatus[] = [OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected];
+    if (order.paymentMethod !== PaymentMethod.opay || !paymentConfirmationStatuses.includes(order.status)) {
       return res.status(409).json({ error: 'Payment confirmation is not available for this order.' });
     }
     const now = new Date();
@@ -132,35 +160,100 @@ ordersRouter.post('/:id/payment-confirmation', ...buyerOnly, async (req, res, ne
       await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Payment Pending Verification', dateLabel: formatDate(now), completed: false, description: 'Transfer details submitted for Super Admin verification.' } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
+    return res.json(serializeForBuyer(updated));
+  } catch (error) { return next(error); }
+});
+
+
+ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], limit: '5mb' }), async (req, res, next) => {
+  try {
+    const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id } });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    const receiptUploadStatuses: OrderStatus[] = [OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected];
+    if (order.paymentMethod !== PaymentMethod.opay || !receiptUploadStatuses.includes(order.status)) return res.status(409).json({ error: 'Receipt upload is not available for this order.' });
+    const previous = paymentValue(order.paymentConfirmation);
+    if (typeof previous.senderName !== 'string' || previous.senderName.trim().length < 2 || typeof previous.transactionReference !== 'string' || previous.transactionReference.trim().length < 3) {
+      return res.status(409).json({ error: 'Submit your sender name and transaction reference before uploading the receipt.' });
+    }
+    const contentType = req.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '';
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const bytes = Buffer.isBuffer(req.body) ? req.body as Buffer : Buffer.alloc(0);
+    if (!allowed.includes(contentType) || bytes.length < 12 || bytes.length > 5 * 1024 * 1024) return res.status(400).json({ error: 'Upload JPG, PNG, WEBP or PDF up to 5 MB.' });
+    const valid = contentType === 'image/jpeg' ? bytes[0] === 255 && bytes[1] === 216
+      : contentType === 'image/png' ? bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+      : contentType === 'image/webp' ? bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP'
+      : bytes.toString('ascii', 0, 5) === '%PDF-';
+    if (!valid) return res.status(400).json({ error: 'File content does not match its selected type.' });
+    const ext = contentType === 'image/jpeg' ? 'jpg' : contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'pdf';
+    const path = order.id + '/' + randomBytes(16).toString('hex') + '.' + ext;
+    await uploadPaymentReceipt(path, bytes, contentType);
+    const now = new Date();
+    const paymentConfirmation = { ...previous, receiptPath: path, receiptMimeType: contentType, receiptUploadedAt: now.toISOString(), confirmedByBuyer: true, verifiedByAdmin: false, verifiedAt: null, adminNotes: null };
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.order.updateMany({ where: { id: order.id, buyerId: req.authUser!.id, status: order.status }, data: { status: OrderStatus.pending_verification, paymentConfirmation: paymentConfirmation as Prisma.InputJsonValue } });
+      if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
+      await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Receipt Submitted', dateLabel: formatDate(now), completed: false, description: 'Payment receipt submitted for Admin verification.' } });
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
+    return res.json(serializeForBuyer(updated));
+  } catch (error) { return next(error); }
+});
+
+ordersRouter.get('/admin/:id/payment-receipt', ...adminOnly, async (req, res, next) => {
+  try {
+    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    const path = paymentValue(order.paymentConfirmation).receiptPath;
+    if (typeof path !== 'string' || !path.startsWith(order.id + '/')) return res.status(404).json({ error: 'Payment receipt not found.' });
+    return res.json({ url: await createPaymentReceiptUrl(path), expiresIn: 300 });
+  } catch (error) { return next(error); }
+});
+
+ordersRouter.patch('/admin/:id/cod-approval', ...adminOnly, async (req, res, next) => {
+  try {
+    const body = z.object({ decision: z.enum(['approve', 'reject']), adminNotes: z.string().trim().min(2).max(1000).optional() }).strict().parse(req.body);
+    if (body.decision === 'reject' && !body.adminNotes) return res.status(400).json({ error: 'A rejection reason is required.' });
+    const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (order.paymentMethod !== PaymentMethod.cod || order.status !== OrderStatus.pending_order) return res.status(409).json({ error: 'COD order is not awaiting Admin approval.' });
+    const now = new Date();
+    const previous = paymentValue(order.paymentConfirmation);
+    const approved = body.decision === 'approve';
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.order.updateMany({ where: { id: order.id, status: OrderStatus.pending_order }, data: { status: approved ? OrderStatus.pending_order : OrderStatus.rejected, paymentConfirmation: { ...previous, adminApproved: approved, adminApprovedAt: now.toISOString(), adminNotes: body.adminNotes ?? null } as Prisma.InputJsonValue, ...(approved ? {} : { adminRejectionReason: body.adminNotes }) } });
+      if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
+      if (!approved) for (const item of order.items) await tx.product.update({ where: { id: item.productId }, data: { stockQuantity: { increment: item.quantity } } });
+      await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: approved ? 'COD Order Approved' : 'COD Order Rejected', dateLabel: formatDate(now), completed: approved, description: body.adminNotes ?? 'Cash on Delivery order approved by Admin.' } });
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
     return res.json(serializeOrder(updated));
   } catch (error) { return next(error); }
 });
 
 ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
   try {
-    const { status, reason } = z.object({ status: z.enum(['processing', 'dispatched', 'delivered', 'rejected']), reason: z.string().trim().max(1000).optional() }).strict().parse(req.body);
+    const { status, reason } = z.object({ status: z.enum(['processing', 'rejected']), reason: z.string().trim().max(1000).optional() }).strict().parse(req.body);
     const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (status === 'rejected' && !reason) return res.status(400).json({ error: 'A reason is required to reject an order.' });
     const payment = paymentValue(order.paymentConfirmation);
+    if (order.paymentMethod === PaymentMethod.cod && status !== 'rejected' && payment.adminApproved !== true) return res.status(409).json({ error: 'COD order must be approved by Admin before fulfillment.' });
     if (order.paymentMethod === PaymentMethod.opay && status !== 'rejected' && (order.status !== OrderStatus.payment_confirmed || payment.verifiedByAdmin !== true)) {
       return res.status(409).json({ error: 'OPay payment must be verified by Super Admin before fulfillment.' });
     }
     const allowed: Record<string, OrderStatus[]> = {
       processing: [OrderStatus.pending_order, OrderStatus.payment_confirmed],
-      dispatched: [OrderStatus.processing], delivered: [OrderStatus.dispatched],
       rejected: [OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.payment_confirmed],
     };
-    if (!allowed[status].includes(order.status)) return res.status(409).json({ error: `Cannot change order from ${order.status} to ${status}.` });
+    const allowedStatuses = allowed[status];
+    if (!allowedStatuses || !allowedStatuses.includes(order.status)) return res.status(409).json({ error: `Cannot change order from ${order.status} to ${status}.` });
     const now = new Date();
     const nextStatus = status as OrderStatus;
-    const trackingSort = status === 'processing' ? 2 : status === 'dispatched' ? 3 : status === 'delivered' ? 4 : 1;
+    const trackingSort = status === 'processing' ? 2 : 1;
     const updated = await prisma.$transaction(async tx => {
       const changes: Prisma.OrderUpdateManyMutationInput = {
         status: nextStatus,
         ...(status === 'rejected' ? { sellerRejectionReason: reason } : {}),
-        ...(status === 'dispatched' ? { dispatchedAt: now } : {}),
-        ...(status === 'delivered' ? { deliveredAt: now } : {}),
       };
       const changed = await tx.order.updateMany({ where: { id: order.id, sellerId: req.authUser!.id, status: order.status }, data: changes });
       if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
@@ -168,7 +261,86 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
         for (const item of order.items) await tx.product.update({ where: { id: item.productId }, data: { stockQuantity: { increment: item.quantity } } });
       }
       await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: trackingSort }, data: { title: status === 'rejected' ? 'Order Rejected' : status[0]!.toUpperCase() + status.slice(1), dateLabel: formatDate(now), completed: status !== 'rejected', description: reason || `Order ${status}.` } });
-      if (status === 'delivered') await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: { lt: trackingSort } }, data: { completed: true } });
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
+    return res.json(serializeForSeller(updated));
+  } catch (error) { return next(error); }
+});
+
+// Seller records the hand-off to a logistics provider after Admin payment/COD approval.
+ordersRouter.patch('/:id/logistics-handoff', ...sellerOnly, async (req, res, next) => {
+  try {
+    const body = z.object({
+      logisticsCompanyName: z.string().trim().min(2).max(160),
+      trackingNumber: z.string().trim().min(3).max(100),
+      notes: z.string().trim().max(1000).optional(),
+    }).strict().parse(req.body);
+    const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    const payment = paymentValue(order.paymentConfirmation);
+    const approved = order.paymentMethod === PaymentMethod.cod
+      ? payment.adminApproved === true
+      : order.status === OrderStatus.payment_confirmed && payment.verifiedByAdmin === true;
+    if (!approved) return res.status(409).json({ error: 'Admin must approve the order before logistics hand-off.' });
+    if (order.status !== OrderStatus.processing) return res.status(409).json({ error: 'Seller must mark the order as processing before logistics hand-off.' });
+    if (order.trackingNumber) return res.status(409).json({ error: 'A logistics tracking number has already been assigned.' });
+    const now = new Date();
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.order.updateMany({
+        where: { id: order.id, sellerId: req.authUser!.id, status: OrderStatus.processing, trackingNumber: null },
+        data: { status: OrderStatus.dispatched, logisticsCompanyName: body.logisticsCompanyName, trackingNumber: body.trackingNumber, logisticsStatus: 'handed_to_logistics', dispatchedAt: now },
+      });
+      if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
+      await tx.orderTrackingStep.create({ data: {
+        orderId: order.id, title: 'Handed to Logistics', dateLabel: formatDate(now), completed: true,
+        description: body.notes || `Seller handed the parcel to ${body.logisticsCompanyName}. Tracking: ${body.trackingNumber}`,
+        sortOrder: 5,
+      }});
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
+    return res.json(serializeForSeller(updated));
+  } catch (error) { return next(error); }
+});
+
+// Admin records verified logistics updates. Every update is appended to the permanent order timeline.
+ordersRouter.patch('/admin/:id/logistics-update', ...adminOnly, async (req, res, next) => {
+  try {
+    const body = z.object({
+      status: z.enum(['picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed']),
+      notes: z.string().trim().min(2).max(1000),
+    }).strict().parse(req.body);
+    const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!order.trackingNumber || !order.logisticsCompanyName || !order.logisticsStatus) {
+      return res.status(409).json({ error: 'Seller must record the logistics hand-off before tracking updates.' });
+    }
+    if (order.status === OrderStatus.delivered || order.status === OrderStatus.cancelled || order.status === OrderStatus.rejected) {
+      return res.status(409).json({ error: 'This order is already closed.' });
+    }
+    const allowedNext: Record<string, string[]> = {
+      handed_to_logistics: ['picked_up', 'in_transit', 'failed'],
+      picked_up: ['in_transit', 'failed'],
+      in_transit: ['out_for_delivery', 'failed'],
+      out_for_delivery: ['delivered', 'failed'],
+      failed: ['in_transit', 'out_for_delivery'],
+    };
+    const current = order.logisticsStatus || 'handed_to_logistics';
+    if (!allowedNext[current]?.includes(body.status)) return res.status(409).json({ error: `Cannot change logistics status from ${current} to ${body.status}.` });
+    const now = new Date();
+    const labels: Record<string, string> = {
+      picked_up: 'Picked Up by Logistics', in_transit: 'In Transit',
+      out_for_delivery: 'Out for Delivery', delivered: 'Delivered', failed: 'Delivery Attempt Failed',
+    };
+    const updated = await prisma.$transaction(async tx => {
+      await tx.order.update({ where: { id: order.id }, data: {
+        logisticsStatus: body.status,
+        ...(body.status === 'delivered' ? { status: OrderStatus.delivered, deliveredAt: now } : {}),
+      }});
+      await tx.orderTrackingStep.create({ data: {
+        orderId: order.id, title: labels[body.status]!, dateLabel: formatDate(now),
+        completed: body.status !== 'failed', description: body.notes,
+        sortOrder: 6 + order.trackingTimeline.length,
+      }});
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
     return res.json(serializeOrder(updated));
@@ -179,7 +351,8 @@ ordersRouter.post('/:id/cancel', ...buyerOnly, async (req, res, next) => {
   try {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, buyerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (![OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification].includes(order.status)) return res.status(409).json({ error: 'This order can no longer be cancelled.' });
+    const cancellableStatuses: OrderStatus[] = [OrderStatus.pending_order, OrderStatus.pending_payment, OrderStatus.pending_verification];
+    if (!cancellableStatuses.includes(order.status)) return res.status(409).json({ error: 'This order can no longer be cancelled.' });
     const now = new Date();
     const cancelled = await prisma.$transaction(async tx => {
       const changed = await tx.order.updateMany({ where: { id: order.id, buyerId: req.authUser!.id, status: order.status }, data: { status: OrderStatus.cancelled } });
@@ -188,7 +361,7 @@ ordersRouter.post('/:id/cancel', ...buyerOnly, async (req, res, next) => {
       await tx.orderTrackingStep.create({ data: { orderId: order.id, title: 'Order Cancelled', dateLabel: formatDate(now), completed: true, description: 'Order cancelled by buyer before fulfillment.', sortOrder: 10 } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
-    return res.json(serializeOrder(cancelled));
+    return res.json(serializeForBuyer(cancelled));
   } catch (error) { return next(error); }
 });
 
@@ -199,7 +372,7 @@ ordersRouter.patch('/admin/:id/payment-verification', ...adminOnly, async (req, 
     const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     const previous = paymentValue(order.paymentConfirmation);
-    if (order.paymentMethod !== PaymentMethod.opay || order.status !== OrderStatus.pending_verification || previous.confirmedByBuyer !== true) {
+    if (order.paymentMethod !== PaymentMethod.opay || order.status !== OrderStatus.pending_verification || previous.confirmedByBuyer !== true || typeof previous.receiptPath !== 'string') {
       return res.status(409).json({ error: 'Order is not awaiting OPay payment verification.' });
     }
     const now = new Date();

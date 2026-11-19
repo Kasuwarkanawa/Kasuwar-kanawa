@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   ShieldCheck,
@@ -45,7 +45,8 @@ import {
   Award,
   AlertTriangle,
 } from 'lucide-react';
-import { db } from '../db/database';
+import { authApi } from '../utils/authApi';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 import {
@@ -100,10 +101,141 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   >('dashboard');
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
+  const [backendOrders, setBackendOrders] = useState<Order[]>([]);
+  const [backendUsers, setBackendUsers] = useState<User[]>([]);
+  const [backendCategories, setBackendCategories] = useState<Category[]>([]);
+  const [backendAnnouncements, setBackendAnnouncements] = useState<Announcement[]>([]);
+  const [backendOrdersError, setBackendOrdersError] = useState<string | null>(null);
+  const [backendBuyerReports, setBackendBuyerReports] = useState<BuyerReport[]>([]);
+  const [backendProductReports, setBackendProductReports] = useState<ProductReport[]>([]);
+  const [backendSellerReports, setBackendSellerReports] = useState<SellerReport[]>([]);
+  const [buyerReportsLoading, setBuyerReportsLoading] = useState(false);
+  const [buyerReportsError, setBuyerReportsError] = useState<string | null>(null);
+  const [receiptLinks, setReceiptLinks] = useState<Record<string, string>>({});
+  const [receiptBusy, setReceiptBusy] = useState<string | null>(null);
+  const [pendingProductsLoading, setPendingProductsLoading] = useState(false);
+  const [pendingProductsError, setPendingProductsError] = useState<string | null>(null);
+  const [productDecisionBusy, setProductDecisionBusy] = useState<string | null>(null);
+  const [backendFlashSales, setBackendFlashSales] = useState<FlashSale[]>([]);
+  const [backendPromotions, setBackendPromotions] = useState<PromotionalAdvertisement[]>([]);
+  const [backendApprovedProducts, setBackendApprovedProducts] = useState<Product[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [promotionSaving, setPromotionSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    Promise.all([
+      marketplaceApi.adminUsers.list({ take: 100 }),
+      marketplaceApi.adminCategories.list(),
+      marketplaceApi.content.adminAnnouncements(),
+    ])
+      .then(([users, categories, announcements]) => {
+        if (!active) return;
+        setBackendUsers(users as User[]);
+        setBackendCategories(categories);
+        setBackendAnnouncements(announcements);
+      })
+      .catch((error) => {
+        if (active) showNotification(error instanceof Error ? error.message : 'Unable to load Admin records from Supabase.');
+      });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    setPendingProductsLoading(true);
+    marketplaceApi.adminProducts.pending()
+      .then((products) => { if (active) { setPendingBackendProducts(products); setPendingProductsError(null); } })
+      .catch((error) => { if (active) setPendingProductsError(error instanceof Error ? error.message : 'Unable to load pending products.'); })
+      .finally(() => { if (active) setPendingProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    marketplaceApi.orders.adminAll()
+      .then((orders) => { if (active) { setBackendOrders(orders as Order[]); setBackendOrdersError(null); } })
+      .catch((error) => { if (active) setBackendOrdersError(error instanceof Error ? error.message : 'Unable to load backend orders.'); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    setContentLoading(true);
+    Promise.all([
+      marketplaceApi.content.adminFlashSales(),
+      marketplaceApi.content.adminPromotions(),
+      marketplaceApi.catalog.list({ take: 100 }),
+    ])
+      .then(([sales, promotions, products]) => {
+        if (!active) return;
+        setBackendFlashSales(sales);
+        setBackendPromotions(promotions);
+        setBackendApprovedProducts(products);
+        setContentError(null);
+      })
+      .catch((error) => {
+        if (active) setContentError(error instanceof Error ? error.message : 'Unable to load promotional content from the database.');
+      })
+      .finally(() => { if (active) setContentLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin' || activeTab !== 'reports') return;
+    let active = true;
+    setBuyerReportsLoading(true);
+    marketplaceApi.adminReports.list()
+      .then((data) => {
+        if (!active) return;
+        setBackendBuyerReports((data.buyers || []).map((report: any) => ({
+          id: report.id,
+          sellerId: report.seller?.id ?? report.sellerId,
+          sellerName: report.seller?.fullName ?? 'Seller',
+          sellerBusinessName: report.seller?.businessName ?? '',
+          buyerId: report.buyer?.id ?? report.buyerId,
+          buyerName: report.buyer?.fullName ?? 'Buyer',
+          buyerPhone: report.buyer?.phone ?? '',
+          orderNumber: report.orderNumber ?? undefined,
+          reason: report.reason,
+          details: report.details,
+          status: report.status,
+          adminNotes: report.adminNotes ?? undefined,
+          createdAt: report.createdAt,
+        })));
+        setBackendProductReports((data.products || []).map((report: any) => ({
+          id: report.id, productId: report.productId, productName: report.product?.name ?? 'Product',
+          buyerId: report.reporter?.id ?? report.reporterId, buyerName: report.reporter?.fullName ?? 'Buyer',
+          buyerPhone: report.reporter?.phone ?? '', reason: report.reason, details: report.details,
+          status: report.status, adminNotes: report.adminNotes ?? undefined, createdAt: report.createdAt,
+        })));
+        setBackendSellerReports((data.sellers || []).map((report: any) => ({
+          id: report.id, buyerId: report.buyer?.id ?? report.buyerId, buyerName: report.buyer?.fullName ?? 'Buyer',
+          buyerPhone: '', sellerId: report.seller?.id ?? report.sellerId, sellerName: report.seller?.fullName ?? 'Seller',
+          sellerBusinessName: report.seller?.businessName ?? '', orderNumber: report.orderNumber ?? undefined,
+          reason: report.reason, details: report.details, status: report.status,
+          adminNotes: report.adminNotes ?? undefined, createdAt: report.createdAt,
+        })));
+        setBuyerReportsError(null);
+      })
+      .catch((error) => {
+        if (active) setBuyerReportsError(error instanceof Error ? error.message : 'Unable to load buyer reports from database.');
+      })
+      .finally(() => { if (active) setBuyerReportsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, activeTab, refreshKey]);
 
   // Authentication State for Super Admin Gate
-  const [adminUsername, setAdminUsername] = useState('admin@kasuwarkanawa.com');
-  const [adminPassword, setAdminPassword] = useState('adminpassword');
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -121,6 +253,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [selectedBuyerForHistory, setSelectedBuyerForHistory] = useState<User | null>(null);
   const [selectedSellerForHistory, setSelectedSellerForHistory] = useState<User | null>(null);
   const [selectedProductForReviews, setSelectedProductForReviews] = useState<Product | null>(null);
+  const [backendProductReviews, setBackendProductReviews] = useState<ProductReview[]>([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
 
   // User Management Modals
@@ -197,6 +330,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [ancType, setAncType] = useState<'info' | 'discount' | 'alert' | 'event'>('discount');
   const [ancIsPublished, setAncIsPublished] = useState(true);
 
+  const handleOpenCreatePromotion = () => {
+    setEditingAd(null); setAdTitle(''); setAdDescription(''); setAdBadge('PROMO!');
+    setAdDiscountTag('Save 20%'); setAdImage('https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80');
+    setAdLinkText('Shop Now'); setAdLinkUrl('#popular-products-section'); setAdIsActive(true); setIsCreatingAd(true);
+  };
+
+  const handleOpenEditPromotion = (ad: PromotionalAdvertisement) => {
+    setEditingAd(ad); setAdTitle(ad.title); setAdDescription(ad.description); setAdBadge(ad.badge || 'PROMO!');
+    setAdDiscountTag(ad.discountTag || ''); setAdImage(ad.image); setAdLinkText(ad.linkText || 'Shop Now');
+    setAdLinkUrl(ad.linkUrl || '#popular-products-section'); setAdIsActive(ad.isActive); setIsCreatingAd(true);
+  };
+
+  const handleSavePromotion = async (event: React.FormEvent) => {
+    event.preventDefault(); setPromotionSaving(true);
+    const payload = { title: adTitle.trim(), description: adDescription.trim(), badge: adBadge.trim() || undefined,
+      discountTag: adDiscountTag.trim() || undefined, image: adImage.trim(), linkText: adLinkText.trim() || 'Shop Now',
+      linkUrl: adLinkUrl.trim() || '#popular-products-section', isActive: adIsActive };
+    try {
+      const saved = editingAd ? await marketplaceApi.content.updatePromotion(editingAd.id, payload) : await marketplaceApi.content.createPromotion(payload);
+      setBackendPromotions((previous) => editingAd ? previous.map((item) => item.id === saved.id ? saved : item) : [saved, ...previous]);
+      setIsCreatingAd(false); showNotification(editingAd ? 'Promotion updated in database.' : 'Promotion published to database.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not save promotion.'); }
+    finally { setPromotionSaving(false); }
+  };
+
+  const handleTogglePromotion = async (ad: PromotionalAdvertisement) => {
+    try {
+      const updated = await marketplaceApi.content.updatePromotion(ad.id, { isActive: !ad.isActive });
+      setBackendPromotions((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+      showNotification(updated.isActive ? 'Promotion is now live.' : 'Promotion paused.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not update promotion status.'); }
+  };
+
+  const handleDeletePromotion = async (ad: PromotionalAdvertisement) => {
+    if (!window.confirm(`Delete promotion "${ad.title}"?`)) return;
+    try {
+      await marketplaceApi.content.deletePromotion(ad.id);
+      setBackendPromotions((previous) => previous.filter((item) => item.id !== ad.id));
+      showNotification('Promotion deleted from database.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not delete promotion.'); }
+  };
+
   // Payment Rejection State
   const [rejectingOrder, setRejectingOrder] = useState<Order | null>(null);
   const [rejectionReason, setRejectionReason] = useState('Payment transfer reference could not be verified in official OPay portal.');
@@ -204,28 +379,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Notification Toast in modal
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Logistics Management - Batch 2
-  const [logisticsSection, setLogisticsSection] = useState<'companies' | 'approvals' | 'deliveries' | 'agents' | 'tracking'>('companies');
-  const [showLogisticsForm, setShowLogisticsForm] = useState(false);
-  const [logisticsName, setLogisticsName] = useState('');
-  const [logisticsOwner, setLogisticsOwner] = useState('');
-  const [logisticsEmail, setLogisticsEmail] = useState('');
-  const [logisticsPhone, setLogisticsPhone] = useState('');
-  const [logisticsWhatsApp, setLogisticsWhatsApp] = useState('');
-  const [logisticsPassword, setLogisticsPassword] = useState('');
-  const [logisticsAddress, setLogisticsAddress] = useState('');
-  const [logisticsCity, setLogisticsCity] = useState('');
-  const [logisticsState, setLogisticsState] = useState('Kano');
-  const [logisticsLogo, setLogisticsLogo] = useState('');
-  const [logisticsFee, setLogisticsFee] = useState('2500');
-  const [logisticsAdminNotes, setLogisticsAdminNotes] = useState('');
-  const [selectedLogisticsAssignments, setSelectedLogisticsAssignments] = useState<Record<string, string>>({});
-
+  const [selectedBackendLogisticsStatuses, setSelectedBackendLogisticsStatuses] = useState<Record<string, 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed'>>({});
+  const [logisticsUpdateBusy, setLogisticsUpdateBusy] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  useEffect(() => {
+    if (!isOpen || !selectedProductForReviews) { setBackendProductReviews([]); return; }
+    let active = true;
+    marketplaceApi.catalog.reviews(selectedProductForReviews.id)
+      .then((reviews) => { if (active) setBackendProductReviews(reviews); })
+      .catch((error) => { if (active) showNotification(error instanceof Error ? error.message : 'Unable to load product reviews.'); });
+    return () => { active = false; };
+  }, [isOpen, selectedProductForReviews?.id]);
 
   if (!isOpen) return null;
 
@@ -234,167 +403,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     if (onDataChanged) onDataChanged();
   };
 
-  const handleLogisticsLogoUpload = (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      showNotification('Please choose an image file for the company logo.');
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      showNotification('Logo must be 3MB or smaller.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setLogisticsLogo(String(reader.result || ''));
-    reader.readAsDataURL(file);
-  };
-
-  const resetLogisticsForm = () => {
-    setLogisticsName(''); setLogisticsOwner(''); setLogisticsEmail('');
-    setLogisticsPhone(''); setLogisticsWhatsApp(''); setLogisticsPassword('');
-    setLogisticsAddress(''); setLogisticsCity(''); setLogisticsState('Kano');
-    setLogisticsLogo(''); setLogisticsFee('2500'); setLogisticsAdminNotes('');
-  };
-
-  const handleAddLogisticsCompany = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!logisticsName.trim() || !logisticsOwner.trim() || !logisticsEmail.trim() ||
-        !logisticsPhone.trim() || !logisticsPassword || !logisticsAddress.trim() ||
-        !logisticsCity.trim() || !logisticsState.trim()) {
-      showNotification('Please complete all required logistics company fields.');
-      return;
-    }
-    const fee = Number(logisticsFee);
-    if (!Number.isFinite(fee) || fee < 0) {
-      showNotification('Enter a valid delivery fee.');
-      return;
-    }
-    const result = db.registerLogisticsCompany(
-      {
-        fullName: logisticsOwner.trim(),
-        phone: logisticsPhone.trim(),
-        whatsAppNumber: logisticsWhatsApp.trim() || logisticsPhone.trim(),
-        email: logisticsEmail.trim(),
-        password: logisticsPassword,
-        address: logisticsAddress.trim(),
-        city: logisticsCity.trim(),
-        state: logisticsState.trim(),
-        area: logisticsCity.trim(),
-        profileImage: logisticsLogo || undefined,
-      },
-      {
-        companyName: logisticsName.trim(),
-        logo: logisticsLogo || undefined,
-        contactName: logisticsOwner.trim(),
-        phone: logisticsPhone.trim(),
-        whatsAppNumber: logisticsWhatsApp.trim() || logisticsPhone.trim(),
-        email: logisticsEmail.trim(),
-        address: logisticsAddress.trim(),
-        city: logisticsCity.trim(),
-        state: logisticsState.trim(),
-        serviceAreas: [{ state: logisticsState.trim(), cities: [logisticsCity.trim()] }],
-        pricing: [{ state: logisticsState.trim(), city: logisticsCity.trim(), fee, currency: 'NGN' }],
-      }
-    );
-    if (!result.success) {
-      showNotification(result.error || 'Could not register logistics company.');
-      return;
-    }
-    resetLogisticsForm();
-    setShowLogisticsForm(false);
-    setLogisticsSection('approvals');
-    triggerRefresh();
-    showNotification('Logistics company registered and added to pending approvals.');
-  };
-
-  const handleLogisticsApproval = (companyId: string, status: 'approved' | 'rejected') => {
-    const updated = db.adminSetLogisticsApproval(companyId, status, logisticsAdminNotes.trim() || undefined, currentUser?.id);
-    if (!updated) {
-      showNotification('Could not update logistics approval.');
-      return;
-    }
-    setLogisticsAdminNotes('');
-    triggerRefresh();
-    showNotification(status === 'approved' ? 'Logistics company approved.' : 'Logistics company rejected.');
-  };
-
-  const handleAssignOrderToLogistics = (orderId: string, currentCompanyId?: string) => {
-    const companyId = selectedLogisticsAssignments[orderId] || currentCompanyId || '';
-    if (!companyId) {
-      showNotification('Please select an approved logistics company.');
-      return;
-    }
-    try {
-      const updated = db.adminAssignOrderToLogistics(orderId, companyId, currentUser?.id);
-      if (!updated) {
-        showNotification('Order not found. Please refresh and try again.');
-        return;
-      }
-      setSelectedLogisticsAssignments((previous) => ({ ...previous, [orderId]: companyId }));
-      triggerRefresh();
-      showNotification('Order assigned to logistics company successfully.');
-    } catch (error) {
-      showNotification(error instanceof Error ? error.message : 'Could not assign logistics company.');
-    }
-  };
-
-  const handleUnassignOrderFromLogistics = (orderId: string) => {
-    try {
-      const updated = db.adminUnassignOrderFromLogistics(orderId);
-      if (!updated) {
-        showNotification('Order not found. Please refresh and try again.');
-        return;
-      }
-      setSelectedLogisticsAssignments((previous) => {
-        const next = { ...previous };
-        delete next[orderId];
-        return next;
-      });
-      triggerRefresh();
-      showNotification('Logistics company removed from order.');
-    } catch (error) {
-      showNotification(error instanceof Error ? error.message : 'Could not remove logistics assignment.');
-    }
-  };
-
-
   // Check admin authorization
   const isSuperAdmin = currentUser?.accountType === 'admin';
 
   // Handle Admin Login Action
-  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError(null);
-
-    setTimeout(() => {
-      const res = db.adminLogin(adminUsername, adminPassword);
+    try {
+      const user = await authApi.loginAdmin({ identifier: adminUsername.trim(), password: adminPassword });
+      if (onAdminLogin) onAdminLogin(user);
+      triggerRefresh();
+      showNotification(`Welcome back, ${user.fullName}! Super Admin access granted.`);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Super Admin authentication failed.');
+    } finally {
       setIsLoggingIn(false);
-      if (res.success && res.user) {
-        if (onAdminLogin) onAdminLogin(res.user);
-        triggerRefresh();
-        showNotification(`Welcome back, ${res.user.fullName}! Super Admin access granted.`);
-      } else {
-        setLoginError(res.error || 'Authentication failed. Please verify Super Admin credentials.');
-      }
-    }, 400);
+    }
   };
 
   // Data queries from database
-  const allUsers = db.getUsers();
-  const allProducts = db.getProducts();
-  const allOrders = db.getOrders();
-  const allCategories = db.getCategories();
-  const productReports = db.getReports();
-  const buyerReports = db.getBuyerReports();
-  const sellerReports = db.getSellerReports();
-  const allFlashSales = db.getFlashSales();
-  const allAds = db.getPromotionalAds();
-  const allAnnouncements = db.getAnnouncements();
-  const dispatchedAndDelivered = db.getDispatchedAndDeliveredOrders();
-  const logisticsCompanies = db.getLogisticsCompanies();
-  const logisticsAgents = db.getDeliveryAgents();
-  const logisticsShipments = db.getLogisticsShipments();
+  const allUsers = backendUsers;
+  const allProducts = [...backendApprovedProducts, ...pendingBackendProducts];
+  const allOrders = backendOrders;
+  const allCategories = backendCategories;
+  const productReports = backendProductReports;
+  const buyerReports = backendBuyerReports;
+  const sellerReports = backendSellerReports;
+  const allFlashSales = backendFlashSales;
+  const allAds = backendPromotions;
+  const allAnnouncements = backendAnnouncements;
+  const dispatchedAndDelivered = backendOrders.filter((order) => ['dispatched', 'delivered'].includes(order.status));
+  const logisticsCompanies: LogisticsCompany[] = [];
+  const logisticsAgents: DeliveryAgent[] = [];
+  const logisticsShipments: LogisticsShipment[] = [];
   const pendingLogisticsCompanies = logisticsCompanies.filter((company) => company.approvalStatus === 'pending');
   const approvedLogisticsCompanies = logisticsCompanies.filter((company) => company.approvalStatus === 'approved');
 
@@ -511,55 +554,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingUser(true);
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      db.adminUpdateUser(editingUser.id, {
-        fullName: userFullName,
-        email: userEmail,
-        phone: userPhone,
-        whatsAppNumber: userWhatsApp,
-        address: userAddress,
-        businessName: userBusinessName,
-        accountType: userRole,
-        status: userStatus,
-        profileImage: userProfileImage.trim() || undefined,
-      });
-      showNotification(`User ${userFullName} updated successfully!`);
-    } else {
-      db.adminAddUser({
+    if (!editingUser) {
+      showNotification('New buyers and sellers must register through the secure registration form.');
+      return;
+    }
+    try {
+      const result = await marketplaceApi.adminUsers.updateProfile(editingUser.id, {
         fullName: userFullName,
         email: userEmail,
         phone: userPhone,
         whatsAppNumber: userWhatsApp || userPhone,
         address: userAddress,
-        businessAddress: userAddress,
-        city: 'Kano City',
-        state: 'Kano State',
-        area: 'Kano Municipal',
-        accountType: userRole,
-        status: userStatus,
-        profileImage: userProfileImage.trim() || undefined,
-        businessName: userRole === 'seller' ? userBusinessName || `${userFullName} Trade Hub` : undefined,
+        businessName: userBusinessName || null,
+        profileImage: userProfileImage.trim() || null,
       });
-      showNotification(`New user ${userFullName} created successfully!`);
-    }
-    setIsAddingUser(false);
-    triggerRefresh();
-  };
-
-  const handleDeleteUser = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to permanently delete user "${name}"?`)) {
-      db.adminDeleteUser(id);
-      showNotification(`User ${name} deleted.`);
+      setBackendUsers((previous) => previous.map((user) => user.id === editingUser.id ? result.user as User : user));
+      showNotification(`User ${userFullName} updated successfully!`);
+      setIsAddingUser(false);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update user profile.');
     }
   };
 
-  const handleSetUserStatus = (id: string, status: 'active' | 'suspended' | 'rejected' | 'approved') => {
-    db.adminSetUserStatus(id, status);
-    showNotification(`User status changed to "${status.toUpperCase()}".`);
-    triggerRefresh();
+  const handleDeleteUser = (_id: string, name: string) => {
+    showNotification(`Permanent deletion is disabled for ${name}. Suspend the account instead to preserve the audit trail.`);
+  };
+
+  const handleSetUserStatus = async (id: string, status: 'active' | 'suspended' | 'rejected' | 'approved') => {
+    const apiStatus = status === 'approved' || status === 'active' ? 'ACTIVE' : status === 'suspended' ? 'SUSPENDED' : 'REJECTED';
+    try {
+      const result = await marketplaceApi.adminUsers.setStatus(id, apiStatus);
+      setBackendUsers((previous) => previous.map((user) => user.id === id ? result.user as User : user));
+      showNotification(`User status changed to "${status.toUpperCase()}".`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update account status.');
+    }
   };
 
   // Product Handlers
@@ -589,73 +622,86 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingProduct(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const seller = db.getUserById(prodSellerId) || sellersList[0];
-
-    if (editingProduct) {
-      db.updateProduct(editingProduct.id, {
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOrigPrice),
-        discountPercentage: Number(prodDiscountPercent),
-        image: prodImage,
-        description: prodDescription,
-        sellerId: seller?.id,
-        sellerName: seller?.fullName,
-        sellerBusinessName: seller?.businessName,
-        sellerPhone: seller?.phone,
-        sellerWhatsApp: seller?.whatsAppNumber,
-      });
-      showNotification(`Product "${prodName}" updated successfully!`);
-    } else {
-      db.addProduct({
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOrigPrice),
-        discountPercentage: Number(prodDiscountPercent),
-        image: prodImage,
-        description: prodDescription,
-        rating: 5.0,
-        reviewsCount: 1,
-        sellerId: seller?.id || 'usr-seller-1',
-        sellerName: seller?.fullName || 'Alhaji Danladi Merchant',
-        sellerBusinessName: seller?.businessName || 'Danladi Textiles & Brocade Hub',
-        sellerPhone: seller?.phone || '07066300079',
-        sellerWhatsApp: seller?.whatsAppNumber || '2347066300079',
-        isApproved: true,
-        approvalStatus: 'approved',
-        inStock: true,
-        stockLeft: 30,
-        stockQuantity: 30,
-      });
-      showNotification(`New product "${prodName}" created and published!`);
+    if (!editingProduct) {
+      showNotification('Products must be created by an approved Seller account.');
+      setIsAddingProduct(false);
+      return;
     }
-    setIsAddingProduct(false);
-    triggerRefresh();
-  };
-
-  const handleDeleteProduct = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete product "${name}"?`)) {
-      db.deleteProduct(id);
-      showNotification(`Product "${name}" deleted.`);
+    try {
+      const updated = await marketplaceApi.adminProducts.update(editingProduct.id, {
+        name: prodName, category: prodCategory, price: Number(prodPrice),
+        originalPrice: Number(prodOrigPrice), discountPercentage: Number(prodDiscountPercent),
+        image: prodImage, description: prodDescription,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      setPendingBackendProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification(`Product "${prodName}" updated in Supabase.`);
+      setIsAddingProduct(false);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update product.');
     }
   };
 
-  const handleApproveProduct = (id: string, approve: boolean) => {
-    db.adminApproveProduct(id, approve);
-    showNotification(approve ? 'Product APPROVED for Public Marketplace.' : 'Product REJECTED.');
-    triggerRefresh();
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (!window.confirm(`Remove product "${name}" from the public marketplace?`)) return;
+    try {
+      await marketplaceApi.adminProducts.remove(id);
+      setBackendApprovedProducts((items) => items.filter((item) => item.id !== id));
+      setPendingBackendProducts((items) => items.filter((item) => item.id !== id));
+      showNotification(`Product "${name}" removed from the public marketplace.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove product.');
+    }
+  };
+
+  const handleApproveProduct = async (id: string, approve: boolean) => {
+    const backendProduct = pendingBackendProducts.some((product) => product.id === id);
+    if (backendProduct) {
+      setProductDecisionBusy(id);
+      try {
+        await marketplaceApi.adminProducts.setApproval(id, approve ? 'APPROVED' : 'REJECTED');
+        setPendingBackendProducts((items) => items.filter((product) => product.id !== id));
+        showNotification(approve ? 'Product approved and published to the public marketplace.' : 'Product rejected.');
+        triggerRefresh();
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to update product approval.');
+      } finally {
+        setProductDecisionBusy(null);
+      }
+      return;
+    }
+    showNotification('This product is not in the Supabase pending-approval queue. Refresh the Admin panel and try again.');
+  };
+
+  const handleLoadBackendReceipt = async (orderId: string) => {
+    setReceiptBusy(orderId);
+    try {
+      const result = await marketplaceApi.orders.receiptUrl(orderId);
+      setReceiptLinks((previous) => ({ ...previous, [orderId]: result.url }));
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to open payment receipt.');
+    } finally {
+      setReceiptBusy(null);
+    }
   };
 
   // Payment Handlers (OPay)
-  const handleConfirmPayment = (orderId: string) => {
-    db.adminApprovePayment(orderId);
-    showNotification('Payment CONFIRMED! Order updated for Buyer and Seller.');
-    triggerRefresh();
+  const handleConfirmPayment = async (orderId: string) => {
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveOpay(orderId, 'approve') as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('Payment confirmed by Super Admin. Buyer and Seller order status updated.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to verify payment.');
+      }
+      return;
+    }
+    showNotification('This order is not in the Supabase order list. Refresh and try again.');
   };
 
   const handleOpenRejectPayment = (order: Order) => {
@@ -663,27 +709,75 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setRejectionReason('Payment transfer reference could not be verified in official OPay portal.');
   };
 
-  const handleConfirmRejectPayment = () => {
+  const handleConfirmRejectPayment = async () => {
     if (!rejectingOrder) return;
-    db.adminRejectPayment(rejectingOrder.id, rejectionReason);
-    showNotification('Payment REJECTED. Buyer notified of rejection reason.');
-    setRejectingOrder(null);
-    triggerRefresh();
+    if (backendOrders.some((order) => order.id === rejectingOrder.id)) {
+      try {
+        const updated = await marketplaceApi.orders.approveOpay(rejectingOrder.id, 'reject', rejectionReason) as Order;
+        setBackendOrders((items) => items.map((order) => order.id === rejectingOrder.id ? updated : order));
+        showNotification('Payment rejected. Buyer will see the rejection status.');
+        setRejectingOrder(null);
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to reject payment.');
+      }
+      return;
+    }
+    showNotification('This order is not in the Supabase order list. Refresh and try again.');
   };
 
   // Order Handlers
-  const handleApproveOrder = (orderId: string) => {
-    db.adminApproveOrder(orderId);
-    showNotification('Order APPROVED and sent to Seller for processing.');
-    triggerRefresh();
+  const handleApproveOrder = async (orderId: string) => {
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveCod(orderId, 'approve') as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('COD order approved. Seller can now see Buyer delivery details.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to approve COD order.');
+      }
+      return;
+    }
+    showNotification('This COD order is not in the Supabase order list. Refresh and try again.');
   };
 
-  const handleRejectOrder = (orderId: string) => {
+  const handleRejectOrder = async (orderId: string) => {
     const reason = window.prompt('Enter reason for rejecting this order:', 'Order rejected by Super Admin in CPanel.');
-    if (reason) {
-      db.adminRejectOrder(orderId, reason);
-      showNotification('Order REJECTED.');
-      triggerRefresh();
+    if (!reason) return;
+    if (backendOrders.some((order) => order.id === orderId)) {
+      try {
+        const updated = await marketplaceApi.orders.approveCod(orderId, 'reject', reason) as Order;
+        setBackendOrders((items) => items.map((order) => order.id === orderId ? updated : order));
+        showNotification('COD order rejected.');
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to reject COD order.');
+      }
+      return;
+    }
+    showNotification('This COD order is not in the Supabase order list. Refresh and try again.');
+  };
+
+  const handleBackendLogisticsUpdate = async (order: Order) => {
+    const status = selectedBackendLogisticsStatuses[order.id];
+    if (!status) {
+      showNotification('Select the next logistics status first.');
+      return;
+    }
+    const notes = window.prompt('Enter the verified logistics update / note:');
+    if (!notes?.trim()) return;
+    setLogisticsUpdateBusy(order.id);
+    try {
+      const updated = await marketplaceApi.orders.updateLogisticsStatus(order.id, status, notes.trim()) as Order;
+      setBackendOrders((items) => items.map((item) => item.id === order.id ? updated : item));
+      setSelectedBackendLogisticsStatuses((items) => {
+        const next = { ...items };
+        delete next[order.id];
+        return next;
+      });
+      showNotification('Logistics progress saved. Buyer and Seller can now see the updated tracking timeline.');
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to save logistics progress.');
+    } finally {
+      setLogisticsUpdateBusy(null);
     }
   };
 
@@ -708,37 +802,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingCategory(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingCategory) {
-      db.updateCategory(editingCategory.id, {
-        name: catName,
-        hausaName: catHausaName,
-        description: catDescription,
-        image: catImage,
-        iconName: catIconName,
-      });
-      showNotification(`Category "${catName}" updated.`);
-    } else {
-      db.createCategory({
-        name: catName,
-        hausaName: catHausaName,
-        description: catDescription,
-        image: catImage,
-        iconName: catIconName,
-        itemCount: 0,
-      });
-      showNotification(`Category "${catName}" created.`);
+    const payload = { name: catName, hausaName: catHausaName, description: catDescription, image: catImage, iconName: catIconName };
+    try {
+      const saved = editingCategory
+        ? await marketplaceApi.adminCategories.update(editingCategory.id, payload)
+        : await marketplaceApi.adminCategories.create(payload);
+      setBackendCategories((items) => editingCategory
+        ? items.map((item) => item.id === saved.id ? saved : item)
+        : [...items, saved]);
+      showNotification(`Category "${catName}" saved in Supabase.`);
+      setIsAddingCategory(false);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to save category.');
     }
-    setIsAddingCategory(false);
-    triggerRefresh();
   };
 
-  const handleDeleteCategory = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove category "${name}"?`)) {
-      db.deleteCategory(id);
-      showNotification(`Category "${name}" removed.`);
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to remove category "${name}"?`)) return;
+    try {
+      await marketplaceApi.adminCategories.remove(id);
+      setBackendCategories((items) => items.filter((item) => item.id !== id));
+      showNotification(`Category "${name}" removed from Supabase.`);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove category.');
     }
   };
 
@@ -750,7 +840,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setFsDiscount(25);
     setFsStartTime(new Date().toISOString().slice(0, 16));
     setFsEndTime(new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16));
-    setFsProductIds(allProducts.slice(0, 4).map((p) => p.id));
+    setFsProductIds(backendApprovedProducts.slice(0, 4).map((p) => p.id));
     setFsIsActive(true);
     setIsCreatingFlashSale(true);
   };
@@ -767,40 +857,43 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsCreatingFlashSale(true);
   };
 
-  const handleSaveFlashSale = (e: React.FormEvent) => {
+  const handleSaveFlashSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingFlashSale) {
-      db.updateFlashSale(editingFlashSale.id, {
-        title: fsTitle,
-        description: fsDescription,
-        discountPercentage: Number(fsDiscount),
-        startTime: new Date(fsStartTime).toISOString(),
-        endTime: new Date(fsEndTime).toISOString(),
-        productIds: fsProductIds,
-        isActive: fsIsActive,
-      });
-      showNotification('Flash Sale updated!');
-    } else {
-      db.createFlashSale({
-        title: fsTitle,
-        description: fsDescription,
-        discountPercentage: Number(fsDiscount),
-        startTime: new Date(fsStartTime).toISOString(),
-        endTime: new Date(fsEndTime).toISOString(),
-        productIds: fsProductIds,
-        isActive: fsIsActive,
-      });
-      showNotification('Flash Sale created and activated on homepage!');
+    if (fsProductIds.length === 0) { showNotification('Select at least one approved product for the Flash Sale.'); return; }
+    if (new Date(fsEndTime) <= new Date(fsStartTime)) { showNotification('Flash Sale end time must be after its start time.'); return; }
+    const payload = {
+      title: fsTitle.trim(),
+      description: fsDescription.trim(),
+      discountPercentage: Number(fsDiscount),
+      startTime: new Date(fsStartTime).toISOString(),
+      endTime: new Date(fsEndTime).toISOString(),
+      productIds: fsProductIds.filter((id) => backendApprovedProducts.some((product) => product.id === id)),
+      isActive: fsIsActive,
+    };
+    try {
+      const saved = editingFlashSale
+        ? await marketplaceApi.content.updateFlashSale(editingFlashSale.id, payload)
+        : await marketplaceApi.content.createFlashSale(payload);
+      setBackendFlashSales((previous) => editingFlashSale
+        ? previous.map((sale) => sale.id === saved.id ? saved : sale)
+        : [saved, ...previous]);
+      setIsCreatingFlashSale(false);
+      showNotification(editingFlashSale ? 'Flash Sale updated in database.' : 'Flash Sale saved to database.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not save Flash Sale.');
     }
-    setIsCreatingFlashSale(false);
-    triggerRefresh();
   };
 
-  const handleDeleteFlashSale = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this Flash Sale?')) {
-      db.deleteFlashSale(id);
-      showNotification('Flash Sale deleted.');
+  const handleDeleteFlashSale = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this Flash Sale?')) return;
+    try {
+      await marketplaceApi.content.deleteFlashSale(id);
+      setBackendFlashSales((previous) => previous.filter((sale) => sale.id !== id));
+      showNotification('Flash Sale deleted from database.');
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not delete Flash Sale.');
     }
   };
 
@@ -815,54 +908,91 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setDiscIsFlashSale(prod.isFlashSale || false);
   };
 
-  const handleSaveDiscount = (e: React.FormEvent) => {
+  const handleSaveDiscount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDiscountProduct) return;
-
-    db.setProductDiscount(editingDiscountProduct.id, {
-      originalPrice: Number(discOriginalPrice),
-      price: Number(discPrice),
-      discountPercentage: Number(discPercentage),
-      isSpecialOffer: discIsSpecialOffer,
-      isFlashSale: discIsFlashSale,
-    });
-
-    showNotification(`Discount applied to "${editingDiscountProduct.name}"!`);
-    setEditingDiscountProduct(null);
-    triggerRefresh();
+    try {
+      const updated = await marketplaceApi.adminProducts.update(editingDiscountProduct.id, {
+        originalPrice: Number(discOriginalPrice),
+        price: Number(discPrice),
+        discountPercentage: Number(discPercentage),
+        isSpecialOffer: discIsSpecialOffer,
+        isFlashSale: discIsFlashSale,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification(`Discount applied to "${editingDiscountProduct.name}" in Supabase.`);
+      setEditingDiscountProduct(null);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to save product discount.');
+    }
   };
 
-  const handleRemoveDiscount = (prodId: string) => {
-    db.removeProductDiscount(prodId);
-    showNotification('Product discount removed.');
-    triggerRefresh();
+  const handleRemoveDiscount = async (prodId: string) => {
+    const product = allProducts.find((item) => item.id === prodId);
+    if (!product) return;
+    try {
+      const updated = await marketplaceApi.adminProducts.update(prodId, {
+        price: product.originalPrice || product.price,
+        originalPrice: product.originalPrice || product.price,
+        discountPercentage: 0,
+        isSpecialOffer: false,
+        isFlashSale: false,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification('Product discount removed from Supabase.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove product discount.');
+    }
   };
 
   // Report Actions
-  const handleUpdateProductReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateProductReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Product report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateProductReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('product', reportId, status, adminNotes);
+      setBackendProductReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Product report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update product report.');
+    }
   };
 
-  const handleUpdateBuyerReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateBuyerReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Buyer report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateBuyerReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('buyer', reportId, status, adminNotes);
+      setBackendBuyerReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Buyer report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update buyer report.');
+    }
   };
 
-  const handleUpdateSellerReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateSellerReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Seller report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateSellerReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('seller', reportId, status, adminNotes);
+      setBackendSellerReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Seller report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update seller report.');
+    }
   };
 
   // Quick action: Suspend reported user
-  const handleSuspendReportedUser = (userId: string, name: string) => {
-    if (window.confirm(`Suspend account of "${name}"?`)) {
-      db.adminSetUserStatus(userId, 'suspended');
-      showNotification(`Account of ${name} has been SUSPENDED.`);
+  const handleSuspendReportedUser = async (userId: string, name: string) => {
+    if (!window.confirm(`Suspend account of "${name}"?`)) return;
+    try {
+      await marketplaceApi.adminUsers.setStatus(userId, 'SUSPENDED');
+      showNotification(`Account of ${name} has been suspended in the database.`);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not suspend this account.');
     }
   };
 
@@ -927,7 +1057,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         required
                         value={adminUsername}
                         onChange={(e) => setAdminUsername(e.target.value)}
-                        placeholder="admin@kasuwarkanawa.com"
+                        placeholder="Enter your Super Admin email or phone"
                         className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                       />
                     </div>
@@ -975,20 +1105,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     )}
                   </button>
 
-                  {/* Demo Quick-Fill Helper */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Default Super Admin:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdminUsername('admin@kasuwarkanawa.com');
-                        setAdminPassword('adminpassword');
-                      }}
-                      className="text-[#E6007E] font-bold hover:underline cursor-pointer"
-                    >
-                      Fill Default Credentials
-                    </button>
-                  </div>
                 </form>
               </div>
             </div>
@@ -1330,14 +1446,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <option value="rejected">Rejected</option>
                       </select>
 
-                      <button
-                        type="button"
-                        onClick={handleOpenAddUser}
-                        className="px-3 py-1.5 bg-[#E6007E] hover:bg-pink-700 text-white rounded-lg text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add New User</span>
-                      </button>
+
                     </div>
                   </div>
 
@@ -1431,14 +1540,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 </button>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u.id, u.fullName)}
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-md cursor-pointer"
-                                title="Delete User"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+
                             </td>
                           </tr>
                         ))}
@@ -1465,7 +1567,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {buyersList.map((buyer) => {
-                      const stats = db.getBuyerStats(buyer.id);
+                      const buyerOrders = backendOrders.filter((order) => order.buyerId === buyer.id);
+                      const stats = { totalOrders: buyerOrders.length, paidOrders: buyerOrders.filter((order) => order.paymentConfirmation?.verifiedByAdmin === true || order.paymentConfirmation?.adminApproved === true).length, pendingOrders: buyerOrders.filter((order) => ['pending_order','pending_payment','pending_verification'].includes(order.status)).length, totalProductsPurchased: buyerOrders.reduce((sum, order) => sum + order.items.reduce((n, item) => n + item.quantity, 0), 0), totalSpent: buyerOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) };
                       return (
                         <div
                           key={buyer.id}
@@ -1565,7 +1668,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {sellersList.map((seller) => {
-                      const stats = db.getSellerStats(seller.id);
+                      const sellerOrders = backendOrders.filter((order) => order.sellerId === seller.id);
+                      const sellerProducts = allProducts.filter((product) => product.sellerId === seller.id);
+                      const deliveredOrders = sellerOrders.filter((order) => order.status === 'delivered');
+                      const stats = { totalProductsListed: sellerProducts.length, totalProductsSold: deliveredOrders.reduce((sum, order) => sum + order.items.reduce((n, item) => n + item.quantity, 0), 0), totalOrders: sellerOrders.length, deliveredOrders: deliveredOrders.length, totalRevenue: deliveredOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0) };
                       return (
                         <div
                           key={seller.id}
@@ -1687,17 +1793,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenAddProduct}
-                      className="px-3 py-1.5 bg-[#E6007E] hover:bg-pink-700 text-white rounded-lg text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add New Product</span>
-                    </button>
+
                   </div>
 
-                  {/* Products Grid */}
+                  {/* Server-backed Seller submissions awaiting approval */}
+                  <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">Seller Approval Queue</h3>
+                        <p className="text-[11px] text-slate-600">Products submitted through Seller Dashboard. Approval publishes them to the public store.</p>
+                      </div>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">{pendingBackendProducts.length} pending</span>
+                    </div>
+                    {pendingProductsLoading && <p className="text-xs text-slate-600">Loading pending submissions…</p>}
+                    {pendingProductsError && <p className="text-xs font-semibold text-red-700">{pendingProductsError}</p>}
+                    {!pendingProductsLoading && !pendingProductsError && pendingBackendProducts.length === 0 && (
+                      <p className="rounded-lg border border-dashed border-amber-300 bg-white/70 p-4 text-center text-xs text-slate-600">No Seller submissions are waiting for approval.</p>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {pendingBackendProducts.map((product) => (
+                        <article key={product.id} className="rounded-lg border border-amber-200 bg-white p-3 flex gap-3">
+                          <img src={product.image} alt={product.name} className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black uppercase text-pink-600">{product.category}</p>
+                            <h4 className="text-xs font-black text-slate-900">{product.name}</h4>
+                            <p className="mt-1 text-xs font-bold text-pink-700">₦{product.price.toLocaleString()}</p>
+                            <p className="mt-1 text-[10px] text-slate-600">Seller: {product.sellerName || product.sellerBusinessName || 'Marketplace seller'}</p>
+                            {product.description && <p className="mt-1 line-clamp-2 text-[10px] text-slate-500">{product.description}</p>}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button type="button" disabled={productDecisionBusy === product.id} onClick={() => void handleApproveProduct(product.id, true)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50">
+                                {productDecisionBusy === product.id ? 'Saving…' : 'Approve & Publish'}
+                              </button>
+                              <button type="button" disabled={productDecisionBusy === product.id} onClick={() => void handleApproveProduct(product.id, false)} className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50">
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Existing locally managed product records */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredProducts.map((p) => (
                       <div
@@ -1936,6 +2073,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 <span className="text-[10px] text-slate-500 block">
                                   Sender: {ord.paymentConfirmation.senderName || ord.buyerName}
                                 </span>
+                                {backendOrders.some((item) => item.id === ord.id) && (
+                                  <div className="mt-2">
+                                    {ord.paymentConfirmation.receiptPath ? (
+                                      receiptLinks[ord.id] ? (
+                                        <a href={receiptLinks[ord.id]} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-blue-700 underline">
+                                          Open private receipt (expires in 5 minutes)
+                                        </a>
+                                      ) : (
+                                        <button type="button" onClick={() => handleLoadBackendReceipt(ord.id)} disabled={receiptBusy === ord.id} className="rounded-lg bg-blue-100 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 disabled:opacity-50">
+                                          {receiptBusy === ord.id ? 'Loading receipt…' : 'View uploaded receipt'}
+                                        </button>
+                                      )
+                                    ) : (
+                                      <span className="text-[10px] font-semibold text-amber-700">Buyer has not uploaded a receipt yet.</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1952,7 +2106,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleConfirmPayment(ord.id)}
-                                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
+                                  disabled={backendOrders.some((item) => item.id === ord.id) && !ord.paymentConfirmation.receiptPath}
+                                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-black rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                   <span>Confirm OPay Payment</span>
@@ -1972,6 +2127,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* ============================================================ */}
               {activeTab === 'orders' && (
                 <div className="space-y-4">
+                  {backendOrdersError && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{backendOrdersError} Some saved local order records may still appear.</div>}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 max-w-sm">
                       <Search className="w-4 h-4 text-slate-400" />
@@ -2048,63 +2204,94 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
 
                         <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Logistics Assignment</span>
-                            <span className={`text-[10px] font-bold ${ord.logisticsCompanyId ? 'text-emerald-700' : 'text-amber-700'}`}>
-                              {ord.logisticsCompanyName ? `Assigned: ${ord.logisticsCompanyName}` : 'Not assigned'}
-                            </span>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <select
-                              value={selectedLogisticsAssignments[ord.id] ?? ord.logisticsCompanyId ?? ''}
-                              onChange={(event) => setSelectedLogisticsAssignments((previous) => ({ ...previous, [ord.id]: event.target.value }))}
-                              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold"
-                              disabled={
-                                ord.status !== 'dispatched' ||
-                                (ord.paymentMethod !== 'cod' && ord.paymentMethod !== 'cash_on_delivery' &&
-                                  !ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed')
-                              }
-                            >
-                              <option value="">Select approved logistics company</option>
-                              {approvedLogisticsCompanies.map((company) => (
-                                <option key={company.id} value={company.id}>{company.companyName}</option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => handleAssignOrderToLogistics(ord.id, ord.logisticsCompanyId)}
-                              disabled={
-                                ord.status !== 'dispatched' ||
-                                (ord.paymentMethod !== 'cod' && ord.paymentMethod !== 'cash_on_delivery' &&
-                                  !ord.paymentConfirmation?.verifiedByAdmin && ord.status !== 'payment_confirmed')
-                              }
-                              className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              {ord.logisticsCompanyId ? 'Update Logistics' : 'Assign Logistics'}
-                            </button>
-                            {ord.logisticsCompanyId && (
-                              <button
-                                type="button"
-                                onClick={() => handleUnassignOrderFromLogistics(ord.id)}
-                                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                          {ord.status !== 'dispatched' && (
-                            <p className="text-[10px] text-amber-700">
-                              Seller must complete Processing and mark this order Ready for Dispatch before logistics assignment.
-                            </p>
+                          {backendOrders.some((item) => item.id === ord.id) ? (
+                            <>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Backend Logistics Tracking</span>
+                                <span className="text-[10px] font-bold text-emerald-700">
+                                  {ord.logisticsCompanyName ? `Carrier: ${ord.logisticsCompanyName}` : 'Awaiting Seller hand-off'}
+                                </span>
+                              </div>
+                              {ord.trackingNumber ? (
+                                <>
+                                  <div className="text-xs text-slate-700">
+                                    Tracking number: <strong>{ord.trackingNumber}</strong>
+                                    <span className="ml-2 text-sky-800">Status: <strong>{(ord.logisticsStatus || 'handed_to_logistics').replaceAll('_', ' ')}</strong></span>
+                                  </div>
+                                  {ord.status !== 'delivered' && ord.status !== 'cancelled' && ord.status !== 'rejected' && (
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                      <select
+                                        value={selectedBackendLogisticsStatuses[ord.id] || ''}
+                                        onChange={(event) => setSelectedBackendLogisticsStatuses((previous) => ({ ...previous, [ord.id]: event.target.value as 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' }))}
+                                        className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold"
+                                      >
+                                        <option value="">Select next tracking status</option>
+                                        {(ord.logisticsStatus === 'handed_to_logistics'
+                                          ? ['picked_up', 'in_transit', 'failed']
+                                          : ord.logisticsStatus === 'picked_up'
+                                            ? ['in_transit', 'failed']
+                                            : ord.logisticsStatus === 'in_transit'
+                                              ? ['out_for_delivery', 'failed']
+                                              : ord.logisticsStatus === 'out_for_delivery'
+                                                ? ['delivered', 'failed']
+                                                : ord.logisticsStatus === 'failed'
+                                                  ? ['in_transit', 'out_for_delivery']
+                                                  : []).map((status) => (
+                                                    <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>
+                                                  ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleBackendLogisticsUpdate(ord)}
+                                        disabled={!selectedBackendLogisticsStatuses[ord.id] || logisticsUpdateBusy === ord.id}
+                                        className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                      >
+                                        {logisticsUpdateBusy === ord.id ? 'Saving…' : 'Save Tracking Update'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <p className="text-[10px] text-amber-700">Seller must finish processing and record the carrier name and tracking number before Admin can update delivery progress.</p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Legacy Logistics Assignment</span>
+                                <span className={`text-[10px] font-bold ${ord.logisticsCompanyId ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                  {ord.logisticsCompanyName ? `Assigned: ${ord.logisticsCompanyName}` : 'Not assigned'}
+                                </span>
+                              </div>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <select
+                                  value={selectedLogisticsAssignments[ord.id] ?? ord.logisticsCompanyId ?? ''}
+                                  onChange={(event) => setSelectedLogisticsAssignments((previous) => ({ ...previous, [ord.id]: event.target.value }))}
+                                  className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold"
+                                  disabled={ord.status !== 'dispatched'}
+                                >
+                                  <option value="">Select approved logistics company</option>
+                                  {approvedLogisticsCompanies.map((company) => (
+                                    <option key={company.id} value={company.id}>{company.companyName}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAssignOrderToLogistics(ord.id, ord.logisticsCompanyId)}
+                                  disabled={ord.status !== 'dispatched'}
+                                  className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  {ord.logisticsCompanyId ? 'Update Logistics' : 'Assign Logistics'}
+                                </button>
+                                {ord.logisticsCompanyId && (
+                                  <button type="button" onClick={() => handleUnassignOrderFromLogistics(ord.id)} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600">
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              {ord.status !== 'dispatched' && <p className="text-[10px] text-amber-700">Seller must complete Processing and mark this order Ready for Dispatch before legacy logistics assignment.</p>}
+                            </>
                           )}
-                          {ord.status === 'dispatched' &&
-                            ord.paymentMethod !== 'cod' &&
-                            ord.paymentMethod !== 'cash_on_delivery' &&
-                            !ord.paymentConfirmation?.verifiedByAdmin && (
-                              <p className="text-[10px] text-amber-700">
-                                Payment must be verified by Super Admin before logistics assignment.
-                              </p>
-                            )}
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
@@ -2119,22 +2306,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center gap-1.5">
                             {ord.status !== 'rejected' && ord.status !== 'delivered' && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRejectOrder(ord.id)}
-                                  className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer"
-                                >
-                                  Reject Order
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveOrder(ord.id)}
-                                  className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer"
-                                >
-                                  Approve Order
-                                </button>
-                              </>
+                              backendOrders.some((item) => item.id === ord.id)
+                                ? ord.paymentMethod === 'cod' && ord.status === 'pending_order' && (
+                                    <>
+                                      <button type="button" onClick={() => handleRejectOrder(ord.id)} className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer">Reject COD</button>
+                                      <button type="button" onClick={() => handleApproveOrder(ord.id)} className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer">Approve COD & Release Buyer Details</button>
+                                    </>
+                                  )
+                                : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRejectOrder(ord.id)}
+                                        className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-md text-[10px] font-bold cursor-pointer"
+                                      >
+                                        Reject Order
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleApproveOrder(ord.id)}
+                                        className="px-2.5 py-1 bg-[#0B172E] hover:bg-slate-800 text-white rounded-md text-[10px] font-black cursor-pointer"
+                                      >
+                                        Approve Order
+                                      </button>
+                                    </>
+                                  )
                             )}
                           </div>
                         </div>
@@ -2366,7 +2562,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   {adsSubTab === 'banners' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <div className="flex justify-end">
+                        <button type="button" onClick={handleOpenCreatePromotion} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white flex items-center gap-1"><Plus className="h-3.5 w-3.5" /> Create Promo</button>
+                      </div>
+                      {contentLoading && <p className="text-xs text-slate-500">Loading promotions from database…</p>}
+                      {contentError && <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{contentError}</p>}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {allAds.map((ad) => (
                         <div key={ad.id} className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs">
                           <img src={ad.image} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-2" />
@@ -2379,17 +2581,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </span>
                             <button
                               type="button"
-                              onClick={() => {
-                                db.togglePromotionalAd(ad.id, !ad.isActive);
-                                triggerRefresh();
-                              }}
+                              onClick={() => void handleTogglePromotion(ad)}
                               className="text-[10px] font-bold text-slate-600 hover:text-[#E6007E] cursor-pointer"
                             >
                               Toggle Status
                             </button>
                           </div>
+                          <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+                            <button type="button" onClick={() => handleOpenEditPromotion(ad)} className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">Edit</button>
+                            <button type="button" onClick={() => void handleDeletePromotion(ad)} className="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">Delete</button>
+                          </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -2404,9 +2608,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              db.toggleAnnouncementPublish(anc.id, !anc.isPublished);
-                              triggerRefresh();
+                            onClick={async () => {
+                              try {
+                                await marketplaceApi.content.updateAnnouncement(anc.id, { isPublished: !anc.isPublished });
+                                setBackendAnnouncements((items) => items.map((item) => item.id === anc.id ? { ...item, isPublished: !item.isPublished } : item));
+                                triggerRefresh();
+                              } catch (error) {
+                                showNotification(error instanceof Error ? error.message : 'Unable to update announcement.');
+                              }
                             }}
                             className={`px-3 py-1 rounded-lg text-xs font-black cursor-pointer ${
                               anc.isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
@@ -2448,6 +2657,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   {/* Render based on report subtab */}
                   {reportSubTab === 'product_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
                       {productReports.length === 0 ? (
                         <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">
                           No product reports filed.
@@ -2487,6 +2698,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {reportSubTab === 'buyer_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading buyer reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
+                      {!buyerReportsLoading && !buyerReportsError && buyerReports.length === 0 && (
+                        <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">No buyer reports filed.</div>
+                      )}
                       {buyerReports.map((br) => (
                         <div key={br.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
                           <div className="flex items-center justify-between">
@@ -2518,6 +2734,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {reportSubTab === 'seller_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
+                      {sellerReports.length === 0 && !buyerReportsLoading && <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">No seller reports filed.</div>}
                       {sellerReports.map((sr) => (
                         <div key={sr.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
                           <div className="flex items-center justify-between">
@@ -2550,117 +2769,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
 
               {/* ============================================================ */}
-              {/* TAB: LOGISTICS MANAGEMENT - BATCH 2 */}
+              {/* Backend logistics console: all shipment records and status changes come from Supabase. */}
               {activeTab === 'logistics' && (
                 <div className="space-y-4">
-                  <div className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#16274a] p-5 text-white">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-[#E6007E] p-3"><Truck className="h-6 w-6" /></div>
-                      <div>
-                        <h2 className="text-xl font-black">Logistics Management</h2>
-                        <p className="text-xs text-slate-300">Manage companies, approvals and delivery records</p>
-                      </div>
-                    </div>
+                  <div className="rounded-2xl bg-[#0B172E] p-5 text-white">
+                    <h2 className="text-xl font-black">Logistics & Live Tracking</h2>
+                    <p className="mt-1 text-xs text-slate-300">Seller records the carrier and tracking number. Super Admin verifies every progress update here.</p>
                     <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{logisticsCompanies.length}</strong><span className="text-[10px] text-slate-200">Companies</span></div>
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{pendingLogisticsCompanies.length}</strong><span className="text-[10px] text-slate-200">Pending</span></div>
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{logisticsShipments.length}</strong><span className="text-[10px] text-slate-200">Shipments</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => !!o.trackingNumber).length}</strong><span className="text-[10px] text-slate-200">Shipments</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => o.status === 'dispatched').length}</strong><span className="text-[10px] text-slate-200">In Transit</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => o.status === 'delivered').length}</strong><span className="text-[10px] text-slate-200">Delivered</span></div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      { id: 'companies', label: 'Registered Logistics', count: logisticsCompanies.length },
-                      { id: 'approvals', label: 'Registration Approvals', count: pendingLogisticsCompanies.length },
-                      { id: 'deliveries', label: 'All Deliveries', count: logisticsShipments.length },
-                      { id: 'agents', label: 'Delivery Agents', count: logisticsAgents.length },
-                      { id: 'tracking', label: 'Tracking & Reports', count: logisticsShipments.length },
-                    ].map((item) => (
-                      <button key={item.id} type="button" onClick={() => { setLogisticsSection(item.id as any); setShowLogisticsForm(false); }}
-                        className={`rounded-xl border p-3 text-left ${logisticsSection === item.id ? 'border-[#E6007E] bg-pink-50 text-[#E6007E]' : 'border-slate-200 bg-white text-slate-700'}`}>
-                        <span className="block text-xs font-black">{item.label}</span>
-                        <span className="mt-1 block text-lg font-black">{item.count}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {logisticsSection === 'companies' && (
-                    <div className="space-y-3">
+                  {backendOrders.filter((o) => !!o.trackingNumber).length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">No seller hand-offs have been recorded yet.</div>
+                  ) : backendOrders.filter((o) => !!o.trackingNumber).map((order) => (
+                    <div key={order.id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="font-black text-[#0B172E]">Registered Logistics Companies</h3>
-                        <button type="button" onClick={() => setShowLogisticsForm((value) => !value)} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white">
-                          {showLogisticsForm ? 'Close Form' : '+ Add Logistics'}
-                        </button>
+                        <div><strong className="text-sm text-[#0B172E]">Order #{order.orderNumber}</strong><p className="text-xs text-slate-500">{order.logisticsCompanyName} · {order.trackingNumber}</p></div>
+                        <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black uppercase text-[#E6007E]">{String(order.logisticsStatus || order.status).replace(/_/g,' ')}</span>
                       </div>
-                      {showLogisticsForm && (
-                        <form onSubmit={handleAddLogisticsCompany} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                          <h4 className="font-black text-sm text-[#0B172E]">Register Logistics Company</h4>
-                          <div className="flex items-center gap-3">
-                            {logisticsLogo ? <img src={logisticsLogo} alt="Company logo preview" className="h-16 w-16 rounded-xl border object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white text-slate-400"><ImageIcon /></div>}
-                            <label className="cursor-pointer rounded-lg border bg-white px-3 py-2 text-xs font-bold text-slate-700">Upload Company Logo<input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogisticsLogoUpload(e.target.files?.[0])} /></label>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <input required value={logisticsName} onChange={(e) => setLogisticsName(e.target.value)} placeholder="Company Name" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsOwner} onChange={(e) => setLogisticsOwner(e.target.value)} placeholder="Owner / Manager Name" className="rounded-lg border p-3 text-sm" />
-                            <input required type="email" value={logisticsEmail} onChange={(e) => setLogisticsEmail(e.target.value)} placeholder="Email Address" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsPhone} onChange={(e) => setLogisticsPhone(e.target.value)} placeholder="Phone Number" className="rounded-lg border p-3 text-sm" />
-                            <input value={logisticsWhatsApp} onChange={(e) => setLogisticsWhatsApp(e.target.value)} placeholder="WhatsApp Number" className="rounded-lg border p-3 text-sm" />
-                            <input required type="password" value={logisticsPassword} onChange={(e) => setLogisticsPassword(e.target.value)} placeholder="Temporary Password" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsAddress} onChange={(e) => setLogisticsAddress(e.target.value)} placeholder="Business Address" className="rounded-lg border p-3 text-sm sm:col-span-2" />
-                            <input required value={logisticsCity} onChange={(e) => setLogisticsCity(e.target.value)} placeholder="City" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsState} onChange={(e) => setLogisticsState(e.target.value)} placeholder="State" className="rounded-lg border p-3 text-sm" />
-                            <input required type="number" min="0" value={logisticsFee} onChange={(e) => setLogisticsFee(e.target.value)} placeholder="Starting Delivery Fee (₦)" className="rounded-lg border p-3 text-sm sm:col-span-2" />
-                          </div>
-                          <p className="text-xs text-amber-700">New company accounts remain pending until Super Admin approval.</p>
-                          <button type="submit" className="w-full rounded-lg bg-[#E6007E] py-3 text-sm font-black text-white">Register Company</button>
-                        </form>
-                      )}
-                      {logisticsCompanies.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No logistics companies registered yet.</p> :
-                        logisticsCompanies.map((company) => (
-                          <div key={company.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                            {company.logo ? <img src={company.logo} alt="" className="h-12 w-12 rounded-lg border object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-50 text-[#E6007E]"><Building /></div>}
-                            <div className="min-w-0 flex-1"><p className="font-black text-sm text-slate-800">{company.companyName}</p><p className="text-xs text-slate-500">{company.contactName} · {company.phone}</p><p className="text-xs text-slate-500">{company.whatsAppNumber || 'No WhatsApp'} · {company.city}, {company.state}</p></div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-black ${company.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : company.approvalStatus === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{company.approvalStatus}</span>
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                        <div className="rounded-lg bg-slate-50 p-3"><strong className="block text-slate-800">{order.buyerName}</strong><span className="text-slate-500">{order.buyerPhone}</span><p className="mt-1 text-slate-600">{order.shippingAddress?.completeAddress}, {order.shippingAddress?.city}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><strong className="block text-slate-800">{order.sellerBusinessName || order.sellerName}</strong><span className="text-slate-500">Order total: ₦{Number(order.totalAmount).toLocaleString()}</span><p className="mt-1 text-slate-500">Last updated: {new Date(order.updatedAt || order.createdAt).toLocaleString()}</p></div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select value={selectedBackendLogisticsStatuses[order.id] || ''} onChange={(e) => setSelectedBackendLogisticsStatuses((prev) => ({...prev,[order.id]:e.target.value as any}))} className="min-w-0 flex-1 rounded-lg border border-slate-300 p-2 text-xs">
+                          <option value="">Select next tracking status</option>
+                          <option value="picked_up">Picked up</option><option value="in_transit">In transit</option><option value="out_for_delivery">Out for delivery</option><option value="delivered">Delivered</option><option value="failed">Delivery attempt failed</option>
+                        </select>
+                        <button type="button" disabled={logisticsUpdateBusy===order.id} onClick={() => void handleBackendLogisticsUpdate(order)} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{logisticsUpdateBusy===order.id?'Saving…':'Save tracking update'}</button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
+                        {(order.trackingTimeline || []).map((step:any,index:number)=><span key={index} className={`rounded-md px-2 py-1 text-[10px] font-bold ${step.completed?'bg-emerald-100 text-emerald-800':'bg-slate-100 text-slate-500'}`}>{step.title}</span>)}
+                      </div>
                     </div>
-                  )}
-
-                  {logisticsSection === 'approvals' && (
-                    <div className="space-y-3">
-                      <h3 className="font-black text-[#0B172E]">Pending Registration Approvals ({pendingLogisticsCompanies.length})</h3>
-                      {pendingLogisticsCompanies.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No pending applications.</p> :
-                        pendingLogisticsCompanies.map((company) => (
-                          <div key={company.id} className="space-y-3 rounded-xl border border-amber-200 bg-white p-4">
-                            <div className="flex items-center gap-3">{company.logo ? <img src={company.logo} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <Building className="h-8 w-8 text-slate-400" />}<div><p className="font-black text-sm">{company.companyName}</p><p className="text-xs text-slate-500">{company.contactName}</p></div></div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600"><p>Email: {company.email}</p><p>Phone: {company.phone}</p><p>WhatsApp: {company.whatsAppNumber || '—'}</p><p>Location: {company.city}, {company.state}</p><p className="sm:col-span-2">Address: {company.address}</p></div>
-                            <textarea value={logisticsAdminNotes} onChange={(e) => setLogisticsAdminNotes(e.target.value)} placeholder="Admin note (optional)" className="w-full rounded-lg border p-2 text-sm" rows={2} />
-                            <div className="flex gap-2"><button type="button" onClick={() => handleLogisticsApproval(company.id, 'approved')} className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Approve</button><button type="button" onClick={() => handleLogisticsApproval(company.id, 'rejected')} className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-black text-white">Reject</button></div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  {logisticsSection === 'deliveries' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">All Logistics Deliveries</h3>
-                      {logisticsShipments.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No logistics shipments have been created yet.</p> : logisticsShipments.map((shipment) => {
-                        const company = logisticsCompanies.find((item) => item.id === shipment.logisticsCompanyId);
-                        return <div key={shipment.id} className="rounded-xl border bg-white p-3"><div className="flex justify-between gap-2"><strong className="text-sm">{shipment.trackingNumber}</strong><span className="text-xs font-bold text-[#E6007E]">{shipment.status.replace(/_/g, ' ')}</span></div><p className="mt-1 text-xs text-slate-600">Order: {shipment.orderId} · {company?.companyName || 'Company unavailable'}</p><p className="text-xs text-slate-500">Recipient: {shipment.recipientName} · {shipment.recipientPhone}</p><p className="text-xs text-slate-500">{shipment.deliveryAddress.completeAddress}, {shipment.deliveryAddress.city}</p></div>;
-                      })}</div>
-                  )}
-
-                  {logisticsSection === 'agents' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">Delivery Agents</h3>
-                      {logisticsAgents.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No delivery agents registered yet. Agent management is part of the next batch.</p> : logisticsAgents.map((agent) => <div key={agent.id} className="rounded-xl border bg-white p-3"><p className="font-bold text-sm">{agent.fullName}</p><p className="text-xs text-slate-500">{agent.phone} · {agent.whatsAppNumber || 'No WhatsApp'}</p><p className="text-xs text-slate-500">{logisticsCompanies.find((company) => company.id === agent.logisticsCompanyId)?.companyName || 'Company unavailable'} · {agent.status}</p></div>)}
-                    </div>
-                  )}
-
-                  {logisticsSection === 'tracking' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">Tracking & Delivery Reports</h3>
-                      <div className="grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{logisticsShipments.filter((item) => item.status === 'delivered').length}</strong><span className="text-xs text-slate-500">Delivered</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{logisticsShipments.filter((item) => !['delivered', 'cancelled', 'failed'].includes(item.status)).length}</strong><span className="text-xs text-slate-500">In Progress</span></div></div>
-                      {logisticsShipments.map((shipment) => <div key={shipment.id} className="rounded-xl border bg-white p-3"><p className="font-black text-sm">{shipment.trackingNumber}</p><p className="text-xs text-slate-500">{shipment.trackingTimeline?.length || 0} tracking updates · {shipment.status.replace(/_/g, ' ')}</p></div>)}
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -2911,10 +3055,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3">
-              {db.getOrders(selectedBuyerForHistory.id).length === 0 ? (
+              {backendOrders.filter((order) => order.buyerId === selectedBuyerForHistory.id).length === 0 ? (
                 <p className="text-xs text-slate-500 py-6 text-center">No orders on record for this customer.</p>
               ) : (
-                db.getOrders(selectedBuyerForHistory.id).map((o) => (
+                backendOrders.filter((order) => order.buyerId === selectedBuyerForHistory.id).map((o) => (
                   <div key={o.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
                     <div className="flex items-center justify-between font-bold">
                       <span className="text-[#0B172E]">Order #{o.orderNumber}</span>
@@ -2951,10 +3095,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3">
-              {db.getSellerOrders(selectedSellerForHistory.id).length === 0 ? (
+              {backendOrders.filter((order) => order.sellerId === selectedSellerForHistory.id).length === 0 ? (
                 <p className="text-xs text-slate-500 py-6 text-center">No sales orders on record for this merchant.</p>
               ) : (
-                db.getSellerOrders(selectedSellerForHistory.id).map((o) => (
+                backendOrders.filter((order) => order.sellerId === selectedSellerForHistory.id).map((o) => (
                   <div key={o.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
                     <div className="flex items-center justify-between font-bold">
                       <span className="text-[#0B172E]">Order #{o.orderNumber} - {o.buyerName}</span>
@@ -3118,10 +3262,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2.5">
-              {db.getReviews(selectedProductForReviews.id).length === 0 ? (
+              {backendProductReviews.length === 0 ? (
                 <p className="text-xs text-slate-400 py-6 text-center">No reviews submitted yet for this product.</p>
               ) : (
-                db.getReviews(selectedProductForReviews.id).map((rev) => (
+                backendProductReviews.map((rev) => (
                   <div key={rev.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[#0B172E]">{rev.buyerName}</span>
@@ -3221,6 +3365,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
       )}
 
+      {isCreatingAd && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
+          <form onSubmit={handleSavePromotion} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b pb-2"><h3 className="font-black text-sm text-[#0B172E]">{editingAd ? 'Edit Promotion' : 'Create Promotion'}</h3><button type="button" onClick={() => setIsCreatingAd(false)} className="text-slate-500"><X className="h-5 w-5" /></button></div>
+            <label className="block text-xs font-bold text-slate-700">Promotion title<input required maxLength={200} value={adTitle} onChange={(e) => setAdTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={2000} value={adDescription} onChange={(e) => setAdDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" rows={3} /></label>
+            <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Badge<input value={adBadge} onChange={(e) => setAdBadge(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Discount tag<input value={adDiscountTag} onChange={(e) => setAdDiscountTag(e.target.value)} placeholder="Save 20%" className="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <label className="block text-xs font-bold text-slate-700">Image URL<input required type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Button text<input value={adLinkText} onChange={(e) => setAdLinkText(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Button link<input value={adLinkUrl} onChange={(e) => setAdLinkUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={adIsActive} onChange={(e) => setAdIsActive(e.target.checked)} /> Publish promotion immediately</label>
+            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAd(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={promotionSaving} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{promotionSaving ? 'Saving…' : 'Save Promotion'}</button></div>
+          </form>
+        </div>
+      )}
+
       {/* ============================================================ */}
       {/* MODAL 7: CREATE / EDIT FLASH SALE DIALOG */}
       {/* ============================================================ */}
@@ -3303,6 +3462,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     className="w-full border border-slate-300 rounded-lg p-2"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700">Choose approved products for this Flash Sale</label>
+                {backendApprovedProducts.length === 0 ? (
+                  <p className="rounded-lg bg-amber-50 p-3 text-amber-800">No approved backend products are available yet. Approve seller products first.</p>
+                ) : (
+                  <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+                    {backendApprovedProducts.map((product) => (
+                      <label key={product.id} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-50">
+                        <input type="checkbox" checked={fsProductIds.includes(product.id)} onChange={(event) => setFsProductIds((previous) => event.target.checked ? [...previous, product.id] : previous.filter((id) => id !== product.id))} />
+                        <span className="min-w-0 flex-1 truncate">{product.name}</span>
+                        <span className="shrink-0 text-slate-500">₦{Number(product.price).toLocaleString()}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

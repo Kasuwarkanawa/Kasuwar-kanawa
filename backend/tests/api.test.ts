@@ -21,5 +21,13 @@ describe('backend HTTP API', () => {
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
   });
+  it('rejects state-changing requests from an untrusted browser origin', async () => {
+    const response = await request(app)
+      .post('/api/auth/register')
+      .set('Origin', 'https://attacker.example')
+      .send({ email: 'not-an-email' });
+    expect(response.status).toBe(403);
+    expect(response.body).toHaveProperty('error');
+  });
 });
 afterAll(async () => { await prisma.$disconnect(); });

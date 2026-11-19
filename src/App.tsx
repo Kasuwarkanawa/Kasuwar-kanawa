@@ -23,9 +23,10 @@ import { Footer } from './components/Footer';
 import { AnnouncementsSection } from './components/AnnouncementsSection';
 import { NewsletterSection } from './components/NewsletterSection';
 import { ProductCard } from './components/ProductCard';
-import { PRODUCTS } from './data/products';
 import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, Announcement } from './types';
 import { db } from './db/database';
+import { authApi } from './utils/authApi';
+import { marketplaceApi } from './utils/marketplaceApi';
 import { CheckCircle2, Search, X, Shield, Store, UserCheck, ArrowRight, ShieldCheck, ShoppingBag } from 'lucide-react';
 
 export default function App() {
@@ -33,26 +34,44 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dismissedSpotlightId, setDismissedSpotlightId] = useState<string | null>(null);
 
   // Dynamic products list (only approved products appear on public marketplace)
-  const [liveProducts, setLiveProducts] = useState<Product[]>(() =>
-    db.getProducts({ approvedOnly: true })
-  );
+  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
 
   // Phase 7: Live Flash Sales, Promotional Advertisements & Announcements from Database
-  const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(() => db.getActiveFlashSale());
-  const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>(() => db.getActivePromotionalAds());
-  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>(() => db.getPublishedAnnouncements());
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(null);
+  const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>([]);
+  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>([]);
 
-  const refreshLiveProducts = useCallback(() => {
-    setLiveProducts(db.getProducts({ approvedOnly: true }));
-    setActiveFlashSale(db.getActiveFlashSale());
-    setActivePromotions(db.getActivePromotionalAds());
-    setPublishedAnnouncements(db.getPublishedAnnouncements());
+  const refreshLiveProducts = useCallback(async () => {
+    const [productsResult, promotionsResult, flashSalesResult, announcementsResult] = await Promise.allSettled([
+      marketplaceApi.catalog.list({ take: 100 }),
+      marketplaceApi.content.publicPromotions(),
+      marketplaceApi.content.publicFlashSales(),
+      marketplaceApi.content.publicAnnouncements(),
+    ]);
+    if (productsResult.status === 'fulfilled') setLiveProducts(productsResult.value);
+    else showToast('Unable to load the live product catalog. Please refresh and try again.');
+    if (promotionsResult.status === 'fulfilled') setActivePromotions(promotionsResult.value);
+    else setActivePromotions([]);
+    if (flashSalesResult.status === 'fulfilled') setActiveFlashSale(flashSalesResult.value[0] || null);
+    else setActiveFlashSale(null);
+    if (announcementsResult.status === 'fulfilled') setPublishedAnnouncements(announcementsResult.value);
+    else setPublishedAnnouncements([]);
   }, []);
 
+  useEffect(() => {
+    void refreshLiveProducts();
+  }, [refreshLiveProducts]);
+
+  // The first active admin promotion (or active flash sale) is also shown as a dismissible on-screen spotlight.
+  const spotlightPromotion = activePromotions[0] || null;
+  const spotlightId = spotlightPromotion?.id || (activeFlashSale ? activeFlashSale.id : null);
+  const showSpotlight = Boolean(spotlightId && dismissedSpotlightId !== spotlightId);
+
   // User session state (Phase 3 & 4)
-  const [currentUser, setCurrentUser] = useState<User | null>(() => db.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Modal views
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -67,27 +86,21 @@ export default function App() {
 
   // Cart state with database persistence (Phase 5)
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    // Never preload demo/sample products into a real buyer's cart.
+    // Checkout accepts only products returned by the approved backend catalogue.
     const saved = db.getCart();
-    if (saved && saved.length > 0) return saved;
-    return [
-      {
-        id: `cart-${PRODUCTS[0].id}-Ceramic White-Standard Case-6 Months Standard`,
-        product: PRODUCTS[0],
-        quantity: 1,
-        selectedColor: 'Ceramic White',
-        selectedSize: 'Standard Case',
-        selectedVariation: '6 Months Standard',
-      },
-    ];
+    return (saved || []).filter(
+      (item) => !item.product.id.startsWith('sample-') && !item.product.id.startsWith('prod-')
+    );
   });
 
   // Items currently being checked out (supports both whole cart and single Buy Now product)
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(cartItems);
 
-  // 11. DATABASE INTEGRATION: Auto-save cart items to database
+  // Guest cart remains local; authenticated buyer carts are stored in Supabase.
   useEffect(() => {
-    db.saveCart(cartItems);
-  }, [cartItems]);
+    if (currentUser?.accountType !== 'buyer') db.saveCart(cartItems);
+  }, [cartItems, currentUser?.id, currentUser?.accountType]);
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -99,8 +112,31 @@ export default function App() {
     }, 2800);
   };
 
+  // Restore the authenticated user from the server-side HTTP-only session cookie.
+  useEffect(() => {
+    let active = true;
+    authApi.currentUser()
+      .then((user) => {
+        if (active) setCurrentUser(user);
+      })
+      .catch(() => {
+        if (active) showToast('Authentication service is unavailable. Please try again shortly.');
+      });
+    return () => { active = false; };
+  }, []);
+
+  // Load the authenticated buyer's persistent cart from Supabase.
+  useEffect(() => {
+    if (!currentUser || currentUser.accountType !== 'buyer') return;
+    let active = true;
+    marketplaceApi.cart.list()
+      .then(({ items }) => { if (active) setCartItems(items); })
+      .catch((error) => { if (active) showToast(error instanceof Error ? error.message : 'Unable to load your saved cart.'); });
+    return () => { active = false; };
+  }, [currentUser?.id, currentUser?.accountType]);
+
   // Add to cart from basic card or detailed modal (Section 1)
-  const handleAddToCart = (itemOrProduct: Product | CartItem) => {
+  const handleAddToCart = async (itemOrProduct: Product | CartItem) => {
     let newItem: CartItem;
 
     if ('product' in itemOrProduct) {
@@ -115,6 +151,24 @@ export default function App() {
         selectedSize: prod.sizes?.[0],
         selectedVariation: prod.variations?.[0]?.options[0],
       };
+    }
+
+    if (currentUser?.accountType === 'buyer') {
+      try {
+        await marketplaceApi.cart.add({
+          productId: newItem.product.id,
+          quantity: newItem.quantity,
+          selectedColor: newItem.selectedColor,
+          selectedSize: newItem.selectedSize,
+          selectedVariation: newItem.selectedVariation,
+        });
+        const { items } = await marketplaceApi.cart.list();
+        setCartItems(items);
+        showToast(`Added ${newItem.product.name.slice(0, 24)}... to Cart!`);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Unable to add this product to your saved cart.');
+      }
+      return;
     }
 
     setCartItems((prev) => {
@@ -169,12 +223,26 @@ export default function App() {
       handleRemoveItem(cartItemId);
       return;
     }
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.update(cartItemId, quantity)
+        .then(() => marketplaceApi.cart.list())
+        .then(({ items }) => setCartItems(items))
+        .catch((error) => showToast(error instanceof Error ? error.message : 'Unable to update cart quantity.'));
+      return;
+    }
     setCartItems((prev) =>
       prev.map((item) => (item.id === cartItemId ? { ...item, quantity } : item))
     );
   };
 
   const handleRemoveItem = (cartItemId: string) => {
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.remove(cartItemId)
+        .then(() => marketplaceApi.cart.list())
+        .then(({ items }) => setCartItems(items))
+        .catch((error) => showToast(error instanceof Error ? error.message : 'Unable to remove cart item.'));
+      return;
+    }
     setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
   };
 
@@ -196,37 +264,39 @@ export default function App() {
 
   const handleOrderSuccess = (order: Order) => {
     db.clearCart();
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.clear().catch(() => undefined);
+    }
     setCartItems([]);
     showToast(`Order #${order.orderNumber} placed successfully!`);
   };
 
   const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
     if (user.accountType === 'logistics') {
-      const company = db.getLogisticsCompanyByOwner(user.id);
-      if (!company || company.approvalStatus !== 'approved' || user.status !== 'active') {
-        db.logout();
-        setCurrentUser(null);
-        showToast('Your logistics account is awaiting admin approval.');
-        return;
-      }
-      setLogisticsDashboardOpen(true);
+      showToast('Separate logistics accounts are not enabled. Super Admin manages verified tracking updates.');
+      return;
     }
+    setCurrentUser(user);
     showToast(`Welcome, ${user.fullName}!`);
   };
 
-  const handleLogout = () => {
-    // Clear the persisted session through the database layer and close protected views.
-    db.logout();
-    setCurrentUser(null);
-    setBuyerDashboardOpen(false);
-    setSellerDashboardOpen(false);
-    setLogisticsDashboardOpen(false);
-    setAdminPanelOpen(false);
-    setAuthModalOpen(false);
-    setCheckoutModalOpen(false);
-    setCartDrawerOpen(false);
-    showToast('Signed out successfully.');
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      setCurrentUser(null);
+      setCartItems([]);
+      db.clearCart();
+      setBuyerDashboardOpen(false);
+      setSellerDashboardOpen(false);
+      setLogisticsDashboardOpen(false);
+      setAdminPanelOpen(false);
+      setAuthModalOpen(false);
+      setCheckoutModalOpen(false);
+      setCartDrawerOpen(false);
+      showToast('Signed out successfully.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to sign out. Please try again.');
+    }
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -314,21 +384,7 @@ export default function App() {
   };
 
   const openLogisticsDashboard = () => {
-    if (!currentUser) {
-      setAuthInitialMode('login');
-      setAuthModalOpen(true);
-      return;
-    }
-    if (currentUser.accountType !== 'logistics') {
-      showToast('Access Restricted: Logistics companies only.');
-      return;
-    }
-    const company = db.getLogisticsCompanyByOwner(currentUser.id);
-    if (!company || company.approvalStatus !== 'approved' || currentUser.status !== 'active') {
-      showToast('Your logistics account is awaiting admin approval.');
-      return;
-    }
-    setLogisticsDashboardOpen(true);
+    showToast('Logistics tracking updates are managed by the Super Admin in the Admin Logistics console.');
   };
 
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
@@ -680,6 +736,64 @@ export default function App() {
         <NewsletterSection />
       </main>
 
+      {/* Dismissible oval-style flash promotion spotlight */}
+      {showSpotlight && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 px-4 py-6" role="dialog" aria-modal="true" aria-label="Flash sale promotion">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-[2rem] border-4 border-amber-300 bg-gradient-to-br from-[#E6007E] via-rose-600 to-orange-500 text-white shadow-2xl animate-[pulse_2.4s_ease-in-out_infinite]">
+            <button
+              type="button"
+              onClick={() => setDismissedSpotlightId(spotlightId)}
+              aria-label="Close promotion"
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/75 text-white shadow-lg transition hover:scale-110 hover:bg-black"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            {spotlightPromotion?.image ? (
+              <div className="relative h-40 sm:h-52">
+                <img src={spotlightPromotion.image} alt={spotlightPromotion.title} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-rose-950/90 via-rose-950/20 to-transparent" />
+                <span className="absolute left-4 top-4 rounded-full bg-yellow-300 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-950">
+                  {spotlightPromotion.badge || 'FLASH PROMO'}
+                </span>
+              </div>
+            ) : (
+              <div className="px-6 pt-7 text-center">
+                <span className="inline-flex rounded-full bg-yellow-300 px-4 py-1 text-xs font-black uppercase tracking-widest text-rose-950">⚡ FLASH SALE</span>
+              </div>
+            )}
+            <div className="px-6 pb-6 pt-4 text-center sm:px-9">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-yellow-200">KASUWAR KANAWA • LIMITED OFFER</p>
+              <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                {spotlightPromotion?.title || activeFlashSale?.title || 'Special Flash Sale'}
+              </h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-white/95 sm:text-base">
+                {spotlightPromotion?.description || activeFlashSale?.description || 'Grab selected deals before the offer ends!'}
+              </p>
+              {(spotlightPromotion?.discountTag || activeFlashSale?.discountPercentage) && (
+                <div className="mx-auto mt-3 inline-flex rounded-full border-2 border-yellow-200 bg-yellow-300 px-5 py-2 text-lg font-black text-rose-950 shadow-lg">
+                  {spotlightPromotion?.discountTag || `UP TO ${activeFlashSale?.discountPercentage}% OFF`}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setDismissedSpotlightId(spotlightId);
+                  const target = spotlightPromotion?.linkUrl;
+                  if (target?.startsWith('#')) {
+                    document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  } else {
+                    document.getElementById('popular-products-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+                className="mt-5 rounded-full border-2 border-white bg-white px-8 py-3 text-sm font-black uppercase tracking-wide text-[#E6007E] shadow-xl transition hover:scale-105 hover:bg-yellow-100"
+              >
+                {spotlightPromotion?.linkText || 'Shop Flash Deals'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Product Details Modal (Colors, Sizes, Variations, Reviews, WhatsApp, Report) */}
       {selectedProductForDetail && (
         <ProductDetailModal
@@ -735,7 +849,6 @@ export default function App() {
         <BuyerDashboard
           user={currentUser}
           onUpdateUser={(updated) => {
-            db.setCurrentUser(updated);
             setCurrentUser(updated);
           }}
           onClose={() => setBuyerDashboardOpen(false)}
@@ -779,7 +892,6 @@ export default function App() {
               showToast('Access Restricted: Super Admin only.');
               return;
             }
-            db.setCurrentUser(adminUser);
             setCurrentUser(adminUser);
             setAdminPanelOpen(false);
             refreshLiveProducts();

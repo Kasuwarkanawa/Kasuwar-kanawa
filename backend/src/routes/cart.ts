@@ -52,7 +52,7 @@ cartRouter.post('/items', async (req, res, next) => {
       }
       return { ok: true as const };
     });
-    if ('error' in result) return res.status(result.status).json({ error: result.error });
+    if ('error' in result) return res.status(result.status ?? 500).json({ error: result.error });
     return res.status(201).json(await getCart(req.authUser!.id));
   } catch (error) { return next(error); }
 });

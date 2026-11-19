@@ -94,8 +94,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Limited Flash Deal',
     description: 'Crystal clear audio with 36hr battery playback, active noise cancelling, and fast USB-C charging case.',
     sellerName: 'Kano Gadget World (Farm Centre)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -123,8 +121,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Half Price!',
     description: 'Full HD touchscreen, IP68 water resistant, bluetooth calling, and over 100 sports tracking modes.',
     sellerName: 'Arewa Smart Store (Post Office Road)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -151,8 +147,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Best Power Seller',
     description: 'Triple USB output with Type-C 22.5W quick charge for all phones, tablets, and mobile mifi routers.',
     sellerName: 'Kano Electronics Hub',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -179,8 +173,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Ends Soon',
     description: 'Ultra-cushioned memory foam earcups with studio-grade microphone and dynamic RGB illumination.',
     sellerName: 'Gamers Arena Kano (Fagge)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
 
@@ -209,8 +201,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Top Seller',
     description: 'Super AMOLED 120Hz display, Snapdragon 685 processor, 108MP pro camera, 5000mAh battery with 33W fast charger. 12-Month Official Warranty.',
     sellerName: 'Xiaomi Authorized Kano Store (Beirut Road)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -236,8 +226,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Kano Original',
     description: 'Super soft, lustrous Austrian quality cotton brocade suitable for royal Babban Riga and Friday congregational prayer attires.',
     sellerName: 'Alhaji Danladi & Sons (Kasuwar Kwari, Kano)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -263,8 +251,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Lasts 48 Hours',
     description: 'Intense oriental agarwood blend with amber and Damask rose notes. Alcohol-free oil that lingers for days on fabrics.',
     sellerName: 'Gidan Turare Luxury Oils (Kano Municipal)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -289,8 +275,6 @@ export const PRODUCTS: Product[] = [
     badge: 'High Demand',
     description: 'Keep cool during power outages with 12-hour continuous battery run-time, remote control, and dedicated solar charging panel port.',
     sellerName: 'Arewa Solar & Inverters (Sabon Gari, Kano)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -315,8 +299,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Crafted in Kano',
     description: '100% genuine northern calf leather with durable stitched rubber soles handcrafted in traditional Kano tannery quarters.',
     sellerName: 'Kano Leather Crafters (Kasuwar Kurmi)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -341,8 +323,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Kitchen Best',
     description: 'PFOA-free granite coating suitable for induction, gas, and electric cooking with tempered glass steam vents.',
     sellerName: 'Hajiya Fatima Home Kitchen (Tarauni)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
 
@@ -369,8 +349,6 @@ export const PRODUCTS: Product[] = [
     badge: 'New 2026 Model',
     description: 'Next-generation flagship camera with 67W Turbo Charge and curved crystal AMOLED 1.5K display.',
     sellerName: 'Xiaomi Authorized Kano Store (Beirut Road)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -395,8 +373,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Hand Stitched',
     description: 'Exquisite tight-stitch geometric embroidery for festive Friday and wedding attire.',
     sellerName: 'Mai Hula Royal Caps (Gidan Rumfa, Kano)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -421,8 +397,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Healthy Cooking',
     description: 'Cook delicious crispy chicken and masa with 85% less oil and rapid hot air circulation.',
     sellerName: 'Kano Modern Appliances Hub',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -447,8 +421,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Dubai Import',
     description: 'Silky premium Nida fabric with rhinestone floral trim and comfortable loose modest cut.',
     sellerName: 'Noor Al-Huda Boutique (Nassarawa GRA)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -473,8 +445,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Cinema Quality',
     description: 'Built-in Netflix, YouTube, Prime Video with HDR10+ and Dolby Digital Audio. Google Assistant voice control.',
     sellerName: 'Al-Baraka Electronics (Zoo Road, Kano)',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -499,8 +469,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Traditional Taste',
     description: 'Authentic Kano Yaji, Kuli-kuli powder, fragrant ginger blend, and dried Kilishi slices packed airtight.',
     sellerName: 'Gidan Yaji Na Alhaji (Kano City)',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
 
@@ -522,8 +490,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Combo Savings',
     description: 'Two pocket power banks for travel plus 2 reinforced Nylon charging cables.',
     sellerName: 'Kano Tech Accessories',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -543,8 +509,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Tailor Ready',
     description: '5 yards pure cotton cloth with matching embroidery spools and custom cufflinks.',
     sellerName: 'Kwari Fabrics Wholesalers',
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     isApproved: true,
   },
   {
@@ -564,8 +528,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Special Combo',
     description: 'Stainless steel blades able to crush tiger nuts, beans, and tough grains in seconds.',
     sellerName: 'Kitchen Depot Kano',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
   {
@@ -585,8 +547,6 @@ export const PRODUCTS: Product[] = [
     badge: 'Bakhoor Set',
     description: 'Electric incense burner with timer and luxury fragrant rose-infused wood chips.',
     sellerName: 'Gidan Turare Luxury Oils',
-    sellerPhone: '09060938835',
-    sellerWhatsApp: '2349060938835',
     isApproved: true,
   },
 ];

@@ -207,6 +207,9 @@ model Order {
   sellerRejectionReason String?
   dispatchedAt          DateTime?
   deliveredAt           DateTime?
+  logisticsCompanyName  String?
+  trackingNumber        String?
+  logisticsStatus       String?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
   buyer                 User               @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)

@@ -170,7 +170,6 @@ const INITIAL_USERS: User[] = [
     phone: '09060938835',
     whatsAppNumber: '2349060938835',
     email: 'usmannafiu46688@gmail.com',
-    password: 'password123',
     address: 'No. 14 Bompai Road, Nassarawa GRA',
     businessAddress: '',
     city: 'Kano City',
@@ -187,7 +186,6 @@ const INITIAL_USERS: User[] = [
     phone: '08031234567',
     whatsAppNumber: '2348031234567',
     email: 'fatima.garba@gmail.com',
-    password: 'password123',
     address: 'Plot 88 Zoo Road, Housing Estate',
     businessAddress: '',
     city: 'Kano City',
@@ -205,7 +203,6 @@ const INITIAL_USERS: User[] = [
     phone: '07066300079',
     whatsAppNumber: '2347066300079',
     email: 'seller@kasuwarkanawa.com',
-    password: 'password123',
     address: 'Shop 42, Block B, Kasuwar Kwari Textiles Market',
     businessAddress: 'Shop 42, Block B, Kasuwar Kwari Market, Kano State',
     city: 'Kano City',
@@ -224,7 +221,6 @@ const INITIAL_USERS: User[] = [
     phone: '08023456789',
     whatsAppNumber: '2348023456789',
     email: 'seller2@kasuwarkanawa.com',
-    password: 'password123',
     address: 'Shop 18, Digital Plaza, Farm Center GSM Market',
     businessAddress: 'Shop 18, Digital Plaza, Farm Center GSM Village, Kano State',
     city: 'Kano City',
@@ -236,24 +232,6 @@ const INITIAL_USERS: User[] = [
     profileImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     createdAt: '2026-10-20T14:00:00Z',
   },
-  {
-    id: 'usr-admin-1',
-    fullName: 'Super Admin Kano CPanel',
-    businessName: 'Kasuwar Kanawa HQ CPanel',
-    phone: '08000000000',
-    whatsAppNumber: '2348000000000',
-    email: 'admin@kasuwarkanawa.com',
-    password: 'adminpassword',
-    address: 'Kasuwar Kanawa Central Hub, Kano',
-    businessAddress: 'Kasuwar Kanawa Central Hub, Kano State',
-    city: 'Kano City',
-    state: 'Kano State',
-    area: 'Kano Municipal',
-    accountType: 'admin',
-    status: 'active',
-    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
-    createdAt: '2026-09-01T12:00:00Z',
-  },
 ];
 
 // Helper to seed products with seller IDs & approved state
@@ -262,8 +240,6 @@ const SEEDED_PRODUCTS: Product[] = PRODUCTS.map((p, idx) => ({
   sellerId: idx % 2 === 0 ? 'usr-seller-1' : 'usr-seller-2',
   sellerName: idx % 2 === 0 ? 'Alhaji Danladi Merchant' : p.sellerName || 'Kano Tech Hub',
   sellerBusinessName: idx % 2 === 0 ? 'Danladi Textiles & Brocade Hub' : 'Kano Central Distributors',
-  sellerPhone: idx % 2 === 0 ? '07066300079' : p.sellerPhone || '09060938835',
-  sellerWhatsApp: idx % 2 === 0 ? '2347066300079' : p.sellerWhatsApp || '2349060938835',
   isApproved: true,
   approvalStatus: 'approved',
   stockQuantity: p.stockLeft || 25,
@@ -349,8 +325,6 @@ const INITIAL_ORDERS: Order[] = [
         description: 'Package arriving at delivery address.',
       },
     ],
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     createdAt: '2026-11-09T10:12:00Z',
     updatedAt: '2026-11-09T13:15:00Z',
   },
@@ -424,8 +398,6 @@ const INITIAL_ORDERS: Order[] = [
         description: 'Received by customer with full receipt.',
       },
     ],
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     createdAt: '2026-11-08T09:20:00Z',
     updatedAt: '2026-11-08T15:30:00Z',
   },
@@ -500,8 +472,6 @@ const INITIAL_ORDERS: Order[] = [
         description: 'Order will be packed after verification.',
       },
     ],
-    sellerPhone: '07066300079',
-    sellerWhatsApp: '2347066300079',
     createdAt: '2026-11-10T04:10:00Z',
     updatedAt: '2026-11-10T04:15:00Z',
   },
@@ -548,16 +518,25 @@ export const db = {
   getUsers(): User[] {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
+      const safeUsers = INITIAL_USERS.map(({ password: _legacyPassword, ...user }) => user);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(safeUsers));
+      return safeUsers;
     }
     try {
       const parsed: User[] = JSON.parse(raw);
       let updated = false;
+      // Remove legacy demo passwords from records saved by older frontend versions.
+      parsed.forEach((user) => {
+        if ('password' in user) {
+          delete user.password;
+          updated = true;
+        }
+      });
       INITIAL_USERS.forEach((initUser) => {
         const existing = parsed.find((u) => u.id === initUser.id || u.email.toLowerCase() === initUser.email.toLowerCase());
         if (!existing) {
-          parsed.push(initUser);
+          const { password: _legacyPassword, ...safeUser } = initUser;
+          parsed.push(safeUser);
           updated = true;
         } else if (!existing.profileImage && initUser.profileImage) {
           existing.profileImage = initUser.profileImage;
@@ -575,7 +554,7 @@ export const db = {
       }
       return parsed;
     } catch {
-      return INITIAL_USERS;
+      return INITIAL_USERS.map(({ password: _legacyPassword, ...user }) => user);
     }
   },
 
@@ -596,37 +575,6 @@ export const db = {
     );
   },
 
-  adminLogin(identifier: string, password: string): { success: boolean; user?: User; error?: string } {
-    const clean = identifier.trim().toLowerCase();
-    const users = this.getUsers();
-    const adminUser = users.find(
-      (u) =>
-        (u.email.toLowerCase() === clean || u.phone.replace(/\s+/g, '') === clean.replace(/\s+/g, '')) &&
-        u.accountType === 'admin'
-    );
-
-    if (!adminUser) {
-      if (clean === 'admin' || clean === 'admin@kasuwarkanawa.com') {
-        const fallback = users.find((u) => u.accountType === 'admin') || INITIAL_USERS.find((u) => u.accountType === 'admin');
-        if (fallback && (password === 'adminpassword' || password === 'admin' || password === 'password123')) {
-          this.setCurrentUser(fallback);
-          return { success: true, user: fallback };
-        }
-      }
-      return { success: false, error: 'Access Denied: Only authorized Super Admin can log in to CPanel.' };
-    }
-
-    if (adminUser.status === 'suspended' || adminUser.status === 'rejected') {
-      return { success: false, error: `Account ${adminUser.status}. Contact system administrator.` };
-    }
-
-    if (adminUser.password && adminUser.password !== password && password !== 'adminpassword' && password !== 'admin') {
-      return { success: false, error: 'Incorrect Super Admin password. Please check credentials.' };
-    }
-
-    this.setCurrentUser(adminUser);
-    return { success: true, user: adminUser };
-  },
 
   adminAddUser(userData: Omit<User, 'id' | 'createdAt'>): User {
     const users = this.getUsers();

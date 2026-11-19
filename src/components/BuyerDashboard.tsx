@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User as UserIcon,
   Phone,
@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Truck,
-  MessageCircle,
   ShieldCheck,
   CreditCard,
   Edit2,
@@ -19,10 +18,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
-import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
+import { marketplaceApi } from '../utils/marketplaceApi';
 
 interface BuyerDashboardProps {
   user: User;
@@ -53,7 +52,9 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'profile'>('orders');
   const [selectedStatusTab, setSelectedStatusTab] = useState<OrderStatus | 'all'>('all');
-  const [orders, setOrders] = useState<Order[]>(db.getOrders(user.id));
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Edit Profile State
@@ -69,53 +70,94 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   // Payment Confirmation input for pending orders
   const [senderName, setSenderName] = useState('');
   const [transactionRef, setTransactionRef] = useState('');
+  const [selectedReceipt, setSelectedReceipt] = useState<File | null>(null);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
 
-  const refreshOrders = () => {
-    setOrders(db.getOrders(user.id));
+  const refreshOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const backendOrders = await marketplaceApi.orders.mine() as Order[];
+      setOrders([...backendOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Could not refresh orders from the secure server.');
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
   };
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    void refreshOrders();
+  }, [user.id]);
+
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = db.updateUserProfile(user.id, {
-      fullName: editFullName,
-      phone: editPhone,
-      address: editAddress,
-      area: editArea,
-      city: editCity,
-      state: editState,
-      profileImage: editProfileImage.trim() || undefined,
-    });
-    if (updated) {
-      onUpdateUser(updated);
+    try {
+      const result = await marketplaceApi.buyer.updateProfile({
+        fullName: editFullName,
+        phone: editPhone,
+        address: editAddress,
+        area: editArea,
+        city: editCity,
+        state: editState,
+        profileImage: editProfileImage.trim() || null,
+      });
+      onUpdateUser(result.user as User);
       setIsEditingProfile(false);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Unable to update your profile.');
     }
   };
 
-  const handleDirectAvatarChange = (url: string) => {
+  const handleDirectAvatarChange = async (url: string) => {
     setEditProfileImage(url);
-    const updated = db.updateUserProfile(user.id, {
-      profileImage: url.trim() || undefined,
-    });
-    if (updated) {
-      onUpdateUser(updated);
+    try {
+      const result = await marketplaceApi.buyer.updateProfile({ profileImage: url.trim() || null });
+      onUpdateUser(result.user as User);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Unable to update your profile photo.');
     }
   };
 
-  const handleConfirmPayment = (orderId: string) => {
-    if (!senderName.trim() || !transactionRef.trim()) return;
-    const updated = db.confirmPaymentByBuyer(orderId, senderName, transactionRef);
-    if (updated) {
+  const handleConfirmPayment = async (orderId: string) => {
+    setPaymentError(null);
+    if (!senderName.trim() || !transactionRef.trim()) {
+      setPaymentError('Enter the sender account name and transaction reference.');
+      return;
+    }
+    if (!selectedReceipt) {
+      setPaymentError('Please select your OPay transfer receipt before submitting.');
+      return;
+    }
+    if (selectedReceipt.size > 5 * 1024 * 1024) {
+      setPaymentError('The receipt must not exceed 5 MB.');
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(selectedReceipt.type)) {
+      setPaymentError('Upload a JPG, PNG, WEBP image or PDF receipt.');
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    try {
+      // Save transfer details first. Admin approval is blocked until the receipt is also stored.
+      await marketplaceApi.orders.confirmOpay(orderId, senderName.trim(), transactionRef.trim());
+      await marketplaceApi.orders.uploadReceipt(orderId, selectedReceipt);
       setConfirmSuccess(true);
-      refreshOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(updated);
-      }
-      setTimeout(() => {
-        setConfirmSuccess(false);
-        setSenderName('');
-        setTransactionRef('');
-      }, 2500);
+      setSelectedReceipt(null);
+      setSenderName('');
+      setTransactionRef('');
+      await refreshOrders();
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Payment details could not be submitted. Please try again.');
+      await refreshOrders();
+    } finally {
+      setPaymentSubmitting(false);
+      window.setTimeout(() => setConfirmSuccess(false), 3000);
     }
   };
 
@@ -226,6 +268,16 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           {/* TAB 1: BUYER ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
+              {ordersError && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  {ordersError} Showing saved orders from this device where available.
+                </div>
+              )}
+              {ordersLoading && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading your secure order history…
+                </div>
+              )}
               {/* Order Status Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
                 {ORDER_STATUS_TABS.map((tab) => {
@@ -273,10 +325,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                 <div className="space-y-3.5">
                   {filteredOrders.map((order) => {
                     const isExpanded = selectedOrder?.id === order.id;
-                    const sellerWhatsApp = (order.sellerWhatsApp || '2349060938835').replace(/[^0-9]/g, '');
-                    const orderMsg = encodeURIComponent(
-                      `Salam, I am contacting you regarding my Kasuwar Kanawa Order #${order.orderNumber}. Can you give me an update?`
-                    );
 
                     return (
                       <div
@@ -401,7 +449,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                 </div>
 
                                 {/* Buyer Payment Confirmation Form if not yet confirmed */}
-                                {!order.paymentConfirmation.confirmedByBuyer && (
+                                {(!order.paymentConfirmation.confirmedByBuyer || !order.paymentConfirmation.receiptUploadedAt) && (
                                   <div className="pt-2 border-t border-slate-100 space-y-2">
                                     <span className="font-bold text-slate-700 block">
                                       Confirm Your OPay Transfer:
@@ -422,12 +470,25 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                         className="p-2 text-xs border border-slate-300 rounded-lg bg-white"
                                       />
                                     </div>
+                                    <label className="block rounded-lg border border-dashed border-pink-300 bg-pink-50 p-3 text-xs text-slate-700">
+                                      <span className="mb-1 block font-bold text-slate-800">Upload transfer receipt</span>
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                                        onChange={(e) => setSelectedReceipt(e.target.files?.[0] || null)}
+                                        className="block w-full text-xs"
+                                      />
+                                      <span className="mt-1 block text-[10px] text-slate-500">JPG, PNG, WEBP or PDF · Maximum 5 MB. Stored privately for Admin review.</span>
+                                      {selectedReceipt && <span className="mt-1 block font-semibold text-pink-700">{selectedReceipt.name}</span>}
+                                    </label>
+                                    {paymentError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{paymentError}</div>}
                                     <button
                                       type="button"
-                                      onClick={() => handleConfirmPayment(order.id)}
-                                      className="w-full py-2 bg-[#E6007E] hover:bg-[#D00071] text-white font-bold rounded-lg cursor-pointer"
+                                      disabled={paymentSubmitting}
+                                      onClick={() => void handleConfirmPayment(order.id)}
+                                      className="w-full py-2 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-60 text-white font-bold rounded-lg cursor-pointer"
                                     >
-                                      Submit Payment Confirmation
+                                      {paymentSubmitting ? 'Uploading receipt securely…' : 'Submit Receipt & Payment Details'}
                                     </button>
                                   </div>
                                 )}
@@ -504,22 +565,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                               </div>
                             </div>
 
-                            {/* 9. WHATSAPP CONTACT LINK ON ORDERS */}
-                            <div className="flex items-center justify-between pt-2">
-                              <div className="text-slate-500">
-                                Seller Contact: <strong>{order.sellerPhone}</strong>
-                              </div>
-
-                              <a
-                                href={`https://wa.me/${sellerWhatsApp}?text=${orderMsg}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-4 py-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-extrabold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <MessageCircle className="w-4 h-4 fill-white" />
-                                <span>Chat Seller on WhatsApp</span>
-                              </a>
-                            </div>
                           </div>
                         )}
                       </div>

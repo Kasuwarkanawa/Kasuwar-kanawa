@@ -1,0 +1,26 @@
+name: Supabase Edge API checks
+
+on:
+  push:
+    branches:
+      - chatgpt-access-test-2026-11-17
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/edge-api-checks.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/edge-api-checks.yml"
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Edge Function
+        run: deno check --config supabase/functions/api/deno.json supabase/functions/api/index.ts

@@ -1,4 +1,5 @@
 import { User } from '../types';
+import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 export interface AuthCredentials {
   identifier: string;
@@ -29,9 +30,6 @@ interface AuthResponse {
   message?: string;
 }
 
-const configuredApiUrl = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env
-  ?.VITE_API_URL;
-const API_BASE_URL = (configuredApiUrl || 'http://localhost:4000/api').replace(/\/$/, '');
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -41,6 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLIC_KEY,
         ...init?.headers,
       },
     });
@@ -50,7 +49,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const result = (await response.json().catch(() => ({}))) as T & { error?: string };
   if (!response.ok) {
-    throw new Error(result.error || `Authentication request failed (${response.status}).`);
+    throw new Error(`${result.error || 'Authentication request failed'} (${response.status})`);
   }
   return result;
 }
@@ -63,6 +62,28 @@ export const authApi = {
       body: JSON.stringify(credentials),
     });
     if (!result.success || !result.user) throw new Error(result.error || 'Login failed.');
+    return result.user;
+  },
+
+  async loginAdmin(credentials: AuthCredentials): Promise<User> {
+    const result = await request<AuthResponse>('/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+    if (!result.success || !result.user || result.user.accountType !== 'admin') {
+      throw new Error(result.error || 'Super Admin authentication failed.');
+    }
+    return result.user;
+  },
+
+  async bootstrapAdmin(data: { setupToken: string; fullName: string; email: string; phone: string; password: string }): Promise<User> {
+    const result = await request<AuthResponse>('/auth/bootstrap-admin', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!result.success || !result.user || result.user.accountType !== 'admin') {
+      throw new Error(result.error || 'First Super Admin setup failed.');
+    }
     return result.user;
   },
 

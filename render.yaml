@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: kasuwar-kanawa-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: chatgpt-access-test-2026-11-17
+    rootDir: backend
+    buildCommand: npm install --include=dev && npm run prisma:generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SESSION_COOKIE_NAME
+        value: kk_session
+      - key: SESSION_TTL_DAYS
+        value: 14
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_FULL_NAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Package,
@@ -27,7 +27,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
-import { db } from '../db/database';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
@@ -87,6 +87,56 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Refresh trigger
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setProductsLoading(true);
+    marketplaceApi.sellerProducts.list()
+      .then((products) => { if (active) { setSellerProducts(products); setProductsError(null); } })
+      .catch((error) => { if (active) setProductsError(error instanceof Error ? error.message : 'Unable to load your products.'); })
+      .finally(() => { if (active) setProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setOrdersLoading(true);
+    marketplaceApi.orders.sellerMine()
+      .then((orders) => { if (active) { setSellerOrders(orders as Order[]); setOrdersError(null); } })
+      .catch((error) => { if (active) setOrdersError(error instanceof Error ? error.message : 'Unable to load seller orders.'); })
+      .finally(() => { if (active) setOrdersLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setReportsLoading(true);
+    marketplaceApi.sellerReports.buyerReports()
+      .then((reports) => {
+        if (active) {
+          setBuyerReports(reports.map((report: any) => ({
+            ...report,
+            buyerName: report.buyerName || report.buyer?.fullName || 'Buyer',
+            buyerPhone: report.buyerPhone || report.buyer?.phone || '',
+          })));
+          setReportsError(null);
+        }
+      })
+      .catch((error) => { if (active) setReportsError(error instanceof Error ? error.message : 'Unable to load buyer reports.'); })
+      .finally(() => { if (active) setReportsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
   const triggerRefresh = () => {
     setRefreshKey((k) => k + 1);
     if (onProductUpdated) onProductUpdated();
@@ -95,18 +145,28 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   if (!isOpen) return null;
 
   // Retrieve fresh seller data
-  const stats = db.getSellerStats(seller.id);
-  const sellerProducts = db.getProducts({ sellerId: seller.id });
-  const sellerOrders = db.getSellerOrders(seller.id);
-  const buyerReports = db.getBuyerReports(seller.id);
+  // Seller dashboard metrics and sales ledger are derived from authenticated backend data.
+  const allSellerOrders = [...sellerOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const deliveredSellerOrders = allSellerOrders.filter((order) => order.status === 'delivered');
+  const stats = {
+    totalProductsListed: sellerProducts.length,
+    totalProductsSold: deliveredSellerOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0),
+    totalOrders: allSellerOrders.length,
+    paidOrders: allSellerOrders.filter((order) => order.paymentConfirmation?.verifiedByAdmin === true || order.paymentConfirmation?.adminApproved === true).length,
+    pendingOrders: allSellerOrders.filter((order) => ['pending_order', 'pending_payment', 'pending_verification'].includes(order.status)).length,
+    deliveredOrders: deliveredSellerOrders.length,
+    totalRevenue: deliveredSellerOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0),
+  };
 
   // Filter orders
-  const filteredOrders = sellerOrders.filter((ord) => {
+  const filteredOrders = allSellerOrders.filter((ord) => {
+    const buyerDetailsApproved = ord.paymentMethod === 'opay'
+      ? ord.paymentConfirmation?.verifiedByAdmin === true
+      : ord.paymentConfirmation?.adminApproved === true;
     const matchesFilter = orderFilter === 'all' ? true : ord.status === orderFilter;
-    const matchesSearch =
-      ord.orderNumber.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.buyerName.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.buyerPhone.includes(searchOrderQuery);
+    const query = searchOrderQuery.toLowerCase();
+    const matchesSearch = ord.orderNumber.toLowerCase().includes(query) ||
+      (buyerDetailsApproved && (ord.buyerName.toLowerCase().includes(query) || ord.buyerPhone.includes(searchOrderQuery)));
     return matchesFilter && matchesSearch;
   });
 
@@ -116,58 +176,41 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     p.category.toLowerCase().includes(searchProductQuery.toLowerCase())
   );
 
-  // Handle Add Product Submit
-  const handleSaveProduct = (e: React.FormEvent) => {
+  // Seller products are persisted by the authenticated backend API.
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProduct) {
-      db.updateProduct(editingProduct.id, {
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOriginalPrice || prodPrice),
-        stockQuantity: Number(prodStock),
-        stockLeft: Number(prodStock),
-        image: prodImage,
-        description: prodDescription,
-        colors: prodColors.split(',').map((c) => c.trim()).filter(Boolean),
-        sizes: prodSizes.split(',').map((s) => s.trim()).filter(Boolean),
-        variations: prodVariations
-          ? [{ name: 'Option', options: prodVariations.split(',').map((v) => v.trim()).filter(Boolean) }]
-          : undefined,
-      });
-    } else {
-      db.addProduct({
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOriginalPrice || prodPrice),
-        discountPercentage:
-          prodOriginalPrice > prodPrice
-            ? Math.round(((prodOriginalPrice - prodPrice) / prodOriginalPrice) * 100)
-            : 0,
-        rating: 5.0,
-        reviewsCount: 0,
-        image: prodImage,
-        description: prodDescription,
-        stockQuantity: Number(prodStock),
-        colors: prodColors.split(',').map((c) => c.trim()).filter(Boolean),
-        sizes: prodSizes.split(',').map((s) => s.trim()).filter(Boolean),
-        variations: prodVariations
-          ? [{ name: 'Option', options: prodVariations.split(',').map((v) => v.trim()).filter(Boolean) }]
-          : undefined,
-        sellerId: seller.id,
-        sellerName: seller.fullName,
-        sellerBusinessName: seller.businessName || `${seller.fullName}'s Enterprise`,
-        sellerPhone: seller.phone,
-        sellerWhatsApp: seller.whatsAppNumber || seller.phone,
-        isApproved: false,
-        approvalStatus: 'pending_approval',
-      });
-    }
+    const payload = {
+      name: prodName.trim(),
+      category: prodCategory,
+      price: Number(prodPrice),
+      originalPrice: Number(prodOriginalPrice || prodPrice),
+      discountPercentage: prodOriginalPrice > prodPrice
+        ? Math.round(((prodOriginalPrice - prodPrice) / prodOriginalPrice) * 100)
+        : 0,
+      stockQuantity: Number(prodStock),
+      image: prodImage,
+      images: [prodImage],
+      description: prodDescription,
+      colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
+      sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
+      variations: prodVariations
+        ? [{ name: 'Option', options: prodVariations.split(',').map((value) => value.trim()).filter(Boolean) }]
+        : [],
+    };
 
-    setShowAddProductModal(false);
-    setEditingProduct(null);
-    triggerRefresh();
+    try {
+      if (editingProduct) {
+        await marketplaceApi.sellerProducts.update(editingProduct.id, payload);
+      } else {
+        await marketplaceApi.sellerProducts.create(payload);
+      }
+      setShowAddProductModal(false);
+      setEditingProduct(null);
+      triggerRefresh();
+      alert('Product saved. It is now awaiting Admin approval before appearing in the public store.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to save product. Please try again.');
+    }
   };
 
   const openAddProduct = () => {
@@ -200,27 +243,42 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setShowAddProductModal(true);
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      db.deleteProduct(productId);
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
+    try {
+      await marketplaceApi.sellerProducts.remove(productId);
       triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to delete product. Please try again.');
     }
   };
 
   // Order Lifecycle Handlers
-  const handleAcceptOrder = (orderId: string) => {
-    db.sellerAcceptOrder(orderId);
-    triggerRefresh();
+  const handleAcceptOrder = async (orderId: string) => {
+    try {
+      await marketplaceApi.orders.sellerStatus(orderId, 'processing');
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to accept this order.');
+    }
   };
 
-  const handleDispatchOrder = (orderId: string) => {
-    db.sellerDispatchOrder(orderId);
-    triggerRefresh();
+  const handleDispatchOrder = async (orderId: string) => {
+    const logisticsCompanyName = window.prompt('Enter the logistics company name:');
+    if (!logisticsCompanyName?.trim()) return;
+    const trackingNumber = window.prompt('Enter the logistics tracking number:');
+    if (!trackingNumber?.trim()) return;
+    try {
+      await marketplaceApi.orders.logisticsHandoff(orderId, logisticsCompanyName.trim(), trackingNumber.trim());
+      triggerRefresh();
+      alert('Order handed over to logistics. Buyer and Admin can now track its progress.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to record logistics hand-off.');
+    }
   };
 
-  const handleDeliverOrder = (orderId: string) => {
-    db.sellerDeliverOrder(orderId);
-    triggerRefresh();
+  const handleDeliverOrder = (_orderId: string) => {
+    alert('Delivery completion is confirmed by the Admin after the logistics provider reports delivery.');
   };
 
   const handleOpenSellerReject = (ord: Order) => {
@@ -228,35 +286,36 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setSellerRejectionReason('Item is temporarily out of stock in our Kano store.');
   };
 
-  const handleConfirmSellerReject = (e: React.FormEvent) => {
+  const handleConfirmSellerReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectingOrder) return;
-    db.sellerRejectOrder(rejectingOrder.id, sellerRejectionReason);
-    setRejectingOrder(null);
-    triggerRefresh();
+    try {
+      await marketplaceApi.orders.sellerStatus(rejectingOrder.id, 'rejected', sellerRejectionReason);
+      setRejectingOrder(null);
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to reject this order.');
+    }
   };
 
-  // Submit Buyer Report
-  const handleSubmitBuyerReport = (e: React.FormEvent) => {
+  // Submit buyer reports to the authenticated backend; the server verifies seller/order ownership and Admin approval.
+  const handleSubmitBuyerReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportingOrder) return;
-
-    db.submitBuyerReport({
-      sellerId: seller.id,
-      sellerName: seller.fullName,
-      sellerBusinessName: seller.businessName || 'Seller Store',
-      buyerId: reportingOrder.buyerId,
-      buyerName: reportingOrder.buyerName,
-      buyerPhone: reportingOrder.buyerPhone,
-      orderNumber: reportingOrder.orderNumber,
-      reason: reportReason,
-      details: reportDetails,
-    });
-
-    setReportingOrder(null);
-    setReportDetails('');
-    alert('Buyer report submitted successfully to Super Admin for verification.');
-    triggerRefresh();
+    try {
+      await marketplaceApi.sellerReports.reportBuyer({
+        buyerId: reportingOrder.buyerId,
+        orderId: reportingOrder.id,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportingOrder(null);
+      setReportDetails('');
+      alert('Buyer report submitted successfully to Super Admin for verification.');
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to submit buyer report.');
+    }
   };
 
   return (
@@ -394,7 +453,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Order Management ({sellerOrders.length})</span>
+            <span>Order Management ({allSellerOrders.length})</span>
           </button>
 
           <button
@@ -525,17 +584,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       onClick={() => setActiveTab('orders')}
                       className="text-xs font-bold text-[#E6007E] hover:underline cursor-pointer"
                     >
-                      View All Orders ({sellerOrders.length}) →
+                      View All Orders ({allSellerOrders.length}) →
                     </button>
                   </div>
 
-                  {sellerOrders.length === 0 ? (
+                  {allSellerOrders.length === 0 ? (
                     <div className="text-center py-8 text-slate-400 text-xs">
                       No orders recorded yet. New buyer orders will appear here automatically.
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {sellerOrders.slice(0, 3).map((ord) => (
+                      {allSellerOrders.slice(0, 3).map((ord) => (
                         <div
                           key={ord.id}
                           className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs"
@@ -556,7 +615,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               </span>
                             </div>
                             <div className="text-slate-500 text-[11px] mt-0.5">
-                              Buyer: <strong className="text-slate-700">{ord.buyerName}</strong> • {ord.items.length} item(s)
+                              Buyer: <strong className="text-slate-700">{(ord.paymentMethod === 'opay' ? ord.paymentConfirmation?.verifiedByAdmin === true : ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status)) ? ord.buyerName : 'Hidden until Admin approval'}</strong> • {ord.items.length} item(s)
                             </div>
                           </div>
 
@@ -605,6 +664,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
               </div>
 
+              {(productsLoading || productsError) && (
+                <div className={`mb-3 rounded-xl px-4 py-3 text-xs font-semibold ${productsError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                  {productsLoading ? 'Loading products from the secure marketplace database…' : productsError}
+                </div>
+              )}
               {/* Products List Table / Cards */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                 {filteredProducts.length === 0 ? (
@@ -704,6 +768,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           {/* 3. ORDER MANAGEMENT TAB */}
           {activeTab === 'orders' && (
+            <>
+            {ordersError && <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{ordersError}</div>}
+            {ordersLoading && <div className="mx-4 flex items-center gap-2 text-xs font-semibold text-slate-500"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading secure orders…</div>}
             <div className="space-y-4">
               
               {/* Order Status Filters */}
@@ -765,8 +832,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 <div className="space-y-4">
                   {filteredOrders.map((ord) => {
                     const isOpay = ord.paymentMethod === 'opay';
-                    const isOpayVerified = ord.paymentConfirmation?.verifiedByAdmin;
-                    const canProcess = !isOpay || isOpayVerified;
+                    const isOpayVerified = ord.paymentConfirmation?.verifiedByAdmin === true;
+                    const isCodApproved = ord.paymentConfirmation?.adminApproved === true;
+                    const canSeeBuyerDetails = ord.status !== 'rejected' && (isOpay ? isOpayVerified : isCodApproved);
+                    const canProcess = canSeeBuyerDetails;
 
                     return (
                       <div
@@ -806,8 +875,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                 )
                               ) : (
                                 <>
-                                  <Truck className="w-3.5 h-3.5 text-blue-600" />
-                                  <span>Cash on Delivery (COD)</span>
+                                  {isCodApproved ? <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                                  <span>{isCodApproved ? 'COD: Approved by Admin' : 'COD: Awaiting Admin Approval'}</span>
                                 </>
                               )}
                             </span>
@@ -826,32 +895,37 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px] block">
                               Buyer & Delivery Information
                             </span>
-                            <div className="font-bold text-slate-800 text-sm">{ord.buyerName}</div>
-                            <div className="text-slate-600 flex items-center gap-1.5">
-                              <Phone className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{ord.buyerPhone}</span>
-                            </div>
-
-                            {/* WhatsApp Buyer Link (Section 8) */}
-                            <div className="pt-1">
-                              <a
-                                href={`https://wa.me/234${ord.buyerPhone.replace(/^0+/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                                  `Hello ${ord.buyerName}, this is ${seller.businessName || seller.fullName} from Kasuwar Kanawa regarding your order ${ord.orderNumber}.`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                                <span>Chat with Buyer on WhatsApp</span>
-                              </a>
-                            </div>
-
-                            <div className="text-slate-500 text-[11px] pt-2">
-                              <div className="font-semibold text-slate-700">Delivery Address:</div>
-                              <div>{ord.shippingAddress?.completeAddress || 'Kano Address'}</div>
-                              <div>{ord.shippingAddress?.area}, {ord.shippingAddress?.city}, {ord.shippingAddress?.state}</div>
-                            </div>
+                            {canSeeBuyerDetails ? (
+                              <>
+                                <div className="font-bold text-slate-800 text-sm">{ord.buyerName}</div>
+                                <div className="text-slate-600 flex items-center gap-1.5">
+                                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>{ord.buyerPhone}</span>
+                                </div>
+                                <div className="pt-1">
+                                  <a
+                                    href={`https://wa.me/234${ord.buyerPhone.replace(/^0+/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                                      `Hello ${ord.buyerName}, this is ${seller.businessName || seller.fullName} from Kasuwar Kanawa regarding your order ${ord.orderNumber}.`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    <span>Chat with Buyer on WhatsApp</span>
+                                  </a>
+                                </div>
+                                <div className="text-slate-500 text-[11px] pt-2">
+                                  <div className="font-semibold text-slate-700">Delivery Address:</div>
+                                  <div>{ord.shippingAddress?.completeAddress || 'Kano Address'}</div>
+                                  <div>{ord.shippingAddress?.area}, {ord.shippingAddress?.city}, {ord.shippingAddress?.state}</div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px]">
+                                Buyer phone number and delivery address will appear here only after Super Admin approves this order.
+                              </div>
+                            )}
                           </div>
 
                           {/* 2. Items in Order */}
@@ -947,7 +1021,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                           <Truck className="w-4 h-4" />
                                           <span>Ready for Dispatch / Logistics</span>
                                         </button>
-                                        {!ord.logisticsCompanyId && (
+                                        {!(ord.logisticsCompanyId || ord.logisticsCompanyName) && (
                                           <button
                                             type="button"
                                             onClick={() => handleOpenSellerReject(ord)}
@@ -967,7 +1041,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                             Ready / Dispatched at: {new Date(ord.dispatchedAt).toLocaleString()}
                                           </div>
                                         )}
-                                        {ord.logisticsCompanyId ? (
+                                        {(ord.logisticsCompanyId || ord.logisticsCompanyName) ? (
                                           <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-[11px] text-center">
                                             <strong>Handed to Logistics workflow.</strong> Kamfanin Logistics ne kawai zai sabunta Picked Up, In Transit, Out for Delivery da Delivered. Seller ba zai iya tabbatar da Delivered ba.
                                           </div>
@@ -1021,6 +1095,34 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               </div>
                             </div>
 
+                            {ord.trackingNumber && (
+                              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Live Logistics Progress</span>
+                                  <span className="text-[10px] font-bold text-sky-800">{(ord.logisticsStatus || 'handed_to_logistics').replaceAll('_', ' ')}</span>
+                                </div>
+                                <div className="text-[11px] text-slate-700">
+                                  Carrier: <strong>{ord.logisticsCompanyName || 'Not specified'}</strong>
+                                  <br />
+                                  Tracking number: <strong>{ord.trackingNumber}</strong>
+                                </div>
+                                {ord.trackingTimeline?.length > 0 && (
+                                  <ol className="space-y-2 border-l-2 border-sky-200 ml-1 pl-3">
+                                    {ord.trackingTimeline.map((step, index) => (
+                                      <li key={index} className="text-[10px] text-slate-700">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`h-2 w-2 rounded-full ${step.completed ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                                          <strong>{step.title}</strong>
+                                          {step.date && <span className="text-slate-400">· {step.date}</span>}
+                                        </div>
+                                        <p className="pl-3.5 text-slate-500">{step.description}</p>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                )}
+                              </div>
+                            )}
+
                             {/* Section 9: Report Suspicious / Fraudulent Buyer Button */}
                             <div className="pt-2 border-t border-slate-100">
                               <button
@@ -1040,6 +1142,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* 4. SALES & REVENUE HISTORY TAB */}
@@ -1071,8 +1174,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   Completed Sales Record
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {sellerOrders
-                    .filter((o) => o.status === 'delivered')
+                  {deliveredSellerOrders
                     .map((ord) => (
                       <div key={ord.id} className="p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div>
@@ -1087,7 +1189,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         </div>
                       </div>
                     ))}
-                  {sellerOrders.filter((o) => o.status === 'delivered').length === 0 && (
+                  {deliveredSellerOrders.length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-xs">
                       No completed orders yet. Delivered orders will appear here in your sales ledger.
                     </div>
@@ -1110,7 +1212,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               </div>
 
               <div className="space-y-3">
-                {buyerReports.length === 0 ? (
+                {reportsLoading ? (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 text-center text-slate-500 text-xs">Loading buyer reports…</div>
+                ) : reportsError ? (
+                  <div className="bg-red-50 p-4 rounded-2xl border border-red-200 text-red-700 text-xs">{reportsError}</div>
+                ) : buyerReports.length === 0 ? (
                   <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
                     No buyer reports submitted. You can report suspicious buyers directly from the Order Management tab.
                   </div>
@@ -1509,13 +1615,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
               <ProfileImageUploader
                 value={currentSeller.profileImage || ''}
-                onChange={(url) => {
-                  const updated = db.updateUserProfile(currentSeller.id, {
-                    profileImage: url.trim() || undefined,
-                  });
-                  if (updated) {
-                    setCurrentSeller(updated);
+                onChange={async (url) => {
+                  try {
+                    const result = await marketplaceApi.seller.updateProfile({ profileImage: url.trim() || null });
+                    setCurrentSeller(result.user as User);
                     triggerRefresh();
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : 'Unable to update store profile image.');
                   }
                 }}
                 name={currentSeller.businessName || currentSeller.fullName}

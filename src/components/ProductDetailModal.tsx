@@ -4,8 +4,6 @@ import {
   Star,
   ShoppingCart,
   Zap,
-  Phone,
-  MessageCircle,
   ShieldAlert,
   Send,
   Check,
@@ -15,8 +13,8 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Product, ProductReview, CartItem, User } from '../types';
-import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
+import { marketplaceApi } from '../utils/marketplaceApi';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -57,6 +55,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Report Modal state
   const [isReporting, setIsReporting] = useState(false);
@@ -68,71 +67,53 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [addedAnimation, setAddedAnimation] = useState(false);
 
   useEffect(() => {
-    if (product) {
-      setSelectedImage(product.image);
-      setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
-      setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
-      setSelectedVariation(
-        product.variations && product.variations[0]?.options.length
-          ? product.variations[0].options[0]
-          : ''
-      );
-      setQuantity(1);
-      setReviews(db.getReviews(product.id));
-      setReviewSubmitted(false);
-      setIsReporting(false);
-      setReportSuccess(false);
-    }
+    if (!product) return;
+    let active = true;
+    setSelectedImage(product.image);
+    setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
+    setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
+    setSelectedVariation(product.variations && product.variations[0]?.options.length ? product.variations[0].options[0] : '');
+    setQuantity(1);
+    setReviews([]);
+    setReviewError(null);
+    setReviewSubmitted(false);
+    setIsReporting(false);
+    setReportSuccess(false);
+    marketplaceApi.catalog.reviews(product.id)
+      .then((items) => { if (active) setReviews(items); })
+      .catch((error) => { if (active) setReviewError(error instanceof Error ? error.message : 'Unable to load product reviews.'); });
+    return () => { active = false; };
   }, [product]);
 
   // Early return ONLY after all hooks have been declared unconditionally
   if (!isOpen || !product) return null;
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      onRequireLogin();
-      return;
-    }
+    if (!currentUser) { onRequireLogin(); return; }
     if (!newComment.trim()) return;
-
-    const created = db.addReview({
-      productId: product.id,
-      buyerId: currentUser.id,
-      buyerName: currentUser.fullName,
-      rating: newRating,
-      comment: newComment.trim(),
-    });
-
-    setReviews([created, ...reviews]);
-    setNewComment('');
-    setReviewSubmitted(true);
-    setTimeout(() => setReviewSubmitted(false), 3000);
+    try {
+      const created = await marketplaceApi.catalog.submitReview(product.id, { rating: newRating, comment: newComment.trim() });
+      setReviews((items) => [created, ...items]);
+      setNewComment('');
+      setReviewError(null);
+      setReviewSubmitted(true);
+      setTimeout(() => setReviewSubmitted(false), 3000);
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : 'Unable to submit review. A delivered order is required.');
+    }
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      onRequireLogin();
-      return;
+    if (!currentUser) { onRequireLogin(); return; }
+    try {
+      await marketplaceApi.catalog.report(product.id, { reason: reportReason, details: reportDetails });
+      setReportSuccess(true);
+      setTimeout(() => { setIsReporting(false); setReportSuccess(false); setReportDetails(''); }, 2500);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to submit product report.');
     }
-
-    db.submitReport({
-      productId: product.id,
-      productName: product.name,
-      buyerId: currentUser.id,
-      buyerName: currentUser.fullName,
-      buyerPhone: currentUser.phone,
-      reason: reportReason,
-      details: reportDetails,
-    });
-
-    setReportSuccess(true);
-    setTimeout(() => {
-      setIsReporting(false);
-      setReportSuccess(false);
-      setReportDetails('');
-    }, 2500);
   };
 
   const currentCartItem: CartItem = {
@@ -153,13 +134,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const handleBuy = () => {
     onBuyNow(currentCartItem);
   };
-
-  // WhatsApp Link
-  const sellerPhoneClean = (product.sellerWhatsApp || '2349060938835').replace(/[^0-9]/g, '');
-  const whatsAppMessage = encodeURIComponent(
-    `Salam, I am interested in purchasing "${product.name}" (${formatPrice(product.price)}) on Kasuwar Kanawa. Color: ${selectedColor || 'Default'}, Size/Option: ${selectedSize || 'Standard'}. Is it currently in stock?`
-  );
-  const whatsAppLink = `https://wa.me/${sellerPhoneClean}?text=${whatsAppMessage}`;
 
   const allImages = [product.image, ...(product.images || [])];
   const uniqueImages = Array.from(new Set(allImages));
@@ -227,31 +201,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Direct Seller Contact & WhatsApp Box */}
-              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Verified Seller:</span>
-                  <span className="font-extrabold text-[#0B172E]">{product.sellerName || 'Kasuwar Kanawa Merchant'}</span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Phone Number:</span>
-                  <a href={`tel:${product.sellerPhone || '09060938835'}`} className="font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    <span>{product.sellerPhone || '09060938835'}</span>
-                  </a>
-                </div>
-
-                {/* Direct WhatsApp Button */}
-                <a
-                  href={whatsAppLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 px-3 bg-[#25D366] hover:bg-[#20BD5A] text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-1"
-                >
-                  <MessageCircle className="w-4 h-4 fill-white" />
-                  <span>Chat Seller on WhatsApp</span>
-                </a>
+              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-bold">Verified Seller:</span>
+                <span className="font-extrabold text-[#0B172E]">{product.sellerName || 'Kasuwar Kanawa Merchant'}</span>
               </div>
             </div>
 
@@ -612,6 +564,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span>Masha Allah! Your review has been published.</span>
                 </div>
               )}
+              {reviewError && <p role="alert" className="text-xs font-semibold text-red-600">{reviewError}</p>}
 
               <div className="flex justify-between items-center">
                 {!currentUser ? (
@@ -626,7 +579,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={!currentUser}
+                  disabled={!currentUser || currentUser.accountType !== 'buyer'}
                   className="px-4 py-2 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />

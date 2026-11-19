@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CartItem, User, Order } from '../types';
 import { db } from '../db/database';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { formatPrice } from '../utils/format';
 
 interface CheckoutModalProps {
@@ -59,6 +60,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'opay' | 'cod'>('opay');
   const [senderName, setSenderName] = useState(currentUser?.fullName || '');
   const [transactionRef, setTransactionRef] = useState('');
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
   // Flow states
@@ -125,84 +127,105 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setTimeout(() => setCopiedAccount(false), 2000);
   };
 
-  // Validate and submit order
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  // Create orders through the authenticated backend. Prices and stock are recalculated server-side.
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Section 5: Require all fields
+    if (!currentUser || currentUser.accountType !== 'buyer') {
+      setErrorMessage('Please sign in with your Buyer account before placing an order.');
+      return;
+    }
     if (!fullName.trim() || !phoneNumber.trim() || !state.trim() || !city.trim() || !area.trim() || !completeAddress.trim()) {
       setErrorMessage('Please fill in all required shipping address fields before proceeding.');
       return;
     }
-
     if (checkoutItems.length === 0) {
       setErrorMessage('Your checkout basket is empty. Please add items to checkout.');
       return;
     }
+    if (checkoutItems.some((item) => !item.product.id || item.product.id.startsWith('sample-') || item.product.id.startsWith('prod-'))) {
+      setErrorMessage('One or more items are not linked to the live marketplace catalogue. Remove them and add the products again from the live store.');
+      return;
+    }
+    const sellerIds = new Set(checkoutItems.map((item) => item.product.sellerId).filter(Boolean));
+    if (sellerIds.size > 1) {
+      setErrorMessage('Your basket contains products from different sellers. Please place separate orders for each seller by checking out one seller’s products at a time.');
+      return;
+    }
 
     setIsSubmitting(true);
+    try {
+      const order = await marketplaceApi.orders.create({
+        items: checkoutItems.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
+          selectedVariation: item.selectedVariation,
+        })),
+        paymentMethod,
+        shippingAddress: {
+          fullName: fullName.trim(),
+          phoneNumber: phoneNumber.trim(),
+          state: state.trim(),
+          city: city.trim(),
+          area: area.trim(),
+          completeAddress: completeAddress.trim(),
+        },
+      }) as Order;
 
-    const buyerUser: User = currentUser || {
-      id: `usr-guest-${Date.now()}`,
-      fullName: fullName.trim(),
-      phone: phoneNumber.trim(),
-      email: `${phoneNumber.replace(/\D/g, '')}@kasuwarkanawa.com`,
-      address: completeAddress.trim(),
-      city: city.trim(),
-      state: state.trim(),
-      area: area.trim(),
-      accountType: 'buyer',
-      createdAt: new Date().toISOString(),
-    };
-
-    const newOrder = db.createOrder({
-      buyer: buyerUser,
-      items: checkoutItems,
-      shippingAddress: {
-        fullName: fullName.trim(),
-        phoneNumber: phoneNumber.trim(),
-        state: state.trim(),
-        city: city.trim(),
-        area: area.trim(),
-        completeAddress: completeAddress.trim(),
-      },
-      paymentMethod,
-      senderName: senderName || fullName,
-      transactionReference:
-        paymentMethod === 'opay'
-          ? `OPAY-TRX-${Math.floor(10000000 + Math.random() * 90000000)}`
-          : undefined,
-    });
-
-    setCreatedOrder(newOrder);
-    setIsSubmitting(false);
-
-    if (paymentMethod === 'opay') {
-      // Step 2: Show OPay transfer information (Section 8)
-      setStep('opay_confirm');
-    } else {
-      // Step 2 for COD: Immediate confirmation (Section 9)
-      db.clearCart();
-      onOrderSuccess(newOrder);
-      setStep('success');
+      setCreatedOrder(order);
+      if (paymentMethod === 'opay') {
+        setStep('opay_confirm');
+      } else {
+        db.clearCart();
+        onOrderSuccess(order);
+        setStep('success');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to place your order. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Buyer confirms OPay transfer (Section 8)
-  const handleConfirmOPayPayment = (e: React.FormEvent) => {
+  // Record the buyer's OPay transfer details with the backend for Admin verification.
+  const handleConfirmOPayPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createdOrder) return;
 
-    db.confirmPaymentByBuyer(
-      createdOrder.id,
-      senderName || fullName,
-      transactionRef.trim() || `OPAY-REF-${Math.floor(1000000 + Math.random() * 9000000)}`
-    );
+    if (!senderName.trim() || !transactionRef.trim()) {
+      setErrorMessage('Please enter the exact sender name and OPay transaction reference from your transfer receipt.');
+      return;
+    }
+    if (!paymentReceipt) {
+      setErrorMessage('Please attach your OPay transfer receipt (JPG, PNG, WEBP or PDF) before confirming payment.');
+      return;
+    }
+    if (paymentReceipt.size > 5 * 1024 * 1024) {
+      setErrorMessage('Receipt file must be 5 MB or smaller.');
+      return;
+    }
 
-    db.clearCart();
-    onOrderSuccess(createdOrder);
-    setStep('success');
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const updatedOrder = await marketplaceApi.orders.confirmOpay(
+        createdOrder.id,
+        senderName.trim(),
+        transactionRef.trim(),
+      ) as Order;
+      const receiptOrder = await marketplaceApi.orders.uploadReceipt(createdOrder.id, paymentReceipt) as Order;
+      setCreatedOrder(receiptOrder);
+      db.clearCart();
+      onOrderSuccess(receiptOrder);
+      setStep('success');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to submit payment confirmation. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -563,6 +586,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* STEP 2: OPAY BANK TRANSFER CHECKOUT (Section 8) */}
         {step === 'opay_confirm' && createdOrder && (
           <form onSubmit={handleConfirmOPayPayment} className="p-5 sm:p-6 space-y-4 overflow-y-auto max-h-[85vh] text-xs">
+            {errorMessage && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
             <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 flex items-center gap-2">
               <Clock className="w-4 h-4 text-purple-600 shrink-0" />
               <span>
@@ -619,6 +648,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
+            <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+              <label className="block text-xs font-bold text-slate-800">
+                Upload Transfer Receipt (Required)
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                required
+                onChange={(e) => setPaymentReceipt(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-pink-100 file:px-3 file:py-2 file:font-bold file:text-[#E6007E]"
+              />
+              <p className="text-[10px] text-slate-500">JPG, PNG, WEBP or PDF • Maximum 5 MB. Receipt is stored privately for Admin verification.</p>
+              {paymentReceipt && <p className="text-[11px] font-semibold text-emerald-700">Selected: {paymentReceipt.name}</p>}
+            </div>
+
             {/* Buyer Payment Confirmation Inputs */}
             <div className="space-y-3 pt-1">
               <span className="block text-xs font-bold text-slate-800">
@@ -662,10 +706,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-[#E6007E] hover:bg-[#D00071] text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting || !paymentReceipt}
+                className="w-full py-3.5 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                <span>Confirm Payment</span>
+                <span>{isSubmitting ? 'Submitting Receipt…' : 'Confirm Payment'}</span>
               </button>
             </div>
           </form>
