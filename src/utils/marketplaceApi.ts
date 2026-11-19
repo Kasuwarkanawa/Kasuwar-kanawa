@@ -11,7 +11,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       credentials: 'include',
       headers: {
-        ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(init.body instanceof FormData || init.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }),
         ...init.headers,
       },
     });
@@ -51,6 +51,12 @@ export const marketplaceApi = {
       request<any>(`/orders/${encodeURIComponent(id)}/payment-confirmation`, {
         method: 'POST',
         body: JSON.stringify({ senderName, transactionReference }),
+      }),
+    uploadReceipt: (id: string, file: File) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/payment-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
       }),
   },
   adminProducts: {
