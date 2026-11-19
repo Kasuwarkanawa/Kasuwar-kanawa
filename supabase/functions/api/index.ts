@@ -112,7 +112,14 @@ function orderForSeller(order:any) {
   const approved=order.paymentMethod==="opay" ? order.status==="payment_confirmed" && payment.verifiedByAdmin===true : payment.adminApproved===true;
   delete result.sellerPhone; delete result.sellerWhatsApp;
   if(!approved){delete result.buyerName;delete result.buyerEmail;delete result.buyerPhone;delete result.shippingAddress;}
-  if(result.paymentConfirmation && typeof result.paymentConfirmation==="object") delete result.paymentConfirmation.receiptPath;
+  if(result.paymentConfirmation && typeof result.paymentConfirmation==="object") {
+    result.paymentConfirmation={
+      verifiedByAdmin:payment.verifiedByAdmin===true,
+      adminApproved:payment.adminApproved===true,
+      verifiedAt:payment.verifiedAt??undefined,
+      adminApprovedAt:payment.adminApprovedAt??undefined,
+    };
+  }
   return result;
 }
 
