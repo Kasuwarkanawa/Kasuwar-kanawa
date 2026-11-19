@@ -284,6 +284,8 @@ export default function App() {
     try {
       await authApi.logout();
       setCurrentUser(null);
+      setCartItems([]);
+      db.clearCart();
       setBuyerDashboardOpen(false);
       setSellerDashboardOpen(false);
       setLogisticsDashboardOpen(false);
