@@ -57,7 +57,7 @@ export default function App() {
     else setActivePromotions([]);
     if (flashSalesResult.status === 'fulfilled') setActiveFlashSale(flashSalesResult.value[0] || null);
     else setActiveFlashSale(null);
-    if (argumentsResult.status === 'fulfilled') setPublishedAnnouncements(argumentsResult.value);
+    if (announcementsResult.status === 'fulfilled') setPublishedAnnouncements(announcementsResult.value);
     else setPublishedAnnouncements([]);
   }, []);
 
