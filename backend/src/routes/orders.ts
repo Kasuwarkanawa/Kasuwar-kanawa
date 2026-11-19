@@ -228,6 +228,7 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (status === 'rejected' && !reason) return res.status(400).json({ error: 'A reason is required to reject an order.' });
+    if (status === 'dispatched') return res.status(409).json({ error: 'Use the logistics hand-off action to record the carrier and tracking number.' });
     const payment = paymentValue(order.paymentConfirmation);
     if (order.paymentMethod === PaymentMethod.cod && status !== 'rejected' && payment.adminApproved !== true) return res.status(409).json({ error: 'COD order must be approved by Admin before fulfillment.' });
     if (order.paymentMethod === PaymentMethod.opay && status !== 'rejected' && (order.status !== OrderStatus.payment_confirmed || payment.verifiedByAdmin !== true)) {
@@ -307,7 +308,7 @@ ordersRouter.patch('/admin/:id/logistics-update', ...adminOnly, async (req, res,
     }).strict().parse(req.body);
     const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    if (!order.trackingNumber || !order.logisticsCompanyName || order.logisticsStatus !== 'handed_to_logistics' && !['picked_up', 'in_transit'].includes(order.logisticsStatus ?? '')) {
+    if (!order.trackingNumber || !order.logisticsCompanyName || !order.logisticsStatus) {
       return res.status(409).json({ error: 'Seller must record the logistics hand-off before tracking updates.' });
     }
     if (order.status === OrderStatus.delivered || order.status === OrderStatus.cancelled || order.status === OrderStatus.rejected) {
