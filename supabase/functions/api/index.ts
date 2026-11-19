@@ -615,7 +615,8 @@ async function dispatch(req: Request, origin: string | null) {
     const cartRelation:any = item?.cart;
     const cartOwnerId = Array.isArray(cartRelation) ? cartRelation[0]?.userId : cartRelation?.userId;
     if(!item || cartOwnerId!==auth.user.id)fail("Cart item not found.",404);
-    if(item.product?.approvalStatus!=="APPROVED" || item.product.stockQuantity<quantity)fail("Product is unavailable or requested quantity exceeds stock.",409);
+    const productRelation:any = item.product;const cartProduct = Array.isArray(productRelation) ? productRelation[0] : productRelation;
+    if(cartProduct?.approvalStatus!=="APPROVED" || cartProduct.stockQuantity<quantity)fail("Product is unavailable or requested quantity exceeds stock.",409);
     const {error}=await db.from("CartItem").update({quantity}).eq("id",id);if(error)throw error;return reply({success:true},200,origin);
   }
   if(cartItemMatch && method==="DELETE") {
