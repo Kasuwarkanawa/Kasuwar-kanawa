@@ -659,7 +659,7 @@ export default function App() {
         {/* 5. Main Promotional Banner (Redmi Note 12) */}
         <MainPromotionalBanner
           onShopNow={(name) => {
-            const redmi = PRODUCTS.find((p) => p.name.includes('Redmi Note 12'));
+            const redmi = liveProducts.find((p) => p.name.includes('Redmi Note 12'));
             if (redmi) {
               setSelectedProductForDetail(redmi);
             } else {
@@ -667,7 +667,7 @@ export default function App() {
             }
           }}
           onAddToCart={handleAddToCart}
-          featuredProduct={PRODUCTS.find((p) => p.name.includes('Redmi Note 12'))}
+          featuredProduct={liveProducts.find((p) => p.name.includes('Redmi Note 12'))}
         />
 
         {/* 6. Flash Sales Section with Countdown Timer */}
