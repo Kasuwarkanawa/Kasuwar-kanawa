@@ -195,6 +195,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     if (!createdOrder) return;
 
+    if (!senderName.trim() || !transactionRef.trim()) {
+      setErrorMessage('Please enter the exact sender name and OPay transaction reference from your transfer receipt.');
+      return;
+    }
     if (!paymentReceipt) {
       setErrorMessage('Please attach your OPay transfer receipt (JPG, PNG, WEBP or PDF) before confirming payment.');
       return;
@@ -207,14 +211,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      await marketplaceApi.orders.uploadReceipt(createdOrder.id, paymentReceipt);
-      const reference = transactionRef.trim() || `OPAY-REF-${Math.floor(1000000 + Math.random() * 9000000)}`;
       const updatedOrder = await marketplaceApi.orders.confirmOpay(
         createdOrder.id,
-        (senderName || fullName).trim(),
-        reference,
+        senderName.trim(),
+        transactionRef.trim(),
       ) as Order;
       setCreatedOrder(updatedOrder);
+      await marketplaceApi.orders.uploadReceipt(createdOrder.id, paymentReceipt);
       db.clearCart();
       onOrderSuccess(updatedOrder);
       setStep('success');
