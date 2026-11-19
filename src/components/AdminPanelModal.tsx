@@ -1446,14 +1446,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <option value="rejected">Rejected</option>
                       </select>
 
-                      <button
-                        type="button"
-                        onClick={handleOpenAddUser}
-                        className="px-3 py-1.5 bg-[#E6007E] hover:bg-pink-700 text-white rounded-lg text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add New User</span>
-                      </button>
+
                     </div>
                   </div>
 
@@ -1547,14 +1540,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 </button>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u.id, u.fullName)}
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-md cursor-pointer"
-                                title="Delete User"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+
                             </td>
                           </tr>
                         ))}
@@ -1807,14 +1793,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenAddProduct}
-                      className="px-3 py-1.5 bg-[#E6007E] hover:bg-pink-700 text-white rounded-lg text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add New Product</span>
-                    </button>
+
                   </div>
 
                   {/* Server-backed Seller submissions awaiting approval */}
