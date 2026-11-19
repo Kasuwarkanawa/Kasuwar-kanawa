@@ -40,20 +40,25 @@ export default function App() {
   const [liveProducts, setLiveProducts] = useState<Product[]>([]);
 
   // Phase 7: Live Flash Sales, Promotional Advertisements & Announcements from Database
-  const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(() => db.getActiveFlashSale());
-  const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>(() => db.getActivePromotionalAds());
-  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>(() => db.getPublishedAnnouncements());
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(null);
+  const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>([]);
+  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>([]);
 
   const refreshLiveProducts = useCallback(async () => {
-    try {
-      const products = await marketplaceApi.catalog.list({ take: 100 });
-      setLiveProducts(products);
-    } catch {
-      showToast('Unable to load the live product catalog. Please refresh and try again.');
-    }
-    setActiveFlashSale(db.getActiveFlashSale());
-    setActivePromotions(db.getActivePromotionalAds());
-    setPublishedAnnouncements(db.getPublishedAnnouncements());
+    const [productsResult, promotionsResult, flashSalesResult, announcementsResult] = await Promise.allSettled([
+      marketplaceApi.catalog.list({ take: 100 }),
+      marketplaceApi.content.publicPromotions(),
+      marketplaceApi.content.publicFlashSales(),
+      marketplaceApi.content.publicAnnouncements(),
+    ]);
+    if (productsResult.status === 'fulfilled') setLiveProducts(productsResult.value);
+    else showToast('Unable to load the live product catalog. Please refresh and try again.');
+    if (promotionsResult.status === 'fulfilled') setActivePromotions(promotionsResult.value);
+    else setActivePromotions([]);
+    if (flashSalesResult.status === 'fulfilled') setActiveFlashSale(flashSalesResult.value[0] || null);
+    else setActiveFlashSale(null);
+    if (announcementsResult.status === 'fulfilled') setPublishedAnnouncements(announcementsResult.value);
+    else setPublishedAnnouncements([]);
   }, []);
 
   useEffect(() => {
