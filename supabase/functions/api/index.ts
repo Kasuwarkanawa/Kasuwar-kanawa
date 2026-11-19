@@ -513,6 +513,24 @@ async function dispatch(req: Request, origin: string | null) {
     return reply({items:[]},200,origin);
   }
 
+
+  if(path==="/orders" && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);
+    const b=z.object({
+      items:z.array(z.object({productId:z.string().min(1),quantity:z.number().int().min(1).max(100),selectedColor:z.string().trim().max(120).optional(),selectedSize:z.string().trim().max(120).optional(),selectedVariation:z.string().trim().max(120).optional()}).strict()).min(1).max(50),
+      paymentMethod:z.enum(["opay","cod"]),
+      shippingAddress:z.object({fullName:z.string().trim().min(2).max(120),phoneNumber:z.string().trim().min(7).max(24),state:z.string().trim().min(1).max(100),city:z.string().trim().min(1).max(100),area:z.string().trim().min(1).max(100),completeAddress:z.string().trim().min(5).max(500)}).strict(),
+    }).strict().parse(await bodyJson(req));
+    const {data:orderId,error}=await db.rpc("edge_checkout_order",{p_buyer_id:auth.user.id,p_items:b.items,p_payment_method:b.paymentMethod,p_shipping_address:b.shippingAddress});
+    if(error) {
+      if(error.message?.includes("different sellers"))fail(error.message,400);
+      if(error.message?.includes("no longer available") || error.message?.includes("stock"))fail(error.message,409);
+      throw error;
+    }
+    const order=await getOrder(orderId);if(!order)throw new Error("Order creation did not return an order.");
+    return reply(orderForBuyer(order),201,origin);
+  }
+
   // Order read endpoints. Sensitive fields are filtered per role.
   if(path==="/orders/mine" && method==="GET") {
     const auth=await requireRole(req,["BUYER"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
