@@ -1023,27 +1023,43 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setDiscIsFlashSale(prod.isFlashSale || false);
   };
 
-  const handleSaveDiscount = (e: React.FormEvent) => {
+  const handleSaveDiscount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDiscountProduct) return;
-
-    db.setProductDiscount(editingDiscountProduct.id, {
-      originalPrice: Number(discOriginalPrice),
-      price: Number(discPrice),
-      discountPercentage: Number(discPercentage),
-      isSpecialOffer: discIsSpecialOffer,
-      isFlashSale: discIsFlashSale,
-    });
-
-    showNotification(`Discount applied to "${editingDiscountProduct.name}"!`);
-    setEditingDiscountProduct(null);
-    triggerRefresh();
+    try {
+      const updated = await marketplaceApi.adminProducts.update(editingDiscountProduct.id, {
+        originalPrice: Number(discOriginalPrice),
+        price: Number(discPrice),
+        discountPercentage: Number(discPercentage),
+        isSpecialOffer: discIsSpecialOffer,
+        isFlashSale: discIsFlashSale,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification(`Discount applied to "${editingDiscountProduct.name}" in Supabase.`);
+      setEditingDiscountProduct(null);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to save product discount.');
+    }
   };
 
-  const handleRemoveDiscount = (prodId: string) => {
-    db.removeProductDiscount(prodId);
-    showNotification('Product discount removed.');
-    triggerRefresh();
+  const handleRemoveDiscount = async (prodId: string) => {
+    const product = allProducts.find((item) => item.id === prodId);
+    if (!product) return;
+    try {
+      const updated = await marketplaceApi.adminProducts.update(prodId, {
+        price: product.originalPrice || product.price,
+        originalPrice: product.originalPrice || product.price,
+        discountPercentage: 0,
+        isSpecialOffer: false,
+        isFlashSale: false,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification('Product discount removed from Supabase.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove product discount.');
+    }
   };
 
   // Report Actions
@@ -1680,7 +1696,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {buyersList.map((buyer) => {
-                      const stats = db.getBuyerStats(buyer.id);
+                      const buyerOrders = backendOrders.filter((order) => order.buyerId === buyer.id);
+                      const stats = { totalOrders: buyerOrders.length, paidOrders: buyerOrders.filter((order) => order.paymentConfirmation?.verifiedByAdmin === true || order.paymentConfirmation?.adminApproved === true).length, pendingOrders: buyerOrders.filter((order) => ['pending_order','pending_payment','pending_verification'].includes(order.status)).length, totalProductsPurchased: buyerOrders.reduce((sum, order) => sum + order.items.reduce((n, item) => n + item.quantity, 0), 0), totalSpent: buyerOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) };
                       return (
                         <div
                           key={buyer.id}
@@ -1780,7 +1797,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {sellersList.map((seller) => {
-                      const stats = db.getSellerStats(seller.id);
+                      const sellerOrders = backendOrders.filter((order) => order.sellerId === seller.id);
+                      const sellerProducts = allProducts.filter((product) => product.sellerId === seller.id);
+                      const deliveredOrders = sellerOrders.filter((order) => order.status === 'delivered');
+                      const stats = { totalProductsListed: sellerProducts.length, totalProductsSold: deliveredOrders.reduce((sum, order) => sum + order.items.reduce((n, item) => n + item.quantity, 0), 0), totalOrders: sellerOrders.length, deliveredOrders: deliveredOrders.length, totalRevenue: deliveredOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0) };
                       return (
                         <div
                           key={seller.id}
@@ -3171,10 +3191,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3">
-              {db.getOrders(selectedBuyerForHistory.id).length === 0 ? (
+              {backendOrders.filter((order) => order.buyerId === selectedBuyerForHistory.id).length === 0 ? (
                 <p className="text-xs text-slate-500 py-6 text-center">No orders on record for this customer.</p>
               ) : (
-                db.getOrders(selectedBuyerForHistory.id).map((o) => (
+                backendOrders.filter((order) => order.buyerId === selectedBuyerForHistory.id).map((o) => (
                   <div key={o.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
                     <div className="flex items-center justify-between font-bold">
                       <span className="text-[#0B172E]">Order #{o.orderNumber}</span>
@@ -3211,10 +3231,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3">
-              {db.getSellerOrders(selectedSellerForHistory.id).length === 0 ? (
+              {backendOrders.filter((order) => order.sellerId === selectedSellerForHistory.id).length === 0 ? (
                 <p className="text-xs text-slate-500 py-6 text-center">No sales orders on record for this merchant.</p>
               ) : (
-                db.getSellerOrders(selectedSellerForHistory.id).map((o) => (
+                backendOrders.filter((order) => order.sellerId === selectedSellerForHistory.id).map((o) => (
                   <div key={o.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
                     <div className="flex items-center justify-between font-bold">
                       <span className="text-[#0B172E]">Order #{o.orderNumber} - {o.buyerName}</span>
