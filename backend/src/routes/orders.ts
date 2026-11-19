@@ -25,6 +25,32 @@ const fail = (message: string, statusCode: number) => Object.assign(new Error(me
 const orderNumber = () => `KN-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 const formatDate = (date: Date) => date.toLocaleString('en-NG');
 
+const serializeForBuyer = (order: any) => {
+  const result = serializeOrder(order) as any;
+  result.sellerPhone = undefined;
+  result.sellerWhatsApp = undefined;
+  if (result.paymentConfirmation && typeof result.paymentConfirmation === 'object') result.paymentConfirmation.receiptPath = undefined;
+  return result;
+};
+const serializeForSeller = (order: any) => {
+  const result = serializeOrder(order) as any;
+  const payment = paymentValue(order.paymentConfirmation);
+  const approved = order.paymentMethod === PaymentMethod.opay
+    ? order.status === OrderStatus.payment_confirmed && payment.verifiedByAdmin === true
+    : payment.adminApproved === true;
+  result.sellerPhone = undefined;
+  result.sellerWhatsApp = undefined;
+  if (!approved) {
+    result.buyerName = undefined;
+    result.buyerEmail = undefined;
+    result.buyerPhone = undefined;
+    result.shippingAddress = undefined;
+  }
+  if (result.paymentConfirmation && typeof result.paymentConfirmation === 'object') result.paymentConfirmation.receiptPath = undefined;
+  return result;
+};
+
+
 ordersRouter.post('/', ...buyerOnly, async (req, res, next) => {
   try {
     const data = z.object({
@@ -82,7 +108,7 @@ ordersRouter.post('/', ...buyerOnly, async (req, res, next) => {
         }, include: orderInclude,
       });
     });
-    return res.status(201).json(serializeOrder(order));
+    return res.status(201).json(serializeForBuyer(order));
   } catch (error) { return next(error); }
 });
 
@@ -90,14 +116,14 @@ ordersRouter.get('/mine', ...buyerOnly, async (req, res, next) => {
   try {
     const page = pagingSchema.parse(req.query);
     const orders = await prisma.order.findMany({ where: { buyerId: req.authUser!.id }, include: orderInclude, orderBy: { createdAt: 'desc' }, take: page.take, skip: page.skip });
-    return res.json(orders.map(serializeOrder));
+    return res.json(orders.map(serializeForBuyer));
   } catch (error) { return next(error); }
 });
 ordersRouter.get('/seller/mine', ...sellerOnly, async (req, res, next) => {
   try {
     const page = pagingSchema.parse(req.query);
     const orders = await prisma.order.findMany({ where: { sellerId: req.authUser!.id }, include: orderInclude, orderBy: { createdAt: 'desc' }, take: page.take, skip: page.skip });
-    return res.json(orders.map(serializeOrder));
+    return res.json(orders.map(serializeForSeller));
   } catch (error) { return next(error); }
 });
 ordersRouter.get('/admin/all', ...adminOnly, async (req, res, next) => {
@@ -112,7 +138,7 @@ ordersRouter.get('/:id', requireAuth, async (req, res, next) => {
     const order = await prisma.order.findFirst({ where: { OR: [{ id: req.params.id }, { orderNumber: req.params.id }] }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (req.authUser!.role !== 'SUPER_ADMIN' && order.buyerId !== req.authUser!.id && order.sellerId !== req.authUser!.id) return res.status(404).json({ error: 'Order not found.' });
-    return res.json(serializeOrder(order));
+    return res.json(req.authUser!.role === 'BUYER' ? serializeForBuyer(order) : req.authUser!.role === 'SELLER' ? serializeForSeller(order) : serializeOrder(order));
   } catch (error) { return next(error); }
 });
 
@@ -134,7 +160,7 @@ ordersRouter.post('/:id/payment-confirmation', ...buyerOnly, async (req, res, ne
       await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Payment Pending Verification', dateLabel: formatDate(now), completed: false, description: 'Transfer details submitted for Super Admin verification.' } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
-    return res.json(serializeOrder(updated));
+    return res.json(serializeForBuyer(updated));
   } catch (error) { return next(error); }
 });
 
