@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -39,6 +39,15 @@ export const marketplaceApi = {
       const suffix = query.toString();
       return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
     },
+  },
+  categories: {
+    list: () => request<Category[]>('/categories'),
+  },
+  adminCategories: {
+    list: () => request<Category[]>('/admin/categories'),
+    create: (data: Partial<Category> & { name: string }) => request<Category>('/admin/categories', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Category>) => request<Category>(`/admin/categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ success: boolean }>(`/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   },
   buyer: {
     profile: () => request<{ user: any }>('/buyer/profile'),
@@ -125,6 +134,9 @@ export const marketplaceApi = {
     deleteFlashSale: (id: string) =>
       request<{ success: boolean }>(`/content/admin/flash-sales/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     adminAnnouncements: () => request<Announcement[]>('/content/admin/announcements'),
+    createAnnouncement: (data: Omit<Announcement, 'id' | 'createdAt'>) => request<Announcement>('/content/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
+    updateAnnouncement: (id: string, data: Partial<Omit<Announcement, 'id' | 'createdAt'>>) => request<Announcement>(`/content/admin/announcements/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteAnnouncement: (id: string) => request<{ success: boolean }>(`/content/admin/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   },
   adminProducts: {
     pending: () => request<Product[]>('/admin/products/pending?take=100'),
