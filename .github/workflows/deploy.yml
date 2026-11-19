@@ -23,7 +23,8 @@ jobs:
       - run: npm install --legacy-peer-deps
       - name: Build frontend with backend API URL
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: https://efirbpzfimzmpchsovbz.supabase.co/functions/v1/api
+          VITE_SUPABASE_ANON_KEY: sb_publishable_Z5Dj-_1weCpFUi1aNeyigg_uaEDIuVr
         run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
