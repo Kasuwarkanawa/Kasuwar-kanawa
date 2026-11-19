@@ -171,6 +171,10 @@ ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['im
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     const receiptUploadStatuses: OrderStatus[] = [OrderStatus.pending_payment, OrderStatus.pending_verification, OrderStatus.rejected];
     if (order.paymentMethod !== PaymentMethod.opay || !receiptUploadStatuses.includes(order.status)) return res.status(409).json({ error: 'Receipt upload is not available for this order.' });
+    const previous = paymentValue(order.paymentConfirmation);
+    if (typeof previous.senderName !== 'string' || previous.senderName.trim().length < 2 || typeof previous.transactionReference !== 'string' || previous.transactionReference.trim().length < 3) {
+      return res.status(409).json({ error: 'Submit your sender name and transaction reference before uploading the receipt.' });
+    }
     const contentType = req.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '';
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     const bytes = Buffer.isBuffer(req.body) ? req.body as Buffer : Buffer.alloc(0);
@@ -183,11 +187,14 @@ ordersRouter.post('/:id/payment-receipt', ...buyerOnly, express.raw({ type: ['im
     const ext = contentType === 'image/jpeg' ? 'jpg' : contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'pdf';
     const path = order.id + '/' + randomBytes(16).toString('hex') + '.' + ext;
     await uploadPaymentReceipt(path, bytes, contentType);
-    const previous = paymentValue(order.paymentConfirmation);
     const now = new Date();
     const paymentConfirmation = { ...previous, receiptPath: path, receiptMimeType: contentType, receiptUploadedAt: now.toISOString(), confirmedByBuyer: true, verifiedByAdmin: false, verifiedAt: null, adminNotes: null };
-    const updated = await prisma.order.update({ where: { id: order.id }, data: { status: OrderStatus.pending_verification, paymentConfirmation: paymentConfirmation as Prisma.InputJsonValue }, include: orderInclude });
-    await prisma.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Receipt Submitted', dateLabel: formatDate(now), completed: false, description: 'Payment receipt submitted for Admin verification.' } });
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.order.updateMany({ where: { id: order.id, buyerId: req.authUser!.id, status: order.status }, data: { status: OrderStatus.pending_verification, paymentConfirmation: paymentConfirmation as Prisma.InputJsonValue } });
+      if (changed.count !== 1) throw fail('Order has changed; reload and try again.', 409);
+      await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: 1 }, data: { title: 'Receipt Submitted', dateLabel: formatDate(now), completed: false, description: 'Payment receipt submitted for Admin verification.' } });
+      return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
+    });
     return res.json(serializeForBuyer(updated));
   } catch (error) { return next(error); }
 });
