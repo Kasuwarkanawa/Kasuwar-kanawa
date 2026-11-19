@@ -160,8 +160,6 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         sellerId: seller.id,
         sellerName: seller.fullName,
         sellerBusinessName: seller.businessName || `${seller.fullName}'s Enterprise`,
-        sellerPhone: seller.phone,
-        sellerWhatsApp: seller.whatsAppNumber || seller.phone,
         isApproved: false,
         approvalStatus: 'pending_approval',
       });
