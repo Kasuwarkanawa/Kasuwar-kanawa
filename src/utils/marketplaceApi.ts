@@ -44,6 +44,17 @@ export const marketplaceApi = {
   orders: {
     mine: () => request<any[]>('/orders/mine?take=100'),
     adminAll: () => request<any[]>('/orders/admin/all?take=100'),
+    sellerMine: () => request<any[]>('/orders/seller/mine?take=100'),
+    sellerStatus: (id: string, status: 'processing' | 'rejected', reason?: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, reason }),
+      }),
+    logisticsHandoff: (id: string, logisticsCompanyName: string, trackingNumber: string, notes?: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/logistics-handoff`, {
+        method: 'PATCH',
+        body: JSON.stringify({ logisticsCompanyName, trackingNumber, notes }),
+      }),
     approveOpay: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
       request<any>(`/orders/admin/${encodeURIComponent(id)}/payment-verification`, {
         method: 'PATCH',
