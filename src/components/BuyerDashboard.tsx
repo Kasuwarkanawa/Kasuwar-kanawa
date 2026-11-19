@@ -71,6 +71,9 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   // Payment Confirmation input for pending orders
   const [senderName, setSenderName] = useState('');
   const [transactionRef, setTransactionRef] = useState('');
+  const [selectedReceipt, setSelectedReceipt] = useState<File | null>(null);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
 
   const refreshOrders = async () => {
@@ -121,20 +124,42 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     }
   };
 
-  const handleConfirmPayment = (orderId: string) => {
-    if (!senderName.trim() || !transactionRef.trim()) return;
-    const updated = db.confirmPaymentByBuyer(orderId, senderName, transactionRef);
-    if (updated) {
+  const handleConfirmPayment = async (orderId: string) => {
+    setPaymentError(null);
+    if (!senderName.trim() || !transactionRef.trim()) {
+      setPaymentError('Enter the sender account name and transaction reference.');
+      return;
+    }
+    if (!selectedReceipt) {
+      setPaymentError('Please select your OPay transfer receipt before submitting.');
+      return;
+    }
+    if (selectedReceipt.size > 5 * 1024 * 1024) {
+      setPaymentError('The receipt must not exceed 5 MB.');
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(selectedReceipt.type)) {
+      setPaymentError('Upload a JPG, PNG, WEBP image or PDF receipt.');
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    try {
+      // Upload the receipt to private Supabase Storage first. Then attach transfer details.
+      await marketplaceApi.orders.uploadReceipt(orderId, selectedReceipt);
+      await marketplaceApi.orders.confirmOpay(orderId, senderName.trim(), transactionRef.trim());
       setConfirmSuccess(true);
-      refreshOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(updated);
-      }
-      setTimeout(() => {
-        setConfirmSuccess(false);
-        setSenderName('');
-        setTransactionRef('');
-      }, 2500);
+      setSelectedReceipt(null);
+      setSenderName('');
+      setTransactionRef('');
+      await refreshOrders();
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Payment details could not be submitted. Please try again.');
+      await refreshOrders();
+    } finally {
+      setPaymentSubmitting(false);
+      window.setTimeout(() => setConfirmSuccess(false), 3000);
     }
   };
 
@@ -426,7 +451,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                 </div>
 
                                 {/* Buyer Payment Confirmation Form if not yet confirmed */}
-                                {!order.paymentConfirmation.confirmedByBuyer && (
+                                {(!order.paymentConfirmation.confirmedByBuyer || !order.paymentConfirmation.receiptUploadedAt) && (
                                   <div className="pt-2 border-t border-slate-100 space-y-2">
                                     <span className="font-bold text-slate-700 block">
                                       Confirm Your OPay Transfer:
@@ -447,12 +472,25 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                         className="p-2 text-xs border border-slate-300 rounded-lg bg-white"
                                       />
                                     </div>
+                                    <label className="block rounded-lg border border-dashed border-pink-300 bg-pink-50 p-3 text-xs text-slate-700">
+                                      <span className="mb-1 block font-bold text-slate-800">Upload transfer receipt</span>
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                                        onChange={(e) => setSelectedReceipt(e.target.files?.[0] || null)}
+                                        className="block w-full text-xs"
+                                      />
+                                      <span className="mt-1 block text-[10px] text-slate-500">JPG, PNG, WEBP or PDF · Maximum 5 MB. Stored privately for Admin review.</span>
+                                      {selectedReceipt && <span className="mt-1 block font-semibold text-pink-700">{selectedReceipt.name}</span>}
+                                    </label>
+                                    {paymentError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{paymentError}</div>}
                                     <button
                                       type="button"
-                                      onClick={() => handleConfirmPayment(order.id)}
-                                      className="w-full py-2 bg-[#E6007E] hover:bg-[#D00071] text-white font-bold rounded-lg cursor-pointer"
+                                      disabled={paymentSubmitting}
+                                      onClick={() => void handleConfirmPayment(order.id)}
+                                      className="w-full py-2 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-60 text-white font-bold rounded-lg cursor-pointer"
                                     >
-                                      Submit Payment Confirmation
+                                      {paymentSubmitting ? 'Uploading receipt securely…' : 'Submit Receipt & Payment Details'}
                                     </button>
                                   </div>
                                 )}
