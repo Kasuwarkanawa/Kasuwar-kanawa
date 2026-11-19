@@ -1,4 +1,5 @@
 import { User } from '../types';
+import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 export interface AuthCredentials {
   identifier: string;
@@ -29,11 +30,6 @@ interface AuthResponse {
   message?: string;
 }
 
-const viteEnv = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string; DEV?: boolean } }).env;
-const configuredApiUrl = viteEnv?.VITE_API_URL?.trim();
-// Use localhost only during local development. Production must configure VITE_API_URL
-// or serve the API under the same origin at /api.
-const API_BASE_URL = (configuredApiUrl || (viteEnv?.DEV ? 'http://localhost:4000/api' : '/api')).replace(/\/$/, '');
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -43,6 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLIC_KEY,
         ...init?.headers,
       },
     });
