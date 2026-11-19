@@ -46,6 +46,13 @@ function cookieValue(req: Request, name: string) {
   }
   return null;
 }
+async function constantTimeSecretMatch(candidate: string, expected: string) {
+  const a = await sha256(candidate);
+  const b = await sha256(expected);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 async function sha256(value: string) {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -174,6 +181,23 @@ async function dispatch(req: Request, origin: string | null) {
   if (method === "GET" && path === "/health") {
     const { error } = await db.from("Category").select("id", { head: true, count: "exact" });
     return error ? reply({status:"error",database:"unavailable"},503,origin) : reply({status:"ok",database:"connected",runtime:"supabase-edge"},200,origin);
+  }
+
+  if (path === "/auth/bootstrap-admin" && method === "POST") {
+    const configuredToken=Deno.env.get("BOOTSTRAP_ADMIN_TOKEN");
+    if(!configuredToken || configuredToken.length<32) fail("First Admin setup has not been configured in Supabase Edge Function secrets.",503);
+    const b=z.object({setupToken:z.string().min(32).max(256),fullName:z.string().trim().min(2).max(120),email:z.string().trim().email().max(254),phone:z.string().trim().min(7).max(24),password:z.string().min(12).max(128)}).strict().parse(await bodyJson(req));
+    if(!(await constantTimeSecretMatch(b.setupToken,configuredToken))) fail("Invalid first Admin setup token.",403);
+    const {data:userId,error}=await db.rpc("edge_bootstrap_first_admin",{p_full_name:b.fullName,p_email:b.email,p_phone:b.phone,p_password_hash:await bcrypt.hash(b.password,12)});
+    if(error) {
+      if(error.code==="P0001") fail(error.message,409);
+      if(error.code==="23505") fail(error.message,409);
+      throw error;
+    }
+    const {data:user,error:readError}=await db.from("User").select("*").eq("id",userId).single();
+    if(readError) throw readError;
+    const token=await issueSession(user.id);
+    return reply({success:true,user:safeUser(user)},201,origin,{"Set-Cookie":sessionCookie(token)});
   }
 
   if (path === "/auth/register" && method === "POST") {
