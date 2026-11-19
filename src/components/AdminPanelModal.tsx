@@ -45,7 +45,6 @@ import {
   Award,
   AlertTriangle,
 } from 'lucide-react';
-import { db } from '../db/database';
 import { authApi } from '../utils/authApi';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
