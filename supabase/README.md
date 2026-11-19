@@ -32,7 +32,7 @@ There are no client Storage object policies. Receipt upload and five-minute sign
 
 ## Supabase Edge API
 
-The `api` Edge Function is deployed and ACTIVE (version 2):
+The `api` Edge Function is deployed and ACTIVE (version 3):
 
 `https://efirbpzfimzmpchsovbz.supabase.co/functions/v1/api`
 
@@ -49,7 +49,7 @@ The function is configured with `verify_jwt = false` because it validates the pu
 
 ## First Super Admin
 
-There is **no Super Admin account yet**. The database includes a one-time, serialized bootstrap function and the Edge API exposes `POST /auth/bootstrap-admin`.
+There is **no Super Admin account yet**. The database includes a one-time, serialized bootstrap function and the Edge API exposes `POST /auth/bootstrap-admin`. The website's sign-in modal includes a **First-time Super Admin setup** form.
 
 Before creating the first Admin:
 1. Set `BOOTSTRAP_ADMIN_TOKEN` (at least 32 random characters) in Supabase Dashboard → Edge Function Secrets.
