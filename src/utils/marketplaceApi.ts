@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -30,6 +30,7 @@ export type SellerProductInput = Pick<Product, 'name' | 'category' | 'price' | '
 
 export const marketplaceApi = {
   catalog: {
+    reviews: (productId: string) => request<ProductReview[]>(`/products/${encodeURIComponent(productId)}/reviews`),
     list: (params: { search?: string; category?: string; take?: number; skip?: number } = {}) => {
       const query = new URLSearchParams();
       if (params.search) query.set('search', params.search);
