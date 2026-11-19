@@ -253,7 +253,7 @@ async function dispatch(req: Request, origin: string | null) {
     const take = Math.min(100,Math.max(1,Number(url.searchParams.get("take") ?? 50))), skip = Math.max(0,Number(url.searchParams.get("skip") ?? 0));
     const {data,error} = await db.from("ProductReview").select("*,buyer:User!ProductReview_buyerId_fkey(fullName)").eq("productId",productId).order("createdAt",{ascending:false}).range(skip,skip+take-1);
     if (error) throw error;
-    return reply(data ?? [],200,origin);
+    return reply((data ?? []).map((review:any)=>({...review,buyerName:review.buyer?.fullName ?? "Buyer"})),200,origin);
   }
   if (reviewsMatch && method === "POST") {
     const auth = await requireRole(req,["BUYER"]);
@@ -265,7 +265,7 @@ async function dispatch(req: Request, origin: string | null) {
     if (!purchase) fail("A completed purchase is required to review this product.",403);
     const {data:review,error} = await db.from("ProductReview").insert({id:crypto.randomUUID(),productId,buyerId:auth.user.id,...reviewInput}).select("*,buyer:User!ProductReview_buyerId_fkey(fullName)").single();
     if (error) throw error;
-    return reply(review,201,origin);
+    return reply({...review,buyerName:review.buyer?.fullName ?? "Buyer"},201,origin);
   }
   const reportMatch = path.match(/^\/products\/([^/]+)\/reports$/);
   if (reportMatch && method === "POST") {
