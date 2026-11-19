@@ -91,6 +91,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
@@ -99,6 +102,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       .then((products) => { if (active) { setSellerProducts(products); setProductsError(null); } })
       .catch((error) => { if (active) setProductsError(error instanceof Error ? error.message : 'Unable to load your products.'); })
       .finally(() => { if (active) setProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setOrdersLoading(true);
+    marketplaceApi.orders.sellerMine()
+      .then((orders) => { if (active) { setSellerOrders(orders as Order[]); setOrdersError(null); } })
+      .catch((error) => { if (active) setOrdersError(error instanceof Error ? error.message : 'Unable to load seller orders.'); })
+      .finally(() => { if (active) setOrdersLoading(false); });
     return () => { active = false; };
   }, [isOpen, seller.id, refreshKey]);
   const triggerRefresh = () => {
@@ -110,11 +124,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Retrieve fresh seller data
   const stats = db.getSellerStats(seller.id);
-  const sellerOrders = db.getSellerOrders(seller.id);
+  const legacySellerOrders = db.getSellerOrders(seller.id);
+  const combinedSellerOrders = new Map<string, Order>();
+  for (const order of [...legacySellerOrders, ...sellerOrders]) combinedSellerOrders.set(order.id, order);
+  const allSellerOrders = [...combinedSellerOrders.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const buyerReports = db.getBuyerReports(seller.id);
 
   // Filter orders
-  const filteredOrders = sellerOrders.filter((ord) => {
+  const filteredOrders = allSellerOrders.filter((ord) => {
     const buyerDetailsApproved = ord.paymentMethod === 'opay'
       ? ord.paymentConfirmation?.verifiedByAdmin === true
       : ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status);
@@ -209,12 +226,35 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   };
 
   // Order Lifecycle Handlers
-  const handleAcceptOrder = (orderId: string) => {
+  const handleAcceptOrder = async (orderId: string) => {
+    if (sellerOrders.some((order) => order.id === orderId)) {
+      try {
+        await marketplaceApi.orders.sellerStatus(orderId, 'processing');
+        triggerRefresh();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Unable to accept this order.');
+      }
+      return;
+    }
     db.sellerAcceptOrder(orderId);
     triggerRefresh();
   };
 
-  const handleDispatchOrder = (orderId: string) => {
+  const handleDispatchOrder = async (orderId: string) => {
+    if (sellerOrders.some((order) => order.id === orderId)) {
+      const logisticsCompanyName = window.prompt('Enter the logistics company name:');
+      if (!logisticsCompanyName?.trim()) return;
+      const trackingNumber = window.prompt('Enter the logistics tracking number:');
+      if (!trackingNumber?.trim()) return;
+      try {
+        await marketplaceApi.orders.logisticsHandoff(orderId, logisticsCompanyName.trim(), trackingNumber.trim());
+        triggerRefresh();
+        alert('Order handed over to logistics. Buyer and Admin can now track its progress.');
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Unable to record logistics hand-off.');
+      }
+      return;
+    }
     db.sellerDispatchOrder(orderId);
     triggerRefresh();
   };
@@ -229,9 +269,19 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setSellerRejectionReason('Item is temporarily out of stock in our Kano store.');
   };
 
-  const handleConfirmSellerReject = (e: React.FormEvent) => {
+  const handleConfirmSellerReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectingOrder) return;
+    if (sellerOrders.some((order) => order.id === rejectingOrder.id)) {
+      try {
+        await marketplaceApi.orders.sellerStatus(rejectingOrder.id, 'rejected', sellerRejectionReason);
+        setRejectingOrder(null);
+        triggerRefresh();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Unable to reject this order.');
+      }
+      return;
+    }
     db.sellerRejectOrder(rejectingOrder.id, sellerRejectionReason);
     setRejectingOrder(null);
     triggerRefresh();
@@ -395,7 +445,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Order Management ({sellerOrders.length})</span>
+            <span>Order Management ({allSellerOrders.length})</span>
           </button>
 
           <button
@@ -526,17 +576,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       onClick={() => setActiveTab('orders')}
                       className="text-xs font-bold text-[#E6007E] hover:underline cursor-pointer"
                     >
-                      View All Orders ({sellerOrders.length}) →
+                      View All Orders ({allSellerOrders.length}) →
                     </button>
                   </div>
 
-                  {sellerOrders.length === 0 ? (
+                  {allSellerOrders.length === 0 ? (
                     <div className="text-center py-8 text-slate-400 text-xs">
                       No orders recorded yet. New buyer orders will appear here automatically.
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {sellerOrders.slice(0, 3).map((ord) => (
+                      {allSellerOrders.slice(0, 3).map((ord) => (
                         <div
                           key={ord.id}
                           className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs"
@@ -710,6 +760,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           {/* 3. ORDER MANAGEMENT TAB */}
           {activeTab === 'orders' && (
+            {ordersError && <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{ordersError}</div>}
+            {ordersLoading && <div className="mx-4 flex items-center gap-2 text-xs font-semibold text-slate-500"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading secure orders…</div>}
             <div className="space-y-4">
               
               {/* Order Status Filters */}
@@ -960,7 +1012,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                           <Truck className="w-4 h-4" />
                                           <span>Ready for Dispatch / Logistics</span>
                                         </button>
-                                        {!ord.logisticsCompanyId && (
+                                        {!(ord.logisticsCompanyId || ord.logisticsCompanyName) && (
                                           <button
                                             type="button"
                                             onClick={() => handleOpenSellerReject(ord)}
@@ -980,7 +1032,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                             Ready / Dispatched at: {new Date(ord.dispatchedAt).toLocaleString()}
                                           </div>
                                         )}
-                                        {ord.logisticsCompanyId ? (
+                                        {(ord.logisticsCompanyId || ord.logisticsCompanyName) ? (
                                           <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-[11px] text-center">
                                             <strong>Handed to Logistics workflow.</strong> Kamfanin Logistics ne kawai zai sabunta Picked Up, In Transit, Out for Delivery da Delivered. Seller ba zai iya tabbatar da Delivered ba.
                                           </div>
@@ -1100,7 +1152,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                         </div>
                       </div>
                     ))}
-                  {sellerOrders.filter((o) => o.status === 'delivered').length === 0 && (
+                  {allSellerOrders.filter((o) => o.status === 'delivered').length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-xs">
                       No completed orders yet. Delivered orders will appear here in your sales ledger.
                     </div>
