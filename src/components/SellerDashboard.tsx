@@ -102,11 +102,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Filter orders
   const filteredOrders = sellerOrders.filter((ord) => {
+    const buyerDetailsApproved = ord.paymentMethod === 'opay'
+      ? ord.paymentConfirmation?.verifiedByAdmin === true
+      : ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status);
     const matchesFilter = orderFilter === 'all' ? true : ord.status === orderFilter;
-    const matchesSearch =
-      ord.orderNumber.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.buyerName.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.buyerPhone.includes(searchOrderQuery);
+    const query = searchOrderQuery.toLowerCase();
+    const matchesSearch = ord.orderNumber.toLowerCase().includes(query) ||
+      (buyerDetailsApproved && (ord.buyerName.toLowerCase().includes(query) || ord.buyerPhone.includes(searchOrderQuery)));
     return matchesFilter && matchesSearch;
   });
 
@@ -556,7 +558,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               </span>
                             </div>
                             <div className="text-slate-500 text-[11px] mt-0.5">
-                              Buyer: <strong className="text-slate-700">{ord.buyerName}</strong> • {ord.items.length} item(s)
+                              Buyer: <strong className="text-slate-700">{(ord.paymentMethod === 'opay' ? ord.paymentConfirmation?.verifiedByAdmin === true : ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status)) ? ord.buyerName : 'Hidden until Admin approval'}</strong> • {ord.items.length} item(s)
                             </div>
                           </div>
 
@@ -765,8 +767,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 <div className="space-y-4">
                   {filteredOrders.map((ord) => {
                     const isOpay = ord.paymentMethod === 'opay';
-                    const isOpayVerified = ord.paymentConfirmation?.verifiedByAdmin;
-                    const canProcess = !isOpay || isOpayVerified;
+                    const isOpayVerified = ord.paymentConfirmation?.verifiedByAdmin === true;
+                    const isCodApproved = ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status);
+                    const canSeeBuyerDetails = ord.status !== 'rejected' && (isOpay ? isOpayVerified : isCodApproved);
+                    const canProcess = canSeeBuyerDetails;
 
                     return (
                       <div
@@ -806,8 +810,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                 )
                               ) : (
                                 <>
-                                  <Truck className="w-3.5 h-3.5 text-blue-600" />
-                                  <span>Cash on Delivery (COD)</span>
+                                  {isCodApproved ? <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                                  <span>{isCodApproved ? 'COD: Approved by Admin' : 'COD: Awaiting Admin Approval'}</span>
                                 </>
                               )}
                             </span>
@@ -826,32 +830,37 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                             <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px] block">
                               Buyer & Delivery Information
                             </span>
-                            <div className="font-bold text-slate-800 text-sm">{ord.buyerName}</div>
-                            <div className="text-slate-600 flex items-center gap-1.5">
-                              <Phone className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{ord.buyerPhone}</span>
-                            </div>
-
-                            {/* WhatsApp Buyer Link (Section 8) */}
-                            <div className="pt-1">
-                              <a
-                                href={`https://wa.me/234${ord.buyerPhone.replace(/^0+/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                                  `Hello ${ord.buyerName}, this is ${seller.businessName || seller.fullName} from Kasuwar Kanawa regarding your order ${ord.orderNumber}.`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                                <span>Chat with Buyer on WhatsApp</span>
-                              </a>
-                            </div>
-
-                            <div className="text-slate-500 text-[11px] pt-2">
-                              <div className="font-semibold text-slate-700">Delivery Address:</div>
-                              <div>{ord.shippingAddress?.completeAddress || 'Kano Address'}</div>
-                              <div>{ord.shippingAddress?.area}, {ord.shippingAddress?.city}, {ord.shippingAddress?.state}</div>
-                            </div>
+                            {canSeeBuyerDetails ? (
+                              <>
+                                <div className="font-bold text-slate-800 text-sm">{ord.buyerName}</div>
+                                <div className="text-slate-600 flex items-center gap-1.5">
+                                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>{ord.buyerPhone}</span>
+                                </div>
+                                <div className="pt-1">
+                                  <a
+                                    href={`https://wa.me/234${ord.buyerPhone.replace(/^0+/, '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                                      `Hello ${ord.buyerName}, this is ${seller.businessName || seller.fullName} from Kasuwar Kanawa regarding your order ${ord.orderNumber}.`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    <span>Chat with Buyer on WhatsApp</span>
+                                  </a>
+                                </div>
+                                <div className="text-slate-500 text-[11px] pt-2">
+                                  <div className="font-semibold text-slate-700">Delivery Address:</div>
+                                  <div>{ord.shippingAddress?.completeAddress || 'Kano Address'}</div>
+                                  <div>{ord.shippingAddress?.area}, {ord.shippingAddress?.city}, {ord.shippingAddress?.state}</div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px]">
+                                Buyer phone number and delivery address will appear here only after Super Admin approves this order.
+                              </div>
+                            )}
                           </div>
 
                           {/* 2. Items in Order */}
