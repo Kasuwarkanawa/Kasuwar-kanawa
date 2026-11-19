@@ -41,6 +41,13 @@ export const marketplaceApi = {
       return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
     },
   },
+  adminProducts: {
+    pending: () => request<Product[]>('/admin/products/pending?take=100'),
+    setApproval: (id: string, status: 'APPROVED' | 'REJECTED') => request<Product>(`/admin/products/${encodeURIComponent(id)}/approval`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  },
   sellerProducts: {
     list: () => request<Product[]>('/seller/products'),
     create: (product: SellerProductInput) => request<Product>('/seller/products', {
