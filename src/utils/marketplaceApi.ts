@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport } from '../types';
 
 const viteEnv = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string; DEV?: boolean } }).env;
 const configuredApiUrl = viteEnv?.VITE_API_URL?.trim();
@@ -115,6 +115,11 @@ export const marketplaceApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  },
+  sellerReports: {
+    buyerReports: () => request<Array<BuyerReport & { buyer?: { id: string; fullName: string; phone: string } }>>('/seller/reports/buyers'),
+    reportBuyer: (data: { buyerId: string; orderId: string; reason: string; details: string }) =>
+      request<BuyerReport>('/seller/reports/buyers', { method: 'POST', body: JSON.stringify(data) }),
   },
   sellerProducts: {
     list: () => request<Product[]>('/seller/products'),
