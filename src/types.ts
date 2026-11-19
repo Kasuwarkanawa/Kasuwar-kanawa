@@ -229,6 +229,9 @@ export interface Order {
   sellerRejectionReason?: string;
   dispatchedAt?: string;
   deliveredAt?: string;
+  logisticsCompanyName?: string;
+  trackingNumber?: string;
+  logisticsStatus?: 'handed_to_logistics' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed';
   createdAt: string;
   updatedAt: string;
 }
