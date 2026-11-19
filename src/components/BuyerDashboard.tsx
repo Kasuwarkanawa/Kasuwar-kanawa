@@ -146,9 +146,9 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
 
     setPaymentSubmitting(true);
     try {
-      // Upload the receipt to private Supabase Storage first. Then attach transfer details.
-      await marketplaceApi.orders.uploadReceipt(orderId, selectedReceipt);
+      // Save transfer details first. Admin approval is blocked until the receipt is also stored.
       await marketplaceApi.orders.confirmOpay(orderId, senderName.trim(), transactionRef.trim());
+      await marketplaceApi.orders.uploadReceipt(orderId, selectedReceipt);
       setConfirmSuccess(true);
       setSelectedReceipt(null);
       setSenderName('');
