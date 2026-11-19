@@ -409,6 +409,68 @@ async function dispatch(req: Request, origin: string | null) {
     if(error) throw error; if(!data) fail("Product not found.",404); return reply({success:true},200,origin);
   }
 
+  // Buyer/Seller profile APIs. Only profile fields are writable; role, status and password stay server-controlled.
+  const profilePath = path === "/buyer/profile" || path === "/seller/profile";
+  if (profilePath && (method === "GET" || method === "PATCH")) {
+    const expectedRole = path.startsWith("/buyer/") ? "BUYER" : "SELLER";
+    const auth = await requireRole(req, [expectedRole]);
+    if (method === "GET") return reply({ user: safeUser(auth.user) }, 200, origin);
+    const profileSchema = z.object({
+      fullName: z.string().trim().min(2).max(120).optional(),
+      phone: z.string().trim().min(7).max(24).optional(),
+      whatsAppNumber: z.string().trim().min(7).max(24).nullable().optional(),
+      address: z.string().trim().max(300).optional(),
+      businessAddress: z.string().trim().max(300).nullable().optional(),
+      businessName: z.string().trim().max(120).nullable().optional(),
+      city: z.string().trim().max(100).optional(),
+      state: z.string().trim().max(100).optional(),
+      area: z.string().trim().max(100).optional(),
+      productCategory: z.string().trim().max(120).nullable().optional(),
+      profileImage: z.string().url().max(1000).nullable().optional(),
+    }).strict();
+    const patch = profileSchema.parse(await bodyJson(req));
+    if (Object.keys(patch).length === 0) fail("Provide at least one profile field to update.", 400);
+    const update: Record<string, unknown> = { ...patch, updatedAt: new Date().toISOString() };
+    if (typeof update.phone === "string") update.phone = update.phone.replace(/[\\s()-]/g, "");
+    if (typeof update.whatsAppNumber === "string") update.whatsAppNumber = update.whatsAppNumber.replace(/[\\s()-]/g, "");
+    if (expectedRole === "BUYER") {
+      delete update.businessName; delete update.businessAddress; delete update.productCategory;
+    }
+    if (expectedRole === "SELLER") {
+      if (update.businessName === null || update.businessName === "") fail("Business name cannot be empty.", 400);
+    }
+    const { data, error } = await db.from("User").update(update).eq("id", auth.user.id).select("*").single();
+    if (error) {
+      if (error.code === "23505") fail("That phone number is already registered.", 409);
+      throw error;
+    }
+    return reply({ user: safeUser(data) }, 200, origin);
+  }
+
+  // Public storefront content is read-only and exposes only active/published records.
+  if (path === "/content/advertisements" && method === "GET") {
+    const { data, error } = await db.from("Advertisement").select("*").eq("isActive", true).order("createdAt", { ascending: false });
+    if (error) throw error;
+    return reply(data ?? [], 200, origin);
+  }
+  if (path === "/content/flash-sales" && method === "GET") {
+    const now = new Date().toISOString();
+    const { data, error } = await db.from("FlashSale").select("*,products:FlashSaleProduct(productId)").eq("isActive", true).lte("startTime", now).gt("endTime", now).order("endTime", { ascending: true });
+    if (error) throw error;
+    return reply((data ?? []).map((sale: any) => ({
+      id: sale.id, title: sale.title, description: sale.description ?? undefined,
+      bannerImage: sale.bannerImage ?? undefined, discountPercentage: sale.discountPercentage,
+      startTime: sale.startTime, endTime: sale.endTime,
+      productIds: (sale.products ?? []).map((item: any) => item.productId),
+      isActive: sale.isActive, createdAt: sale.createdAt,
+    })), 200, origin);
+  }
+  if (path === "/content/announcements" && method === "GET") {
+    const { data, error } = await db.from("Announcement").select("*").eq("isPublished", true).order("createdAt", { ascending: false }).limit(50);
+    if (error) throw error;
+    return reply(data ?? [], 200, origin);
+  }
+
   // Buyer and seller dispute reports.
   if(path==="/buyer/reports/sellers" && method==="POST") {
     const auth=await requireRole(req,["BUYER"]);
