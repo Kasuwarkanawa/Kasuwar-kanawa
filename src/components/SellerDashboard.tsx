@@ -1087,6 +1087,34 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               </div>
                             </div>
 
+                            {ord.trackingNumber && (
+                              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-black uppercase tracking-wide text-sky-900">Live Logistics Progress</span>
+                                  <span className="text-[10px] font-bold text-sky-800">{(ord.logisticsStatus || 'handed_to_logistics').replaceAll('_', ' ')}</span>
+                                </div>
+                                <div className="text-[11px] text-slate-700">
+                                  Carrier: <strong>{ord.logisticsCompanyName || 'Not specified'}</strong>
+                                  <br />
+                                  Tracking number: <strong>{ord.trackingNumber}</strong>
+                                </div>
+                                {ord.trackingTimeline?.length > 0 && (
+                                  <ol className="space-y-2 border-l-2 border-sky-200 ml-1 pl-3">
+                                    {ord.trackingTimeline.map((step, index) => (
+                                      <li key={index} className="text-[10px] text-slate-700">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`h-2 w-2 rounded-full ${step.completed ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                                          <strong>{step.title}</strong>
+                                          {step.date && <span className="text-slate-400">· {step.date}</span>}
+                                        </div>
+                                        <p className="pl-3.5 text-slate-500">{step.description}</p>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                )}
+                              </div>
+                            )}
+
                             {/* Section 9: Report Suspicious / Fraudulent Buyer Button */}
                             <div className="pt-2 border-t border-slate-100">
                               <button
