@@ -338,7 +338,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select Account Type (Nau'in Asusun)
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setAccountType('buyer')}
@@ -454,18 +454,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     {accountType === 'seller' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
                   </label>
                   <div className="relative">
-                    {accountType === 'seller' || accountType === 'logistics' ? (
+                    {accountType === 'seller' ? (
                       <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     ) : (
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     )}
                     <input
-                      type={accountType === 'seller' || accountType === 'logistics' ? 'tel' : 'email'}
+                      type={accountType === 'seller' ? 'tel' : 'email'}
                       required
-                      placeholder={accountType === 'seller' || accountType === 'logistics' ? 'e.g. 2348000000000' : 'you@gmail.com'}
-                      value={accountType === 'seller' || accountType === 'logistics' ? whatsAppNumber : email}
+                      placeholder={accountType === 'seller' ? 'e.g. 2348000000000' : 'you@gmail.com'}
+                      value={accountType === 'seller' ? whatsAppNumber : email}
                       onChange={(e) =>
-                        accountType === 'seller' || accountType === 'logistics' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
+                        accountType === 'seller' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
                       }
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                     />
@@ -474,7 +474,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* For Seller: Additional Email & Product Category */}
-              {(accountType === 'seller' || accountType === 'logistics') && (
+              {(accountType === 'seller') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -554,7 +554,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Address Information */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {accountType === 'seller' || accountType === 'logistics' ? 'Business Address (Adireshin Kamfani / Kasuwa) *' : 'Complete Delivery Address *'}
+                  {accountType === 'seller' ? 'Business Address (Adireshin Kamfani / Kasuwa) *' : 'Complete Delivery Address *'}
                 </label>
                 <div className="relative">
                   <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -566,9 +566,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         ? 'e.g. Shop 42, Block B, Kasuwar Kwari Market, Kano'
                         : 'e.g. No. 25 Zoo Road / Sabo Garba Way'
                     }
-                    value={accountType === 'seller' || accountType === 'logistics' ? businessAddress : address}
+                    value={accountType === 'seller' ? businessAddress : address}
                     onChange={(e) =>
-                      accountType === 'seller' || accountType === 'logistics' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
+                      accountType === 'seller' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
                     }
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                   />
@@ -618,7 +618,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="submit"
                 className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-3"
               >
-                <span>{isSubmitting ? 'Please wait...' : accountType === 'logistics' ? 'Submit for Approval' : 'Complete Registration'}</span>
+                <span>{isSubmitting ? 'Please wait...' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
