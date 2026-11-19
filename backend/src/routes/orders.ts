@@ -258,7 +258,7 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
       if (status === 'delivered') await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: { lt: trackingSort } }, data: { completed: true } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
-    return res.json(serializeOrder(updated));
+    return res.json(serializeForSeller(updated));
   } catch (error) { return next(error); }
 });
 
@@ -293,7 +293,7 @@ ordersRouter.patch('/:id/logistics-handoff', ...sellerOnly, async (req, res, nex
       }});
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
-    return res.json(serializeOrder(updated));
+    return res.json(serializeForSeller(updated));
   } catch (error) { return next(error); }
 });
 
@@ -356,7 +356,7 @@ ordersRouter.post('/:id/cancel', ...buyerOnly, async (req, res, next) => {
       await tx.orderTrackingStep.create({ data: { orderId: order.id, title: 'Order Cancelled', dateLabel: formatDate(now), completed: true, description: 'Order cancelled by buyer before fulfillment.', sortOrder: 10 } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
-    return res.json(serializeOrder(cancelled));
+    return res.json(serializeForBuyer(cancelled));
   } catch (error) { return next(error); }
 });
 
