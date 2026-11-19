@@ -258,6 +258,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [ancType, setAncType] = useState<'info' | 'discount' | 'alert' | 'event'>('discount');
   const [ancIsPublished, setAncIsPublished] = useState(true);
 
+  const handleOpenCreatePromotion = () => {
+    setEditingAd(null); setAdTitle(''); setAdDescription(''); setAdBadge('PROMO!');
+    setAdDiscountTag('Save 20%'); setAdImage('https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80');
+    setAdLinkText('Shop Now'); setAdLinkUrl('#popular-products-section'); setAdIsActive(true); setIsCreatingAd(true);
+  };
+
+  const handleOpenEditPromotion = (ad: PromotionalAdvertisement) => {
+    setEditingAd(ad); setAdTitle(ad.title); setAdDescription(ad.description); setAdBadge(ad.badge || 'PROMO!');
+    setAdDiscountTag(ad.discountTag || ''); setAdImage(ad.image); setAdLinkText(ad.linkText || 'Shop Now');
+    setAdLinkUrl(ad.linkUrl || '#popular-products-section'); setAdIsActive(ad.isActive); setIsCreatingAd(true);
+  };
+
+  const handleSavePromotion = async (event: React.FormEvent) => {
+    event.preventDefault(); setPromotionSaving(true);
+    const payload = { title: adTitle.trim(), description: adDescription.trim(), badge: adBadge.trim() || undefined,
+      discountTag: adDiscountTag.trim() || undefined, image: adImage.trim(), linkText: adLinkText.trim() || 'Shop Now',
+      linkUrl: adLinkUrl.trim() || '#popular-products-section', isActive: adIsActive };
+    try {
+      const saved = editingAd ? await marketplaceApi.content.updatePromotion(editingAd.id, payload) : await marketplaceApi.content.createPromotion(payload);
+      setBackendPromotions((previous) => editingAd ? previous.map((item) => item.id === saved.id ? saved : item) : [saved, ...previous]);
+      setIsCreatingAd(false); showNotification(editingAd ? 'Promotion updated in database.' : 'Promotion published to database.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not save promotion.'); }
+    finally { setPromotionSaving(false); }
+  };
+
+  const handleTogglePromotion = async (ad: PromotionalAdvertisement) => {
+    try {
+      const updated = await marketplaceApi.content.updatePromotion(ad.id, { isActive: !ad.isActive });
+      setBackendPromotions((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+      showNotification(updated.isActive ? 'Promotion is now live.' : 'Promotion paused.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not update promotion status.'); }
+  };
+
+  const handleDeletePromotion = async (ad: PromotionalAdvertisement) => {
+    if (!window.confirm(`Delete promotion "${ad.title}"?`)) return;
+    try {
+      await marketplaceApi.content.deletePromotion(ad.id);
+      setBackendPromotions((previous) => previous.filter((item) => item.id !== ad.id));
+      showNotification('Promotion deleted from database.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Could not delete promotion.'); }
+  };
+
   // Payment Rejection State
   const [rejectingOrder, setRejectingOrder] = useState<Order | null>(null);
   const [rejectionReason, setRejectionReason] = useState('Payment transfer reference could not be verified in official OPay portal.');
@@ -875,7 +917,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setFsDiscount(25);
     setFsStartTime(new Date().toISOString().slice(0, 16));
     setFsEndTime(new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16));
-    setFsProductIds(allProducts.slice(0, 4).map((p) => p.id));
+    setFsProductIds(backendApprovedProducts.slice(0, 4).map((p) => p.id));
     setFsIsActive(true);
     setIsCreatingFlashSale(true);
   };
@@ -2544,7 +2586,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   {adsSubTab === 'banners' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <div className="flex justify-end">
+                        <button type="button" onClick={handleOpenCreatePromotion} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white flex items-center gap-1"><Plus className="h-3.5 w-3.5" /> Create Promo</button>
+                      </div>
+                      {contentLoading && <p className="text-xs text-slate-500">Loading promotions from database…</p>}
+                      {contentError && <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{contentError}</p>}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {allAds.map((ad) => (
                         <div key={ad.id} className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs">
                           <img src={ad.image} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-2" />
@@ -2557,17 +2605,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </span>
                             <button
                               type="button"
-                              onClick={() => {
-                                db.togglePromotionalAd(ad.id, !ad.isActive);
-                                triggerRefresh();
-                              }}
+                              onClick={() => void handleTogglePromotion(ad)}
                               className="text-[10px] font-bold text-slate-600 hover:text-[#E6007E] cursor-pointer"
                             >
                               Toggle Status
                             </button>
                           </div>
+                          <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+                            <button type="button" onClick={() => handleOpenEditPromotion(ad)} className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">Edit</button>
+                            <button type="button" onClick={() => void handleDeletePromotion(ad)} className="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">Delete</button>
+                          </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -3396,6 +3446,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {isCreatingAd && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
+          <form onSubmit={handleSavePromotion} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b pb-2"><h3 className="font-black text-sm text-[#0B172E]">{editingAd ? 'Edit Promotion' : 'Create Promotion'}</h3><button type="button" onClick={() => setIsCreatingAd(false)} className="text-slate-500"><X className="h-5 w-5" /></button></div>
+            <label className="block text-xs font-bold text-slate-700">Promotion title<input required maxLength={200} value={adTitle} onChange={(e) => setAdTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={2000} value={adDescription} onChange={(e) => setAdDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" rows={3} /></label>
+            <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Badge<input value={adBadge} onChange={(e) => setAdBadge(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Discount tag<input value={adDiscountTag} onChange={(e) => setAdDiscountTag(e.target.value)} placeholder="Save 20%" className="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <label className="block text-xs font-bold text-slate-700">Image URL<input required type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Button text<input value={adLinkText} onChange={(e) => setAdLinkText(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Button link<input value={adLinkUrl} onChange={(e) => setAdLinkUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={adIsActive} onChange={(e) => setAdIsActive(e.target.checked)} /> Publish promotion immediately</label>
+            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAd(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={promotionSaving} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{promotionSaving ? 'Saving…' : 'Save Promotion'}</button></div>
+          </form>
         </div>
       )}
 
