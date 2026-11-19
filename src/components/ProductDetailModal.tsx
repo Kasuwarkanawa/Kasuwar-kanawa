@@ -564,6 +564,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span>Masha Allah! Your review has been published.</span>
                 </div>
               )}
+              {reviewError && <p role="alert" className="text-xs font-semibold text-red-600">{reviewError}</p>}
 
               <div className="flex justify-between items-center">
                 {!currentUser ? (
@@ -578,7 +579,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={!currentUser}
+                  disabled={!currentUser || currentUser.accountType !== 'buyer'}
                   className="px-4 py-2 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
