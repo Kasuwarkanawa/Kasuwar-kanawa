@@ -116,6 +116,10 @@ export const marketplaceApi = {
       body: JSON.stringify({ status }),
     }),
   },
+  adminUsers: {
+    setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
+      request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  },
   adminReports: {
     list: () => request<{ products: any[]; buyers: any[]; sellers: any[] }>('/admin/reports?take=100'),
     update: (type: 'product' | 'buyer' | 'seller', id: string, status: 'pending' | 'reviewed' | 'resolved' | 'approved' | 'rejected', adminNotes?: string) =>
