@@ -105,6 +105,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
   const [backendOrders, setBackendOrders] = useState<Order[]>([]);
   const [backendOrdersError, setBackendOrdersError] = useState<string | null>(null);
+  const [backendBuyerReports, setBackendBuyerReports] = useState<BuyerReport[]>([]);
+  const [buyerReportsLoading, setBuyerReportsLoading] = useState(false);
+  const [buyerReportsError, setBuyerReportsError] = useState<string | null>(null);
   const [receiptLinks, setReceiptLinks] = useState<Record<string, string>>({});
   const [receiptBusy, setReceiptBusy] = useState<string | null>(null);
   const [pendingProductsLoading, setPendingProductsLoading] = useState(false);
@@ -161,6 +164,37 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
 
 
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin' || activeTab !== 'reports') return;
+    let active = true;
+    setBuyerReportsLoading(true);
+    marketplaceApi.adminReports.list()
+      .then(({ buyers }) => {
+        if (!active) return;
+        setBackendBuyerReports(buyers.map((report: any) => ({
+          id: report.id,
+          sellerId: report.seller?.id ?? report.sellerId,
+          sellerName: report.seller?.fullName ?? 'Seller',
+          sellerBusinessName: report.seller?.businessName ?? '',
+          buyerId: report.buyer?.id ?? report.buyerId,
+          buyerName: report.buyer?.fullName ?? 'Buyer',
+          buyerPhone: report.buyer?.phone ?? '',
+          orderNumber: report.orderNumber ?? undefined,
+          reason: report.reason,
+          details: report.details,
+          status: report.status,
+          adminNotes: report.adminNotes ?? undefined,
+          createdAt: report.createdAt,
+        })));
+        setBuyerReportsError(null);
+      })
+      .catch((error) => {
+        if (active) setBuyerReportsError(error instanceof Error ? error.message : 'Unable to load buyer reports from database.');
+      })
+      .finally(() => { if (active) setBuyerReportsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, activeTab, refreshKey]);
 
   // Authentication State for Super Admin Gate
   const [adminUsername, setAdminUsername] = useState('');
@@ -492,7 +526,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const allOrders = [...orderMap.values()];
   const allCategories = db.getCategories();
   const productReports = db.getReports();
-  const buyerReports = db.getBuyerReports();
+  const buyerReports = backendBuyerReports;
   const sellerReports = db.getSellerReports();
   const allFlashSales = backendFlashSales;
   const allAds = backendPromotions;
@@ -1042,10 +1076,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     triggerRefresh();
   };
 
-  const handleUpdateBuyerReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateBuyerReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Buyer report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateBuyerReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('buyer', reportId, status, adminNotes);
+      setBackendBuyerReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Buyer report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update buyer report.');
+    }
   };
 
   const handleUpdateSellerReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
@@ -2775,6 +2815,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {reportSubTab === 'buyer_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading buyer reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
+                      {!buyerReportsLoading && !buyerReportsError && buyerReports.length === 0 && (
+                        <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">No buyer reports filed.</div>
+                      )}
                       {buyerReports.map((br) => (
                         <div key={br.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
                           <div className="flex items-center justify-between">
