@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CartItem, User, Order } from '../types';
 import { db } from '../db/database';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { formatPrice } from '../utils/format';
 
 interface CheckoutModalProps {
@@ -125,84 +126,87 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setTimeout(() => setCopiedAccount(false), 2000);
   };
 
-  // Validate and submit order
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  // Create orders through the authenticated backend. Prices and stock are recalculated server-side.
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Section 5: Require all fields
+    if (!currentUser || currentUser.accountType !== 'buyer') {
+      setErrorMessage('Please sign in with your Buyer account before placing an order.');
+      return;
+    }
     if (!fullName.trim() || !phoneNumber.trim() || !state.trim() || !city.trim() || !area.trim() || !completeAddress.trim()) {
       setErrorMessage('Please fill in all required shipping address fields before proceeding.');
       return;
     }
-
     if (checkoutItems.length === 0) {
       setErrorMessage('Your checkout basket is empty. Please add items to checkout.');
       return;
     }
+    if (checkoutItems.some((item) => !item.product.id || item.product.id.startsWith('sample-') || item.product.id.startsWith('prod-'))) {
+      setErrorMessage('One or more items are not linked to the live marketplace catalogue. Remove them and add the products again from the live store.');
+      return;
+    }
 
     setIsSubmitting(true);
+    try {
+      const order = await marketplaceApi.orders.create({
+        items: checkoutItems.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
+          selectedVariation: item.selectedVariation,
+        })),
+        paymentMethod,
+        shippingAddress: {
+          fullName: fullName.trim(),
+          phoneNumber: phoneNumber.trim(),
+          state: state.trim(),
+          city: city.trim(),
+          area: area.trim(),
+          completeAddress: completeAddress.trim(),
+        },
+      }) as Order;
 
-    const buyerUser: User = currentUser || {
-      id: `usr-guest-${Date.now()}`,
-      fullName: fullName.trim(),
-      phone: phoneNumber.trim(),
-      email: `${phoneNumber.replace(/\D/g, '')}@kasuwarkanawa.com`,
-      address: completeAddress.trim(),
-      city: city.trim(),
-      state: state.trim(),
-      area: area.trim(),
-      accountType: 'buyer',
-      createdAt: new Date().toISOString(),
-    };
-
-    const newOrder = db.createOrder({
-      buyer: buyerUser,
-      items: checkoutItems,
-      shippingAddress: {
-        fullName: fullName.trim(),
-        phoneNumber: phoneNumber.trim(),
-        state: state.trim(),
-        city: city.trim(),
-        area: area.trim(),
-        completeAddress: completeAddress.trim(),
-      },
-      paymentMethod,
-      senderName: senderName || fullName,
-      transactionReference:
-        paymentMethod === 'opay'
-          ? `OPAY-TRX-${Math.floor(10000000 + Math.random() * 90000000)}`
-          : undefined,
-    });
-
-    setCreatedOrder(newOrder);
-    setIsSubmitting(false);
-
-    if (paymentMethod === 'opay') {
-      // Step 2: Show OPay transfer information (Section 8)
-      setStep('opay_confirm');
-    } else {
-      // Step 2 for COD: Immediate confirmation (Section 9)
-      db.clearCart();
-      onOrderSuccess(newOrder);
-      setStep('success');
+      setCreatedOrder(order);
+      if (paymentMethod === 'opay') {
+        setStep('opay_confirm');
+      } else {
+        db.clearCart();
+        onOrderSuccess(order);
+        setStep('success');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to place your order. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Buyer confirms OPay transfer (Section 8)
-  const handleConfirmOPayPayment = (e: React.FormEvent) => {
+  // Record the buyer's OPay transfer details with the backend for Admin verification.
+  const handleConfirmOPayPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createdOrder) return;
 
-    db.confirmPaymentByBuyer(
-      createdOrder.id,
-      senderName || fullName,
-      transactionRef.trim() || `OPAY-REF-${Math.floor(1000000 + Math.random() * 9000000)}`
-    );
-
-    db.clearCart();
-    onOrderSuccess(createdOrder);
-    setStep('success');
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const reference = transactionRef.trim() || `OPAY-REF-${Math.floor(1000000 + Math.random() * 9000000)}`;
+      const updatedOrder = await marketplaceApi.orders.confirmOpay(
+        createdOrder.id,
+        (senderName || fullName).trim(),
+        reference,
+      ) as Order;
+      setCreatedOrder(updatedOrder);
+      db.clearCart();
+      onOrderSuccess(updatedOrder);
+      setStep('success');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to submit payment confirmation. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
