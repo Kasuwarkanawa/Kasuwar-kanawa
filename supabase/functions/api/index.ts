@@ -476,11 +476,17 @@ async function dispatch(req: Request, origin: string | null) {
 
 
   if(path==="/admin/categories" && method==="GET") {
-    await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("Category").select("*").order("name");if(error)throw error;return reply(data??[],200,origin);
+    await requireRole(req,["SUPER_ADMIN"]);
+    const [{data:categories,error},{data:products,error:productError}]=await Promise.all([
+      db.from("Category").select("*").order("name"),
+      db.from("Product").select("category,categoryId"),
+    ]);
+    if(error)throw error;if(productError)throw productError;
+    return reply((categories??[]).map(c=>{const itemCount=(products??[]).filter(p=>p.categoryId===c.id||p.category===c.name).length;return {...c,itemCount,_count:{products:itemCount}};}),200,origin);
   }
   if(path==="/admin/categories" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({name:z.string().trim().min(2).max(120),hausaName:z.string().trim().max(120).optional(),description:z.string().trim().max(1000).optional(),iconName:z.string().trim().max(80).optional(),image:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
-    const id=crypto.randomUUID();const {data,error}=await db.from("Category").insert({id,...b,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}).select("*").single();if(error)throw error;return reply(data,201,origin);
+    const id=crypto.randomUUID();const {data,error}=await db.from("Category").insert({id,...b,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}).select("*").single();if(error)throw error;return reply({...data,itemCount:0,_count:{products:0}},201,origin);
   }
   const categoryAdminMatch=path.match(/^\/admin\/categories\/([^/]+)$/);
   if(categoryAdminMatch && method==="PATCH") {
