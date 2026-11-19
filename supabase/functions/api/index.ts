@@ -553,7 +553,8 @@ async function dispatch(req: Request, origin: string | null) {
   if(cartItemMatch && method==="DELETE") {
     const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
     const {data:item}=await db.from("CartItem").select("id,cart:Cart!CartItem_cartId_fkey(userId)").eq("id",id).maybeSingle();
-    if(!item || item.cart?.userId!==auth.user.id)fail("Cart item not found.",404);
+    const cartOwnerId = Array.isArray(item?.cart) ? item.cart[0]?.userId : item?.cart?.userId;
+    if(!item || cartOwnerId!==auth.user.id)fail("Cart item not found.",404);
     const {error}=await db.from("CartItem").delete().eq("id",id);if(error)throw error;return reply({success:true},200,origin);
   }
   if(path==="/cart" && method==="DELETE") {
