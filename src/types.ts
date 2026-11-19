@@ -188,6 +188,7 @@ export interface PaymentConfirmation {
   confirmedByBuyer: boolean;
   confirmedAt?: string;
   verifiedByAdmin: boolean;
+  adminApproved?: boolean;
   verifiedAt?: string;
   adminNotes?: string;
 }
