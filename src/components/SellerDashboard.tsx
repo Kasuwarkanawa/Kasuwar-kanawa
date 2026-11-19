@@ -27,7 +27,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
-import { db } from '../db/database';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
@@ -256,41 +255,30 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Order Lifecycle Handlers
   const handleAcceptOrder = async (orderId: string) => {
-    if (sellerOrders.some((order) => order.id === orderId)) {
-      try {
-        await marketplaceApi.orders.sellerStatus(orderId, 'processing');
-        triggerRefresh();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Unable to accept this order.');
-      }
-      return;
+    try {
+      await marketplaceApi.orders.sellerStatus(orderId, 'processing');
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to accept this order.');
     }
-    db.sellerAcceptOrder(orderId);
-    triggerRefresh();
   };
 
   const handleDispatchOrder = async (orderId: string) => {
-    if (sellerOrders.some((order) => order.id === orderId)) {
-      const logisticsCompanyName = window.prompt('Enter the logistics company name:');
-      if (!logisticsCompanyName?.trim()) return;
-      const trackingNumber = window.prompt('Enter the logistics tracking number:');
-      if (!trackingNumber?.trim()) return;
-      try {
-        await marketplaceApi.orders.logisticsHandoff(orderId, logisticsCompanyName.trim(), trackingNumber.trim());
-        triggerRefresh();
-        alert('Order handed over to logistics. Buyer and Admin can now track its progress.');
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Unable to record logistics hand-off.');
-      }
-      return;
+    const logisticsCompanyName = window.prompt('Enter the logistics company name:');
+    if (!logisticsCompanyName?.trim()) return;
+    const trackingNumber = window.prompt('Enter the logistics tracking number:');
+    if (!trackingNumber?.trim()) return;
+    try {
+      await marketplaceApi.orders.logisticsHandoff(orderId, logisticsCompanyName.trim(), trackingNumber.trim());
+      triggerRefresh();
+      alert('Order handed over to logistics. Buyer and Admin can now track its progress.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to record logistics hand-off.');
     }
-    db.sellerDispatchOrder(orderId);
-    triggerRefresh();
   };
 
-  const handleDeliverOrder = (orderId: string) => {
-    db.sellerDeliverOrder(orderId);
-    triggerRefresh();
+  const handleDeliverOrder = (_orderId: string) => {
+    alert('Delivery completion is confirmed by the Admin after the logistics provider reports delivery.');
   };
 
   const handleOpenSellerReject = (ord: Order) => {
@@ -301,19 +289,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const handleConfirmSellerReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectingOrder) return;
-    if (sellerOrders.some((order) => order.id === rejectingOrder.id)) {
-      try {
-        await marketplaceApi.orders.sellerStatus(rejectingOrder.id, 'rejected', sellerRejectionReason);
-        setRejectingOrder(null);
-        triggerRefresh();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Unable to reject this order.');
-      }
-      return;
+    try {
+      await marketplaceApi.orders.sellerStatus(rejectingOrder.id, 'rejected', sellerRejectionReason);
+      setRejectingOrder(null);
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to reject this order.');
     }
-    db.sellerRejectOrder(rejectingOrder.id, sellerRejectionReason);
-    setRejectingOrder(null);
-    triggerRefresh();
   };
 
   // Submit buyer reports to the authenticated backend; the server verifies seller/order ownership and Admin approval.
@@ -1633,13 +1615,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
               <ProfileImageUploader
                 value={currentSeller.profileImage || ''}
-                onChange={(url) => {
-                  const updated = db.updateUserProfile(currentSeller.id, {
-                    profileImage: url.trim() || undefined,
-                  });
-                  if (updated) {
-                    setCurrentSeller(updated);
+                onChange={async (url) => {
+                  try {
+                    const result = await marketplaceApi.seller.updateProfile({ profileImage: url.trim() || null });
+                    setCurrentSeller(result.user as User);
                     triggerRefresh();
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : 'Unable to update store profile image.');
                   }
                 }}
                 name={currentSeller.businessName || currentSeller.fullName}
