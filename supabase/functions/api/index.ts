@@ -4,6 +4,18 @@ import { z } from "npm:zod@3.25.76";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const configuredPublishableKeys = (() => {
+  const keys = new Set<string>();
+  const single = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+  if (single) keys.add(single);
+  try {
+    const named = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
+    for (const value of Object.values(named)) if (typeof value === "string") keys.add(value);
+  } catch { /* optional legacy environment format */ }
+  // Public project key only; never a service-role credential.
+  keys.add("sb_publishable_Z5Dj-_1weCpFUi1aNeyigg_uaEDIuVr");
+  return keys;
+})();
 const FRONTEND_ORIGIN = Deno.env.get("FRONTEND_ORIGIN") ?? "https://kasuwarkanawa.github.io";
 const COOKIE_NAME = "kk_session";
 const SESSION_DAYS = 14;
@@ -768,6 +780,8 @@ Deno.serve(async (req: Request) => {
     return new Response(null,{status:204,headers:headersFor(origin)});
   }
   if (origin && !allowedOrigins.has(origin)) return reply({error:"Request origin is not allowed."},403,origin);
+  const apiKey = req.headers.get("apikey");
+  if (!apiKey || !configuredPublishableKeys.has(apiKey)) return reply({error:"A valid Supabase publishable key is required."},401,origin);
   if (["POST","PUT","PATCH","DELETE"].includes(req.method) && origin && !allowedOrigins.has(origin)) return reply({error:"Request origin is not allowed."},403,origin);
   try { return await dispatch(req,origin); }
   catch (error) {
