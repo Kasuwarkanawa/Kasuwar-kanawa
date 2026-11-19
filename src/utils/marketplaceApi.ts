@@ -31,6 +31,8 @@ export type SellerProductInput = Pick<Product, 'name' | 'category' | 'price' | '
 export const marketplaceApi = {
   catalog: {
     reviews: (productId: string) => request<ProductReview[]>(`/products/${encodeURIComponent(productId)}/reviews`),
+    submitReview: (productId: string, data: { rating: number; comment: string }) => request<ProductReview>(`/products/${encodeURIComponent(productId)}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
+    report: (productId: string, data: { reason: string; details: string }) => request<any>(`/products/${encodeURIComponent(productId)}/reports`, { method: 'POST', body: JSON.stringify(data) }),
     list: (params: { search?: string; category?: string; take?: number; skip?: number } = {}) => {
       const query = new URLSearchParams();
       if (params.search) query.set('search', params.search);
