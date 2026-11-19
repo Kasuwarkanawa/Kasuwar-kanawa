@@ -312,8 +312,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 One-time setup only. First add <strong>BOOTSTRAP_ADMIN_TOKEN</strong> to Supabase Edge Function Secrets. The token and password are sent directly to the secure backend and are not saved in the browser.
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700">Private setup token</label>
-                <input required type="password" autoComplete="off" value={setupToken} onChange={(e)=>setSetupToken(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs focus:border-[#E6007E] focus:outline-hidden" placeholder="Paste the token you saved in Supabase" />
+                <label className="mb-1 block text-xs font-bold text-slate-700">Private setup token (64 characters)</label>
+                <input required type="text" inputMode="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={256} value={setupToken} onChange={(e)=>setSetupToken(e.target.value)} className="block w-full min-w-0 rounded-xl border border-slate-300 px-3 py-3 font-mono text-[11px] tracking-tight focus:border-[#E6007E] focus:outline-hidden" placeholder="Paste the full 64-character token from Supabase" />
+                <p className="mt-1 text-[10px] text-slate-500">{setupToken.length}/64 characters entered</p>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700">Admin full name</label>
