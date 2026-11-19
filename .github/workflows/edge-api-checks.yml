@@ -23,4 +23,4 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check Edge Function
-        run: deno check supabase/functions/api/index.ts
+        run: deno check --config supabase/functions/api/deno.json supabase/functions/api/index.ts
