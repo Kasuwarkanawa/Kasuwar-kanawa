@@ -43,6 +43,19 @@ export const marketplaceApi = {
   },
   orders: {
     mine: () => request<any[]>('/orders/mine?take=100'),
+    adminAll: () => request<any[]>('/orders/admin/all?take=100'),
+    approveOpay: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/payment-verification`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision, adminNotes }),
+      }),
+    approveCod: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/cod-approval`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision, adminNotes }),
+      }),
+    receiptUrl: (id: string) =>
+      request<{ url: string; expiresIn: number }>(`/orders/admin/${encodeURIComponent(id)}/payment-receipt`),
     create: (data: {
       items: Array<{ productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }>;
       paymentMethod: 'opay' | 'cod';
