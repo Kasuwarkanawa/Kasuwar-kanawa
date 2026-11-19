@@ -35,7 +35,7 @@ const flashSaleBaseSchema = z.object({
   discountPercentage: z.number().int().min(1).max(100),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
-  productIds: z.array(z.string().trim().min(1).max(128)).max(100),
+  productIds: z.array(z.string().trim().min(1).max(128)).min(1).max(100),
   isActive: z.boolean().default(false),
 });
 const flashSaleSchema = flashSaleBaseSchema.refine((value) => new Date(value.endTime) > new Date(value.startTime), {
