@@ -189,6 +189,9 @@ export interface PaymentConfirmation {
   adminApproved?: boolean;
   verifiedAt?: string;
   adminNotes?: string;
+  receiptPath?: string;
+  receiptMimeType?: string;
+  receiptUploadedAt?: string;
 }
 
 export interface TrackingStep {
