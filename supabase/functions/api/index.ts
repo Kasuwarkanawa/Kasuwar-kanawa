@@ -451,7 +451,7 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({name:z.string().trim().min(2).max(120),hausaName:z.string().trim().max(120).optional(),description:z.string().trim().max(1000).optional(),iconName:z.string().trim().max(80).optional(),image:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
     const id=crypto.randomUUID();const {data,error}=await db.from("Category").insert({id,...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
   }
-  const categoryAdminMatch=path.match(/^\\/admin\\/categories\\/([^/]+)$/);
+  const categoryAdminMatch=path.match(/^\/admin\/categories\/([^/]+)$/);
   if(categoryAdminMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const b=z.object({name:z.string().trim().min(2).max(120).optional(),hausaName:z.string().trim().max(120).nullable().optional(),description:z.string().trim().max(1000).nullable().optional(),iconName:z.string().trim().max(80).nullable().optional(),image:z.string().trim().max(1000).nullable().optional()}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Category").update(b).eq("id",decodeURIComponent(categoryAdminMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
