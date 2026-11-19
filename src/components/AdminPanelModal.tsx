@@ -917,37 +917,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingCategory(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingCategory) {
-      db.updateCategory(editingCategory.id, {
-        name: catName,
-        hausaName: catHausaName,
-        description: catDescription,
-        image: catImage,
-        iconName: catIconName,
-      });
-      showNotification(`Category "${catName}" updated.`);
-    } else {
-      db.createCategory({
-        name: catName,
-        hausaName: catHausaName,
-        description: catDescription,
-        image: catImage,
-        iconName: catIconName,
-        itemCount: 0,
-      });
-      showNotification(`Category "${catName}" created.`);
+    const payload = { name: catName, hausaName: catHausaName, description: catDescription, image: catImage, iconName: catIconName };
+    try {
+      const saved = editingCategory
+        ? await marketplaceApi.adminCategories.update(editingCategory.id, payload)
+        : await marketplaceApi.adminCategories.create(payload);
+      setBackendCategories((items) => editingCategory
+        ? items.map((item) => item.id === saved.id ? saved : item)
+        : [...items, saved]);
+      showNotification(`Category "${catName}" saved in Supabase.`);
+      setIsAddingCategory(false);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to save category.');
     }
-    setIsAddingCategory(false);
-    triggerRefresh();
   };
 
-  const handleDeleteCategory = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove category "${name}"?`)) {
-      db.deleteCategory(id);
-      showNotification(`Category "${name}" removed.`);
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to remove category "${name}"?`)) return;
+    try {
+      await marketplaceApi.adminCategories.remove(id);
+      setBackendCategories((items) => items.filter((item) => item.id !== id));
+      showNotification(`Category "${name}" removed from Supabase.`);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove category.');
     }
   };
 
@@ -2728,9 +2724,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              db.toggleAnnouncementPublish(anc.id, !anc.isPublished);
-                              triggerRefresh();
+                            onClick={async () => {
+                              try {
+                                await marketplaceApi.content.updateAnnouncement(anc.id, { isPublished: !anc.isPublished });
+                                setBackendAnnouncements((items) => items.map((item) => item.id === anc.id ? { ...item, isPublished: !item.isPublished } : item));
+                                triggerRefresh();
+                              } catch (error) {
+                                showNotification(error instanceof Error ? error.message : 'Unable to update announcement.');
+                              }
                             }}
                             className={`px-3 py-1 rounded-lg text-xs font-black cursor-pointer ${
                               anc.isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
