@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   ShieldCheck,
@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { db } from '../db/database';
 import { authApi } from '../utils/authApi';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 import {
@@ -101,6 +102,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   >('dashboard');
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
+  const [pendingProductsLoading, setPendingProductsLoading] = useState(false);
+  const [pendingProductsError, setPendingProductsError] = useState<string | null>(null);
+  const [productDecisionBusy, setProductDecisionBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    setPendingProductsLoading(true);
+    marketplaceApi.adminProducts.pending()
+      .then((products) => { if (active) { setPendingBackendProducts(products); setPendingProductsError(null); } })
+      .catch((error) => { if (active) setPendingProductsError(error instanceof Error ? error.message : 'Unable to load pending products.'); })
+      .finally(() => { if (active) setPendingProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
 
   // Authentication State for Super Admin Gate
   const [adminUsername, setAdminUsername] = useState('');
@@ -640,7 +657,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
-  const handleApproveProduct = (id: string, approve: boolean) => {
+  const handleApproveProduct = async (id: string, approve: boolean) => {
+    const backendProduct = pendingBackendProducts.some((product) => product.id === id);
+    if (backendProduct) {
+      setProductDecisionBusy(id);
+      try {
+        await marketplaceApi.adminProducts.setApproval(id, approve ? 'APPROVED' : 'REJECTED');
+        setPendingBackendProducts((items) => items.filter((product) => product.id !== id));
+        showNotification(approve ? 'Product approved and published to the public marketplace.' : 'Product rejected.');
+        triggerRefresh();
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to update product approval.');
+      } finally {
+        setProductDecisionBusy(null);
+      }
+      return;
+    }
     db.adminApproveProduct(id, approve);
     showNotification(approve ? 'Product APPROVED for Public Marketplace.' : 'Product REJECTED.');
     triggerRefresh();
@@ -1678,7 +1710,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Products Grid */}
+                  {/* Server-backed Seller submissions awaiting approval */}
+                  <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">Seller Approval Queue</h3>
+                        <p className="text-[11px] text-slate-600">Products submitted through Seller Dashboard. Approval publishes them to the public store.</p>
+                      </div>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">{pendingBackendProducts.length} pending</span>
+                    </div>
+                    {pendingProductsLoading && <p className="text-xs text-slate-600">Loading pending submissions…</p>}
+                    {pendingProductsError && <p className="text-xs font-semibold text-red-700">{pendingProductsError}</p>}
+                    {!pendingProductsLoading && !pendingProductsError && pendingBackendProducts.length === 0 && (
+                      <p className="rounded-lg border border-dashed border-amber-300 bg-white/70 p-4 text-center text-xs text-slate-600">No Seller submissions are waiting for approval.</p>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {pendingBackendProducts.map((product) => (
+                        <article key={product.id} className="rounded-lg border border-amber-200 bg-white p-3 flex gap-3">
+                          <img src={product.image} alt={product.name} className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black uppercase text-pink-600">{product.category}</p>
+                            <h4 className="text-xs font-black text-slate-900">{product.name}</h4>
+                            <p className="mt-1 text-xs font-bold text-pink-700">₦{product.price.toLocaleString()}</p>
+                            <p className="mt-1 text-[10px] text-slate-600">Seller: {product.sellerName || product.sellerBusinessName || 'Marketplace seller'}</p>
+                            {product.description && <p className="mt-1 line-clamp-2 text-[10px] text-slate-500">{product.description}</p>}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button type="button" disabled={productDecisionBusy === product.id} onClick={() => void handleApproveProduct(product.id, true)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50">
+                                {productDecisionBusy === product.id ? 'Saving…' : 'Approve & Publish'}
+                              </button>
+                              <button type="button" disabled={productDecisionBusy === product.id} onClick={() => void handleApproveProduct(product.id, false)} className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50">
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Existing locally managed product records */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredProducts.map((p) => (
                       <div
