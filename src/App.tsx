@@ -95,10 +95,10 @@ export default function App() {
   // Items currently being checked out (supports both whole cart and single Buy Now product)
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(cartItems);
 
-  // 11. DATABASE INTEGRATION: Auto-save cart items to database
+  // Guest cart remains local; authenticated buyer carts are stored in Supabase.
   useEffect(() => {
-    db.saveCart(cartItems);
-  }, [cartItems]);
+    if (currentUser?.accountType !== 'buyer') db.saveCart(cartItems);
+  }, [cartItems, currentUser?.id, currentUser?.accountType]);
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -123,8 +123,18 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  // Load the authenticated buyer's persistent cart from Supabase.
+  useEffect(() => {
+    if (!currentUser || currentUser.accountType !== 'buyer') return;
+    let active = true;
+    marketplaceApi.cart.list()
+      .then(({ items }) => { if (active) setCartItems(items); })
+      .catch((error) => { if (active) showToast(error instanceof Error ? error.message : 'Unable to load your saved cart.'); });
+    return () => { active = false; };
+  }, [currentUser?.id, currentUser?.accountType]);
+
   // Add to cart from basic card or detailed modal (Section 1)
-  const handleAddToCart = (itemOrProduct: Product | CartItem) => {
+  const handleAddToCart = async (itemOrProduct: Product | CartItem) => {
     let newItem: CartItem;
 
     if ('product' in itemOrProduct) {
@@ -139,6 +149,24 @@ export default function App() {
         selectedSize: prod.sizes?.[0],
         selectedVariation: prod.variations?.[0]?.options[0],
       };
+    }
+
+    if (currentUser?.accountType === 'buyer') {
+      try {
+        await marketplaceApi.cart.add({
+          productId: newItem.product.id,
+          quantity: newItem.quantity,
+          selectedColor: newItem.selectedColor,
+          selectedSize: newItem.selectedSize,
+          selectedVariation: newItem.selectedVariation,
+        });
+        const { items } = await marketplaceApi.cart.list();
+        setCartItems(items);
+        showToast(`Added ${newItem.product.name.slice(0, 24)}... to Cart!`);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Unable to add this product to your saved cart.');
+      }
+      return;
     }
 
     setCartItems((prev) => {
@@ -193,12 +221,26 @@ export default function App() {
       handleRemoveItem(cartItemId);
       return;
     }
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.update(cartItemId, quantity)
+        .then(() => marketplaceApi.cart.list())
+        .then(({ items }) => setCartItems(items))
+        .catch((error) => showToast(error instanceof Error ? error.message : 'Unable to update cart quantity.'));
+      return;
+    }
     setCartItems((prev) =>
       prev.map((item) => (item.id === cartItemId ? { ...item, quantity } : item))
     );
   };
 
   const handleRemoveItem = (cartItemId: string) => {
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.remove(cartItemId)
+        .then(() => marketplaceApi.cart.list())
+        .then(({ items }) => setCartItems(items))
+        .catch((error) => showToast(error instanceof Error ? error.message : 'Unable to remove cart item.'));
+      return;
+    }
     setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
   };
 
@@ -220,6 +262,9 @@ export default function App() {
 
   const handleOrderSuccess = (order: Order) => {
     db.clearCart();
+    if (currentUser?.accountType === 'buyer') {
+      void marketplaceApi.cart.clear().catch(() => undefined);
+    }
     setCartItems([]);
     showToast(`Order #${order.orderNumber} placed successfully!`);
   };
