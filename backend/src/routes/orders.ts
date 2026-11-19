@@ -229,7 +229,6 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
     const order = await prisma.order.findFirst({ where: { id: req.params.id, sellerId: req.authUser!.id }, include: orderInclude });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
     if (status === 'rejected' && !reason) return res.status(400).json({ error: 'A reason is required to reject an order.' });
-    if (status === 'dispatched') return res.status(409).json({ error: 'Use the logistics hand-off action to record the carrier and tracking number.' });
     const payment = paymentValue(order.paymentConfirmation);
     if (order.paymentMethod === PaymentMethod.cod && status !== 'rejected' && payment.adminApproved !== true) return res.status(409).json({ error: 'COD order must be approved by Admin before fulfillment.' });
     if (order.paymentMethod === PaymentMethod.opay && status !== 'rejected' && (order.status !== OrderStatus.payment_confirmed || payment.verifiedByAdmin !== true)) {
@@ -255,7 +254,6 @@ ordersRouter.patch('/:id/status', ...sellerOnly, async (req, res, next) => {
         for (const item of order.items) await tx.product.update({ where: { id: item.productId }, data: { stockQuantity: { increment: item.quantity } } });
       }
       await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: trackingSort }, data: { title: status === 'rejected' ? 'Order Rejected' : status[0]!.toUpperCase() + status.slice(1), dateLabel: formatDate(now), completed: status !== 'rejected', description: reason || `Order ${status}.` } });
-      if (status === 'delivered') await tx.orderTrackingStep.updateMany({ where: { orderId: order.id, sortOrder: { lt: trackingSort } }, data: { completed: true } });
       return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
     });
     return res.json(serializeForSeller(updated));
