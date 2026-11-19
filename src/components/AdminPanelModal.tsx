@@ -106,6 +106,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [backendOrders, setBackendOrders] = useState<Order[]>([]);
   const [backendOrdersError, setBackendOrdersError] = useState<string | null>(null);
   const [backendBuyerReports, setBackendBuyerReports] = useState<BuyerReport[]>([]);
+  const [backendProductReports, setBackendProductReports] = useState<ProductReport[]>([]);
+  const [backendSellerReports, setBackendSellerReports] = useState<SellerReport[]>([]);
   const [buyerReportsLoading, setBuyerReportsLoading] = useState(false);
   const [buyerReportsError, setBuyerReportsError] = useState<string | null>(null);
   const [receiptLinks, setReceiptLinks] = useState<Record<string, string>>({});
@@ -170,9 +172,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     let active = true;
     setBuyerReportsLoading(true);
     marketplaceApi.adminReports.list()
-      .then(({ buyers }) => {
+      .then((data) => {
         if (!active) return;
-        setBackendBuyerReports(buyers.map((report: any) => ({
+        setBackendBuyerReports((data.buyers || []).map((report: any) => ({
           id: report.id,
           sellerId: report.seller?.id ?? report.sellerId,
           sellerName: report.seller?.fullName ?? 'Seller',
@@ -186,6 +188,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           status: report.status,
           adminNotes: report.adminNotes ?? undefined,
           createdAt: report.createdAt,
+        })));
+        setBackendProductReports((data.products || []).map((report: any) => ({
+          id: report.id, productId: report.productId, productName: report.product?.name ?? 'Product',
+          buyerId: report.reporter?.id ?? report.reporterId, buyerName: report.reporter?.fullName ?? 'Buyer',
+          buyerPhone: report.reporter?.phone ?? '', reason: report.reason, details: report.details,
+          status: report.status, adminNotes: report.adminNotes ?? undefined, createdAt: report.createdAt,
+        })));
+        setBackendSellerReports((data.sellers || []).map((report: any) => ({
+          id: report.id, buyerId: report.buyer?.id ?? report.buyerId, buyerName: report.buyer?.fullName ?? 'Buyer',
+          buyerPhone: '', sellerId: report.seller?.id ?? report.sellerId, sellerName: report.seller?.fullName ?? 'Seller',
+          sellerBusinessName: report.seller?.businessName ?? '', orderNumber: report.orderNumber ?? undefined,
+          reason: report.reason, details: report.details, status: report.status,
+          adminNotes: report.adminNotes ?? undefined, createdAt: report.createdAt,
         })));
         setBuyerReportsError(null);
       })
@@ -525,9 +540,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   for (const order of [...localOrders, ...backendOrders]) orderMap.set(order.id, order);
   const allOrders = [...orderMap.values()];
   const allCategories = db.getCategories();
-  const productReports = db.getReports();
+  const productReports = backendProductReports;
   const buyerReports = backendBuyerReports;
-  const sellerReports = db.getSellerReports();
+  const sellerReports = backendSellerReports;
   const allFlashSales = backendFlashSales;
   const allAds = backendPromotions;
   const allAnnouncements = db.getAnnouncements();
@@ -1070,10 +1085,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Report Actions
-  const handleUpdateProductReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateProductReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Product report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateProductReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('product', reportId, status, adminNotes);
+      setBackendProductReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Product report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update product report.');
+    }
   };
 
   const handleUpdateBuyerReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
@@ -1088,10 +1109,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
-  const handleUpdateSellerReport = (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
-    db.adminUpdateSellerReportStatus(reportId, status, `Report marked ${status} by Super Admin.`);
-    showNotification(`Seller report marked ${status}.`);
-    triggerRefresh();
+  const handleUpdateSellerReport = async (reportId: string, status: 'approved' | 'rejected' | 'resolved') => {
+    try {
+      const adminNotes = `Report marked ${status} by Super Admin.`;
+      await marketplaceApi.adminReports.update('seller', reportId, status, adminNotes);
+      setBackendSellerReports((previous) => previous.map((report) => report.id === reportId ? { ...report, status, adminNotes } : report));
+      showNotification(`Seller report marked ${status} in database.`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update seller report.');
+    }
   };
 
   // Quick action: Suspend reported user
