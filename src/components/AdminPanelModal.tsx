@@ -254,6 +254,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [selectedBuyerForHistory, setSelectedBuyerForHistory] = useState<User | null>(null);
   const [selectedSellerForHistory, setSelectedSellerForHistory] = useState<User | null>(null);
   const [selectedProductForReviews, setSelectedProductForReviews] = useState<Product | null>(null);
+  const [backendProductReviews, setBackendProductReviews] = useState<ProductReview[]>([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
 
   // User Management Modals
@@ -386,6 +387,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  useEffect(() => {
+    if (!isOpen || !selectedProductForReviews) { setBackendProductReviews([]); return; }
+    let active = true;
+    marketplaceApi.catalog.reviews(selectedProductForReviews.id)
+      .then((reviews) => { if (active) setBackendProductReviews(reviews); })
+      .catch((error) => { if (active) showNotification(error instanceof Error ? error.message : 'Unable to load product reviews.'); });
+    return () => { active = false; };
+  }, [isOpen, selectedProductForReviews?.id]);
 
   if (!isOpen) return null;
 
@@ -3274,10 +3284,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2.5">
-              {db.getReviews(selectedProductForReviews.id).length === 0 ? (
+              {backendProductReviews.length === 0 ? (
                 <p className="text-xs text-slate-400 py-6 text-center">No reviews submitted yet for this product.</p>
               ) : (
-                db.getReviews(selectedProductForReviews.id).map((rev) => (
+                backendProductReviews.map((rev) => (
                   <div key={rev.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[#0B172E]">{rev.buyerName}</span>
