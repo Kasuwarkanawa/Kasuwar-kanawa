@@ -42,14 +42,13 @@ export default function App() {
   // Phase 7: Live Flash Sales, Promotional Advertisements & Announcements from Database
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSale | null>(null);
   const [activePromotions, setActivePromotions] = useState<PromotionalAdvertisement[]>([]);
-  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>([]);
+  const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>(() => db.getPublishedAnnouncements());
 
   const refreshLiveProducts = useCallback(async () => {
-    const [productsResult, promotionsResult, flashSalesResult, announcementsResult] = await Promise.allSettled([
+    const [productsResult, promotionsResult, flashSalesResult] = await Promise.allSettled([
       marketplaceApi.catalog.list({ take: 100 }),
       marketplaceApi.content.publicPromotions(),
       marketplaceApi.content.publicFlashSales(),
-      marketplaceApi.content.publicAnnouncements(),
     ]);
     if (productsResult.status === 'fulfilled') setLiveProducts(productsResult.value);
     else showToast('Unable to load the live product catalog. Please refresh and try again.');
@@ -57,8 +56,7 @@ export default function App() {
     else setActivePromotions([]);
     if (flashSalesResult.status === 'fulfilled') setActiveFlashSale(flashSalesResult.value[0] || null);
     else setActiveFlashSale(null);
-    if (announcementsResult.status === 'fulfilled') setPublishedAnnouncements(announcementsResult.value);
-    else setPublishedAnnouncements([]);
+    setPublishedAnnouncements(db.getPublishedAnnouncements());
   }, []);
 
   useEffect(() => {
