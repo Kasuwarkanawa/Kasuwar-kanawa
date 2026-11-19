@@ -18,7 +18,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
-import { db } from '../db/database';
 import { formatPrice } from '../utils/format';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
@@ -81,13 +80,10 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     setOrdersError(null);
     try {
       const backendOrders = await marketplaceApi.orders.mine() as Order[];
-      const legacyOrders = db.getOrders(user.id);
-      const merged = new Map<string, Order>();
-      for (const order of [...legacyOrders, ...backendOrders]) merged.set(order.id, order);
-      setOrders([...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setOrders([...backendOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     } catch (error) {
       setOrdersError(error instanceof Error ? error.message : 'Could not refresh orders from the secure server.');
-      setOrders(db.getOrders(user.id));
+      setOrders([]);
     } finally {
       setOrdersLoading(false);
     }
@@ -97,30 +93,32 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     void refreshOrders();
   }, [user.id]);
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = db.updateUserProfile(user.id, {
-      fullName: editFullName,
-      phone: editPhone,
-      address: editAddress,
-      area: editArea,
-      city: editCity,
-      state: editState,
-      profileImage: editProfileImage.trim() || undefined,
-    });
-    if (updated) {
-      onUpdateUser(updated);
+    try {
+      const result = await marketplaceApi.buyer.updateProfile({
+        fullName: editFullName,
+        phone: editPhone,
+        address: editAddress,
+        area: editArea,
+        city: editCity,
+        state: editState,
+        profileImage: editProfileImage.trim() || null,
+      });
+      onUpdateUser(result.user as User);
       setIsEditingProfile(false);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Unable to update your profile.');
     }
   };
 
-  const handleDirectAvatarChange = (url: string) => {
+  const handleDirectAvatarChange = async (url: string) => {
     setEditProfileImage(url);
-    const updated = db.updateUserProfile(user.id, {
-      profileImage: url.trim() || undefined,
-    });
-    if (updated) {
-      onUpdateUser(updated);
+    try {
+      const result = await marketplaceApi.buyer.updateProfile({ profileImage: url.trim() || null });
+      onUpdateUser(result.user as User);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : 'Unable to update your profile photo.');
     }
   };
 
