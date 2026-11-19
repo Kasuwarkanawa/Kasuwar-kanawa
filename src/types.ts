@@ -132,8 +132,6 @@ export interface Product {
   sellerId?: string;
   sellerName?: string;
   sellerBusinessName?: string;
-  sellerPhone?: string;
-  sellerWhatsApp?: string;
   isApproved?: boolean;
   approvalStatus?: 'approved' | 'pending_approval' | 'rejected';
 }
