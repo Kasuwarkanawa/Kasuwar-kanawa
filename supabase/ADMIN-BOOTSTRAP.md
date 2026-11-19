@@ -11,7 +11,9 @@ In the Supabase Dashboard for project `efirbpzfimzmpchsovbz`, open **Project Set
 Do not commit this token or send it in chat. It is not the Admin password.
 
 ## 2. Create the first Admin account
-After the `api` Edge Function has been deployed, send a POST request to:
+After the frontend changes are merged and GitHub Pages is rebuilt, open the sign-in modal and choose **First-time Super Admin setup**. Enter the setup token, full name, email, phone, and a strong password (at least 12 characters). The form sends the details directly to the deployed Edge API over HTTPS and does not save the token or password in browser storage.
+
+Alternatively, send a POST request to:
 
 `https://efirbpzfimzmpchsovbz.supabase.co/functions/v1/api/auth/bootstrap-admin`
 
