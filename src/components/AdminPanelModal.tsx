@@ -737,55 +737,39 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingProduct(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const seller = db.getUserById(prodSellerId) || sellersList[0];
-
-    if (editingProduct) {
-      db.updateProduct(editingProduct.id, {
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOrigPrice),
-        discountPercentage: Number(prodDiscountPercent),
-        image: prodImage,
-        description: prodDescription,
-        sellerId: seller?.id,
-        sellerName: seller?.fullName,
-        sellerBusinessName: seller?.businessName,
-      });
-      showNotification(`Product "${prodName}" updated successfully!`);
-    } else {
-      db.addProduct({
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOrigPrice),
-        discountPercentage: Number(prodDiscountPercent),
-        image: prodImage,
-        description: prodDescription,
-        rating: 5.0,
-        reviewsCount: 1,
-        sellerId: seller?.id || 'usr-seller-1',
-        sellerName: seller?.fullName || 'Alhaji Danladi Merchant',
-        sellerBusinessName: seller?.businessName || 'Danladi Textiles & Brocade Hub',
-        isApproved: true,
-        approvalStatus: 'approved',
-        inStock: true,
-        stockLeft: 30,
-        stockQuantity: 30,
-      });
-      showNotification(`New product "${prodName}" created and published!`);
+    if (!editingProduct) {
+      showNotification('Products must be created by an approved Seller account.');
+      setIsAddingProduct(false);
+      return;
     }
-    setIsAddingProduct(false);
-    triggerRefresh();
+    try {
+      const updated = await marketplaceApi.adminProducts.update(editingProduct.id, {
+        name: prodName, category: prodCategory, price: Number(prodPrice),
+        originalPrice: Number(prodOrigPrice), discountPercentage: Number(prodDiscountPercent),
+        image: prodImage, description: prodDescription,
+      });
+      setBackendApprovedProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      setPendingBackendProducts((items) => items.map((item) => item.id === updated.id ? updated : item));
+      showNotification(`Product "${prodName}" updated in Supabase.`);
+      setIsAddingProduct(false);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update product.');
+    }
   };
 
-  const handleDeleteProduct = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete product "${name}"?`)) {
-      db.deleteProduct(id);
-      showNotification(`Product "${name}" deleted.`);
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (!window.confirm(`Remove product "${name}" from the public marketplace?`)) return;
+    try {
+      await marketplaceApi.adminProducts.remove(id);
+      setBackendApprovedProducts((items) => items.filter((item) => item.id !== id));
+      setPendingBackendProducts((items) => items.filter((item) => item.id !== id));
+      showNotification(`Product "${name}" removed from the public marketplace.`);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to remove product.');
     }
   };
 
@@ -805,9 +789,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return;
     }
-    db.adminApproveProduct(id, approve);
-    showNotification(approve ? 'Product APPROVED for Public Marketplace.' : 'Product REJECTED.');
-    triggerRefresh();
+    showNotification('This product is not in the Supabase pending-approval queue. Refresh the Admin panel and try again.');
   };
 
   const handleLoadBackendReceipt = async (orderId: string) => {
@@ -834,9 +816,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return;
     }
-    db.adminApprovePayment(orderId);
-    showNotification('Payment CONFIRMED! Order updated for Buyer and Seller.');
-    triggerRefresh();
+    showNotification('This order is not in the Supabase order list. Refresh and try again.');
   };
 
   const handleOpenRejectPayment = (order: Order) => {
@@ -857,10 +837,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return;
     }
-    db.adminRejectPayment(rejectingOrder.id, rejectionReason);
-    showNotification('Payment REJECTED. Buyer notified of rejection reason.');
-    setRejectingOrder(null);
-    triggerRefresh();
+    showNotification('This order is not in the Supabase order list. Refresh and try again.');
   };
 
   // Order Handlers
@@ -875,9 +852,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return;
     }
-    db.adminApproveOrder(orderId);
-    showNotification('Order APPROVED and sent to Seller for processing.');
-    triggerRefresh();
+    showNotification('This COD order is not in the Supabase order list. Refresh and try again.');
   };
 
   const handleRejectOrder = async (orderId: string) => {
@@ -893,9 +868,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return;
     }
-    db.adminRejectOrder(orderId, reason);
-    showNotification('Order REJECTED.');
-    triggerRefresh();
+    showNotification('This COD order is not in the Supabase order list. Refresh and try again.');
   };
 
   const handleBackendLogisticsUpdate = async (order: Order) => {
