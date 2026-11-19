@@ -148,6 +148,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMessage('One or more items are not linked to the live marketplace catalogue. Remove them and add the products again from the live store.');
       return;
     }
+    const sellerIds = new Set(checkoutItems.map((item) => item.product.sellerId).filter(Boolean));
+    if (sellerIds.size > 1) {
+      setErrorMessage('Your basket contains products from different sellers. Please place separate orders for each seller by checking out one seller’s products at a time.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
