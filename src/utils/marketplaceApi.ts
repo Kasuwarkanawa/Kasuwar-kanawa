@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
