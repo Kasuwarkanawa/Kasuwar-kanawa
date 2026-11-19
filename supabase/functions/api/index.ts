@@ -128,7 +128,7 @@ function orderForBuyer(order:any) {
 }
 function orderForSeller(order:any) {
   const result=serializeOrder(order), payment=order.paymentConfirmation??{};
-  const approved=order.paymentMethod==="opay" ? order.status==="payment_confirmed" && payment.verifiedByAdmin===true : payment.adminApproved===true;
+  const approved=order.paymentMethod==="opay" ? payment.verifiedByAdmin===true : payment.adminApproved===true;
   delete result.sellerPhone; delete result.sellerWhatsApp;
   if(!approved){delete result.buyerName;delete result.buyerEmail;delete result.buyerPhone;delete result.shippingAddress;}
   if(result.paymentConfirmation && typeof result.paymentConfirmation==="object") {
