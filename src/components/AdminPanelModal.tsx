@@ -379,25 +379,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Notification Toast in modal
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Logistics Management - Batch 2
-  const [logisticsSection, setLogisticsSection] = useState<'companies' | 'approvals' | 'deliveries' | 'agents' | 'tracking'>('companies');
-  const [showLogisticsForm, setShowLogisticsForm] = useState(false);
-  const [logisticsName, setLogisticsName] = useState('');
-  const [logisticsOwner, setLogisticsOwner] = useState('');
-  const [logisticsEmail, setLogisticsEmail] = useState('');
-  const [logisticsPhone, setLogisticsPhone] = useState('');
-  const [logisticsWhatsApp, setLogisticsWhatsApp] = useState('');
-  const [logisticsPassword, setLogisticsPassword] = useState('');
-  const [logisticsAddress, setLogisticsAddress] = useState('');
-  const [logisticsCity, setLogisticsCity] = useState('');
-  const [logisticsState, setLogisticsState] = useState('Kano');
-  const [logisticsLogo, setLogisticsLogo] = useState('');
-  const [logisticsFee, setLogisticsFee] = useState('2500');
-  const [logisticsAdminNotes, setLogisticsAdminNotes] = useState('');
-  const [selectedLogisticsAssignments, setSelectedLogisticsAssignments] = useState<Record<string, string>>({});
   const [selectedBackendLogisticsStatuses, setSelectedBackendLogisticsStatuses] = useState<Record<string, 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed'>>({});
   const [logisticsUpdateBusy, setLogisticsUpdateBusy] = useState<string | null>(null);
-
 
   const showNotification = (msg: string) => {
     setToastMessage(msg);
