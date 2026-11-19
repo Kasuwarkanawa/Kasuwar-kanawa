@@ -429,7 +429,19 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("Product").select("*").eq("approvalStatus","PENDING_APPROVAL").order("createdAt",{ascending:true}).range(skip,skip+take-1);
     if(error)throw error;return reply(await withProductDetails(data??[]),200,origin);
   }
-  const approvalMatch=path.match(/^\/admin\/products\/([^/]+)\/approval$/);
+
+  const adminProductMatch=path.match(/^[/]admin[/]products[/]([^/]+)$/);
+  if(adminProductMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
+    const b=z.object({name:z.string().trim().min(2).max(180).optional(),category:z.string().trim().min(1).max(120).optional(),price:z.number().positive().optional(),originalPrice:z.number().nonnegative().optional(),discountPercentage:z.number().int().min(0).max(100).optional(),image:z.string().trim().min(1).max(1000).optional(),description:z.string().max(10000).optional(),stockQuantity:z.number().int().min(0).max(100000).optional(),isFlashSale:z.boolean().optional(),isPopular:z.boolean().optional(),isNew:z.boolean().optional(),isSpecialOffer:z.boolean().optional()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("Product").update({...b,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();if(error)throw error;return reply(serializeProduct(data),200,origin);
+  }
+  if(adminProductMatch && method==="DELETE") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
+    const {data,error}=await db.from("Product").update({approvalStatus:"REJECTED",updatedAt:new Date().toISOString()}).eq("id",id).select("id").single();if(error)throw error;return reply({success:true,removedId:data.id},200,origin);
+  }
+
+    const approvalMatch=path.match(/^\/admin\/products\/([^/]+)\/approval$/);
   if(approvalMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(approvalMatch[1]);const {status}=z.object({status:z.enum(["APPROVED","REJECTED"])}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Product").update({approvalStatus:status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();
