@@ -1,4 +1,4 @@
-import { Product } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement } from '../types';
 
 const viteEnv = (import.meta as ImportMeta & { env?: { VITE_API_URL?: string; DEV?: boolean } }).env;
 const configuredApiUrl = viteEnv?.VITE_API_URL?.trim();
@@ -83,6 +83,26 @@ export const marketplaceApi = {
         headers: { 'Content-Type': file.type },
         body: file,
       }),
+  },
+  content: {
+    publicPromotions: () => request<PromotionalAdvertisement[]>('/content/advertisements'),
+    publicFlashSales: () => request<FlashSale[]>('/content/flash-sales'),
+    publicAnnouncements: () => request<Announcement[]>('/content/announcements'),
+    adminPromotions: () => request<PromotionalAdvertisement[]>('/content/admin/advertisements'),
+    createPromotion: (data: Omit<PromotionalAdvertisement, 'id' | 'createdAt'>) =>
+      request<PromotionalAdvertisement>('/content/admin/advertisements', { method: 'POST', body: JSON.stringify(data) }),
+    updatePromotion: (id: string, data: Partial<Omit<PromotionalAdvertisement, 'id' | 'createdAt'>>) =>
+      request<PromotionalAdvertisement>(`/content/admin/advertisements/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deletePromotion: (id: string) =>
+      request<{ success: boolean }>(`/content/admin/advertisements/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    adminFlashSales: () => request<FlashSale[]>('/content/admin/flash-sales'),
+    createFlashSale: (data: Omit<FlashSale, 'id' | 'createdAt'>) =>
+      request<FlashSale>('/content/admin/flash-sales', { method: 'POST', body: JSON.stringify(data) }),
+    updateFlashSale: (id: string, data: Partial<Omit<FlashSale, 'id' | 'createdAt'>>) =>
+      request<FlashSale>(`/content/admin/flash-sales/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteFlashSale: (id: string) =>
+      request<{ success: boolean }>(`/content/admin/flash-sales/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    adminAnnouncements: () => request<Announcement[]>('/content/admin/announcements'),
   },
   adminProducts: {
     pending: () => request<Product[]>('/admin/products/pending?take=100'),
