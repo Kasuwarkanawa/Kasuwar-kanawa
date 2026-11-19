@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Truck,
-  MessageCircle,
   ShieldCheck,
   CreditCard,
   Edit2,
@@ -273,10 +272,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                 <div className="space-y-3.5">
                   {filteredOrders.map((order) => {
                     const isExpanded = selectedOrder?.id === order.id;
-                    const sellerWhatsApp = (order.sellerWhatsApp || '2349060938835').replace(/[^0-9]/g, '');
-                    const orderMsg = encodeURIComponent(
-                      `Salam, I am contacting you regarding my Kasuwar Kanawa Order #${order.orderNumber}. Can you give me an update?`
-                    );
 
                     return (
                       <div
@@ -504,22 +499,6 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                               </div>
                             </div>
 
-                            {/* 9. WHATSAPP CONTACT LINK ON ORDERS */}
-                            <div className="flex items-center justify-between pt-2">
-                              <div className="text-slate-500">
-                                Seller Contact: <strong>{order.sellerPhone}</strong>
-                              </div>
-
-                              <a
-                                href={`https://wa.me/${sellerWhatsApp}?text=${orderMsg}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-4 py-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-extrabold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <MessageCircle className="w-4 h-4 fill-white" />
-                                <span>Chat Seller on WhatsApp</span>
-                              </a>
-                            </div>
                           </div>
                         )}
                       </div>
