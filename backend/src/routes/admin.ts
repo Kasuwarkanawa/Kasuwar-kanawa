@@ -60,8 +60,8 @@ adminRouter.get('/reports', async (req, res, next) => {
     const query = pageQuery.extend({ status: z.enum(['pending', 'reviewed', 'resolved', 'approved', 'rejected']).optional() }).parse(req.query);
     const [products, buyers, sellers] = await Promise.all([
       prisma.productReport.findMany({ where: { status: query.status }, include: { product: true, reporter: { select: { id: true, fullName: true, phone: true } } }, orderBy: { createdAt: 'desc' }, take: query.take, skip: query.skip }),
-      prisma.buyerReport.findMany({ where: { status: query.status }, include: { buyer: { select: { id: true, fullName: true, phone: true } }, seller: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'desc' }, take: query.take, skip: query.skip }),
-      prisma.sellerReport.findMany({ where: { status: query.status }, include: { buyer: { select: { id: true, fullName: true } }, seller: { select: { id: true, fullName: true, phone: true } } }, orderBy: { createdAt: 'desc' }, take: query.take, skip: query.skip }),
+      prisma.buyerReport.findMany({ where: { status: query.status }, include: { buyer: { select: { id: true, fullName: true, phone: true } }, seller: { select: { id: true, fullName: true, businessName: true, phone: true } } }, orderBy: { createdAt: 'desc' }, take: query.take, skip: query.skip }),
+      prisma.sellerReport.findMany({ where: { status: query.status }, include: { buyer: { select: { id: true, fullName: true, phone: true } }, seller: { select: { id: true, fullName: true, businessName: true, phone: true } } }, orderBy: { createdAt: 'desc' }, take: query.take, skip: query.skip }),
     ]);
     return res.json({ products, buyers, sellers });
   } catch (error) { return next(error); }
