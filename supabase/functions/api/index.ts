@@ -262,6 +262,184 @@ async function dispatch(req: Request, origin: string | null) {
     if(readError) throw readError; return reply({success:true,id:existing.id},201,origin);
   }
 
+
+  // Buyer and seller profile APIs.
+  if (path === "/buyer/profile" && method === "GET") {
+    const auth=await requireRole(req,["BUYER"]); return reply({user:safeUser(auth.user)},200,origin);
+  }
+  if (path === "/seller/profile" && method === "GET") {
+    const auth=await requireRole(req,["SELLER"]); return reply({user:safeUser(auth.user)},200,origin);
+  }
+  if ((path === "/buyer/profile" || path === "/seller/profile") && method === "PATCH") {
+    const role=path.startsWith("/buyer") ? "BUYER" : "SELLER";
+    const auth=await requireRole(req,[role]);
+    const allowed=role==="BUYER" ? ["fullName","phone","address","city","state","area","profileImage"] : ["fullName","businessName","whatsAppNumber","address","businessAddress","city","state","area","productCategory","profileImage"];
+    const input=await bodyJson(req); const update:any={};
+    for(const key of allowed) if(Object.prototype.hasOwnProperty.call(input,key)) update[key]=input[key];
+    if(!Object.keys(update).length) fail("At least one profile field is required.",400);
+    if(update.phone) update.phone=String(update.phone).replace(/[\\s()-]/g,"");
+    if(update.whatsAppNumber) update.whatsAppNumber=String(update.whatsAppNumber).replace(/[\\s()-]/g,"");
+    update.updatedAt=new Date().toISOString();
+    const {data,error}=await db.from("User").update(update).eq("id",auth.user.id).select("*").single();
+    if(error) throw error; return reply({user:safeUser(data)},200,origin);
+  }
+
+  // Seller catalog management. Every changed product returns to Admin approval.
+  if(path==="/seller/products" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);
+    const {data,error}=await db.from("Product").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false});
+    if(error) throw error; return reply(await withProductDetails(data ?? []),200,origin);
+  }
+  const sellerProductMatch=path.match(/^\\/seller\\/products\\/([^/]+)$/);
+  if(path==="/seller/products" && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);
+    const s=z.object({
+      name:z.string().trim().min(2).max(180),category:z.string().trim().min(1).max(120),price:z.number().positive(),
+      originalPrice:z.number().nonnegative().optional(),discountPercentage:z.number().int().min(0).max(100).optional(),
+      image:z.string().trim().min(1).max(1000),images:z.array(z.string().max(1000)).max(20).optional(),
+      colors:z.array(z.string().max(80)).max(50).optional(),sizes:z.array(z.string().max(80)).max(50).optional(),
+      variations:z.array(z.object({name:z.string().trim().min(1).max(120),options:z.array(z.string().trim().min(1).max(120)).max(50)}).strict()).max(100).optional(),
+      badge:z.string().max(80).nullable().optional(),stockQuantity:z.number().int().min(0).max(100000).default(0),
+      isFlashSale:z.boolean().optional(),isPopular:z.boolean().optional(),isNew:z.boolean().optional(),isSpecialOffer:z.boolean().optional(),description:z.string().max(10000).optional(),
+    }).strict().parse(await bodyJson(req));
+    const now=new Date().toISOString();
+    const row={id:crypto.randomUUID(),...s,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:s.isNew??false,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
+    const {data,error}=await db.from("Product").insert(row).select("*").single(); if(error) throw error;
+    return reply(serializeProduct(data),201,origin);
+  }
+  if(sellerProductMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SELLER"]); const id=decodeURIComponent(sellerProductMatch[1]);
+    const input=await bodyJson(req); const allowed=["name","category","price","originalPrice","discountPercentage","image","images","colors","sizes","variations","badge","stockQuantity","isFlashSale","isPopular","isNew","isSpecialOffer","description"];
+    const update:any={}; for(const k of allowed) if(Object.prototype.hasOwnProperty.call(input,k)) update[k]=input[k];
+    if(!Object.keys(update).length) fail("At least one product field is required.",400);
+    const {data:existing}=await db.from("Product").select("id").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
+    if(!existing) fail("Product not found.",404);
+    update.approvalStatus="PENDING_APPROVAL"; update.updatedAt=new Date().toISOString();
+    const {data,error}=await db.from("Product").update(update).eq("id",id).select("*").single(); if(error) throw error;
+    return reply(serializeProduct(data),200,origin);
+  }
+  if(sellerProductMatch && method==="DELETE") {
+    const auth=await requireRole(req,["SELLER"]); const id=decodeURIComponent(sellerProductMatch[1]);
+    const {data,error}=await db.from("Product").delete().eq("id",id).eq("sellerId",auth.user.id).select("id").maybeSingle();
+    if(error) throw error; if(!data) fail("Product not found.",404); return reply({success:true},200,origin);
+  }
+
+  // Buyer and seller dispute reports.
+  if(path==="/buyer/reports/sellers" && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);
+    const b=z.object({sellerId:z.string().min(1),orderId:z.string().min(1).optional(),reason:z.string().trim().min(2).max(200),details:z.string().trim().min(2).max(2000)}).strict().parse(await bodyJson(req));
+    const {data:seller}=await db.from("User").select("id").eq("id",b.sellerId).eq("role","SELLER").maybeSingle();
+    if(!seller) fail("Seller not found.",404);
+    let order:any=null;
+    if(b.orderId){const result=await db.from("Order").select("id,orderNumber").eq("id",b.orderId).eq("buyerId",auth.user.id).eq("sellerId",seller.id).maybeSingle(); order=result.data; if(!order) fail("Matching order not found.",404);}
+    const {data,error}=await db.from("SellerReport").insert({id:crypto.randomUUID(),buyerId:auth.user.id,sellerId:seller.id,orderId:order?.id??null,orderNumber:order?.orderNumber??null,reason:b.reason,details:b.details}).select("*").single();
+    if(error) throw error; return reply(data,201,origin);
+  }
+  if(path==="/buyer/reports/sellers" && method==="GET") {
+    const auth=await requireRole(req,["BUYER"]); const {data,error}=await db.from("SellerReport").select("*").eq("buyerId",auth.user.id).order("createdAt",{ascending:false});
+    if(error) throw error; return reply(data??[],200,origin);
+  }
+  if(path==="/seller/reports/buyers" && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);
+    const b=z.object({buyerId:z.string().min(1),orderId:z.string().min(1),reason:z.string().trim().min(2).max(200),details:z.string().trim().min(2).max(2000)}).strict().parse(await bodyJson(req));
+    const {data:order}=await db.from("Order").select("id,orderNumber,status,paymentMethod,paymentConfirmation").eq("id",b.orderId).eq("sellerId",auth.user.id).eq("buyerId",b.buyerId).maybeSingle();
+    if(!order) fail("Matching seller order not found.",404);
+    const payment=order.paymentConfirmation??{};
+    const approved=order.paymentMethod==="opay" ? payment.verifiedByAdmin===true : payment.adminApproved===true;
+    if(!approved || ["rejected","cancelled"].includes(order.status)) fail("A buyer report can only be filed against an Admin-approved order.",403);
+    const {data,error}=await db.from("BuyerReport").insert({id:crypto.randomUUID(),sellerId:auth.user.id,buyerId:b.buyerId,orderId:order.id,orderNumber:order.orderNumber,reason:b.reason,details:b.details}).select("*,buyer:User!BuyerReport_buyerId_fkey(id,fullName,phone)").single();
+    if(error) throw error; return reply(data,201,origin);
+  }
+  if(path==="/seller/reports/buyers" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]); const {data,error}=await db.from("BuyerReport").select("*,buyer:User!BuyerReport_buyerId_fkey(id,fullName,phone)").eq("sellerId",auth.user.id).order("createdAt",{ascending:false});
+    if(error) throw error; return reply(data??[],200,origin);
+  }
+
+  // Super Admin dashboard, account moderation, product approvals, and reports.
+  if(path==="/admin/dashboard" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const count=async(table:string,filters:(q:any)=>any= q=>q)=>{const r=await filters(db.from(table).select("id",{count:"exact",head:true}));if(r.error)throw r.error;return r.count??0;};
+    const [buyers,sellers,pendingSellers,products,pendingProducts,orders,pr,br,sr]=await Promise.all([
+      count("User",q=>q.eq("role","BUYER")),count("User",q=>q.eq("role","SELLER")),count("User",q=>q.eq("role","SELLER").eq("status","PENDING")),
+      count("Product"),count("Product",q=>q.eq("approvalStatus","PENDING_APPROVAL")),count("Order"),
+      count("ProductReport",q=>q.eq("status","pending")),count("BuyerReport",q=>q.eq("status","pending")),count("SellerReport",q=>q.eq("status","pending")),
+    ]);
+    return reply({buyers,sellers,pendingSellers,products,pendingProducts,orders,pendingReports:pr+br+sr},200,origin);
+  }
+  if(path==="/admin/users" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]); const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
+    let q=db.from("User").select("*").order("createdAt",{ascending:false}).range(skip,skip+take-1);
+    const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
+    const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
+  }
+  const adminUserMatch=path.match(/^\\/admin\\/users\\/([^/]+)\\/status$/);
+  if(adminUserMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminUserMatch[1]);
+    const {status}=z.object({status:z.enum(["ACTIVE","SUSPENDED","REJECTED"])}).strict().parse(await bodyJson(req));
+    const {data:target}=await db.from("User").select("id,role").eq("id",id).maybeSingle();if(!target)fail("User not found.",404);if(target.role==="SUPER_ADMIN")fail("Super Admin status cannot be changed through this endpoint.",403);
+    const {data,error}=await db.from("User").update({status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();if(error)throw error;
+    if(status!=="ACTIVE")await db.from("Session").delete().eq("userId",id);
+    return reply({user:safeUser(data)},200,origin);
+  }
+  if(path==="/admin/products/pending" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
+    const {data,error}=await db.from("Product").select("*").eq("approvalStatus","PENDING_APPROVAL").order("createdAt",{ascending:true}).range(skip,skip+take-1);
+    if(error)throw error;return reply(await withProductDetails(data??[]),200,origin);
+  }
+  const approvalMatch=path.match(/^\\/admin\\/products\\/([^/]+)\\/approval$/);
+  if(approvalMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(approvalMatch[1]);const {status}=z.object({status:z.enum(["APPROVED","REJECTED"])}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("Product").update({approvalStatus:status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();
+    if(error)throw error;return reply(serializeProduct(data),200,origin);
+  }
+  if(path==="/admin/reports" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0)),status=url.searchParams.get("status");
+    const load=async(table:string,select:string)=>{let q=db.from(table).select(select).order("createdAt",{ascending:false}).range(skip,skip+take-1);if(status)q=q.eq("status",status);const r=await q;if(r.error)throw r.error;return r.data??[];};
+    const [products,buyers,sellers]=await Promise.all([
+      load("ProductReport","*,product:Product(*),reporter:User!ProductReport_reporterId_fkey(id,fullName,phone)"),
+      load("BuyerReport","*,buyer:User!BuyerReport_buyerId_fkey(id,fullName,phone),seller:User!BuyerReport_sellerId_fkey(id,fullName,businessName,phone)"),
+      load("SellerReport","*,buyer:User!SellerReport_buyerId_fkey(id,fullName,phone),seller:User!SellerReport_sellerId_fkey(id,fullName,businessName,phone)"),
+    ]);return reply({products,buyers,sellers},200,origin);
+  }
+  const reportUpdate=path.match(/^\\/admin\\/reports\\/(product|buyer|seller)\\/([^/]+)$/);
+  if(reportUpdate && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const [,type,id]=reportUpdate;
+    const b=z.object({status:z.enum(["pending","reviewed","resolved","approved","rejected"]),adminNotes:z.string().trim().max(2000).optional()}).strict().parse(await bodyJson(req));
+    const table=type==="product"?"ProductReport":type==="buyer"?"BuyerReport":"SellerReport";
+    const {data,error}=await db.from(table).update(b).eq("id",decodeURIComponent(id)).select("*").single();if(error)throw error;return reply(data,200,origin);
+  }
+
+  // Admin content-management APIs (persisted in Supabase, not browser storage).
+  if(path==="/content/admin/announcements" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("Announcement").select("*").order("createdAt",{ascending:false});if(error)throw error;return reply(data??[],200,origin);
+  }
+  if(path==="/content/admin/announcements" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().min(1).max(5000),type:z.string().trim().max(40).default("info"),isPublished:z.boolean().default(false)}).parse(await bodyJson(req));
+    const {data,error}=await db.from("Announcement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
+  }
+  const annMatch=path.match(/^\\/content\\/admin\\/announcements\\/([^/]+)$/);
+  if(annMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().min(1).max(5000).optional(),type:z.string().trim().max(40).optional(),isPublished:z.boolean().optional()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("Announcement").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(annMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
+  }
+  if(annMatch && method==="DELETE") {await requireRole(req,["SUPER_ADMIN"]);const {error}=await db.from("Announcement").delete().eq("id",decodeURIComponent(annMatch[1]));if(error)throw error;return reply({success:true},200,origin);}
+  if(path==="/content/admin/advertisements" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("Advertisement").select("*").order("createdAt",{ascending:false});if(error)throw error;return reply(data??[],200,origin);
+  }
+  if(path==="/content/admin/advertisements" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().max(2000),badge:z.string().max(80).optional(),image:z.string().trim().min(1).max(1000),linkText:z.string().max(100).optional(),linkUrl:z.string().max(1000).optional(),discountTag:z.string().max(80).optional(),isActive:z.boolean().default(true)}).parse(await bodyJson(req));
+    const {data,error}=await db.from("Advertisement").insert({id:crypto.randomUUID(),...b}).select("*").single();if(error)throw error;return reply(data,201,origin);
+  }
+  const adMatch=path.match(/^\\/content\\/admin\\/advertisements\\/([^/]+)$/);
+  if(adMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().max(2000).optional(),badge:z.string().max(80).nullable().optional(),image:z.string().trim().min(1).max(1000).optional(),linkText:z.string().max(100).nullable().optional(),linkUrl:z.string().max(1000).nullable().optional(),discountTag:z.string().max(80).nullable().optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("Advertisement").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(adMatch[1])).select("*").single();if(error)throw error;return reply(data,200,origin);
+  }
+  if(adMatch && method==="DELETE") {await requireRole(req,["SUPER_ADMIN"]);const {error}=await db.from("Advertisement").delete().eq("id",decodeURIComponent(adMatch[1]));if(error)throw error;return reply({success:true},200,origin);}
+  if(path==="/content/admin/newsletter" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("NewsletterSubscription").select("*").order("createdAt",{ascending:false}).limit(500);if(error)throw error;return reply(data??[],200,origin);
+  }
+
   return reply({error:"API route is not yet migrated to Supabase Edge Functions.",route:`${method} ${path}`},501,origin);
 }
 
