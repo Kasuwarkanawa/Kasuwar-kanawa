@@ -40,6 +40,24 @@ export const marketplaceApi = {
       return request<Product[]>(`/products${suffix ? `?${suffix}` : ''}`);
     },
   },
+  buyer: {
+    profile: () => request<{ user: any }>('/buyer/profile'),
+    updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/buyer/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+  seller: {
+    profile: () => request<{ user: any }>('/seller/profile'),
+    updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/seller/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+  cart: {
+    list: () => request<{ items: CartItem[] }>('/cart'),
+    add: (data: { productId: string; quantity: number; selectedColor?: string; selectedSize?: string; selectedVariation?: string }) =>
+      request<{ success: boolean }>('/cart/items', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, quantity: number) =>
+      request<{ success: boolean }>(`/cart/items/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ quantity }) }),
+    remove: (id: string) =>
+      request<{ success: boolean }>(`/cart/items/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clear: () => request<{ items: CartItem[] }>('/cart', { method: 'DELETE' }),
+  },
   orders: {
     mine: () => request<any[]>('/orders/mine?take=100'),
     adminAll: () => request<any[]>('/orders/admin/all?take=100'),
@@ -116,6 +134,14 @@ export const marketplaceApi = {
     }),
   },
   adminUsers: {
+    list: (params: { role?: 'BUYER' | 'SELLER'; status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'; take?: number; skip?: number } = {}) => {
+      const query = new URLSearchParams();
+      if (params.role) query.set('role', params.role);
+      if (params.status) query.set('status', params.status);
+      if (params.take) query.set('take', String(params.take));
+      if (params.skip) query.set('skip', String(params.skip));
+      return request<any[]>(`/admin/users?${query.toString()}`);
+    },
     setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
       request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   },
