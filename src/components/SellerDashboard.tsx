@@ -124,17 +124,16 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Retrieve fresh seller data
   const stats = db.getSellerStats(seller.id);
-  const legacySellerOrders = db.getSellerOrders(seller.id);
-  const combinedSellerOrders = new Map<string, Order>();
-  for (const order of [...legacySellerOrders, ...sellerOrders]) combinedSellerOrders.set(order.id, order);
-  const allSellerOrders = [...combinedSellerOrders.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // Seller orders must come from the authenticated backend API.
+  // Do not fall back to browser LocalStorage: it is not an authoritative or secure order source.
+  const allSellerOrders = [...sellerOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const buyerReports = db.getBuyerReports(seller.id);
 
   // Filter orders
   const filteredOrders = allSellerOrders.filter((ord) => {
     const buyerDetailsApproved = ord.paymentMethod === 'opay'
       ? ord.paymentConfirmation?.verifiedByAdmin === true
-      : ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status);
+      : ord.paymentConfirmation?.adminApproved === true;
     const matchesFilter = orderFilter === 'all' ? true : ord.status === orderFilter;
     const query = searchOrderQuery.toLowerCase();
     const matchesSearch = ord.orderNumber.toLowerCase().includes(query) ||
@@ -825,7 +824,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   {filteredOrders.map((ord) => {
                     const isOpay = ord.paymentMethod === 'opay';
                     const isOpayVerified = ord.paymentConfirmation?.verifiedByAdmin === true;
-                    const isCodApproved = ord.paymentConfirmation?.adminApproved === true || ['processing', 'dispatched', 'delivered'].includes(ord.status);
+                    const isCodApproved = ord.paymentConfirmation?.adminApproved === true;
                     const canSeeBuyerDetails = ord.status !== 'rejected' && (isOpay ? isOpayVerified : isCodApproved);
                     const canProcess = canSeeBuyerDetails;
 
