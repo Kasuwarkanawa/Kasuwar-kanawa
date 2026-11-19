@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Package,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
 import { db } from '../db/database';
+import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
@@ -87,6 +88,19 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Refresh trigger
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setProductsLoading(true);
+    marketplaceApi.sellerProducts.list()
+      .then((products) => { if (active) { setSellerProducts(products); setProductsError(null); } })
+      .catch((error) => { if (active) setProductsError(error instanceof Error ? error.message : 'Unable to load your products.'); })
+      .finally(() => { if (active) setProductsLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
   const triggerRefresh = () => {
     setRefreshKey((k) => k + 1);
     if (onProductUpdated) onProductUpdated();
@@ -96,7 +110,6 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
   // Retrieve fresh seller data
   const stats = db.getSellerStats(seller.id);
-  const sellerProducts = db.getProducts({ sellerId: seller.id });
   const sellerOrders = db.getSellerOrders(seller.id);
   const buyerReports = db.getBuyerReports(seller.id);
 
@@ -118,56 +131,41 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     p.category.toLowerCase().includes(searchProductQuery.toLowerCase())
   );
 
-  // Handle Add Product Submit
-  const handleSaveProduct = (e: React.FormEvent) => {
+  // Seller products are persisted by the authenticated backend API.
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProduct) {
-      db.updateProduct(editingProduct.id, {
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOriginalPrice || prodPrice),
-        stockQuantity: Number(prodStock),
-        stockLeft: Number(prodStock),
-        image: prodImage,
-        description: prodDescription,
-        colors: prodColors.split(',').map((c) => c.trim()).filter(Boolean),
-        sizes: prodSizes.split(',').map((s) => s.trim()).filter(Boolean),
-        variations: prodVariations
-          ? [{ name: 'Option', options: prodVariations.split(',').map((v) => v.trim()).filter(Boolean) }]
-          : undefined,
-      });
-    } else {
-      db.addProduct({
-        name: prodName,
-        category: prodCategory,
-        price: Number(prodPrice),
-        originalPrice: Number(prodOriginalPrice || prodPrice),
-        discountPercentage:
-          prodOriginalPrice > prodPrice
-            ? Math.round(((prodOriginalPrice - prodPrice) / prodOriginalPrice) * 100)
-            : 0,
-        rating: 5.0,
-        reviewsCount: 0,
-        image: prodImage,
-        description: prodDescription,
-        stockQuantity: Number(prodStock),
-        colors: prodColors.split(',').map((c) => c.trim()).filter(Boolean),
-        sizes: prodSizes.split(',').map((s) => s.trim()).filter(Boolean),
-        variations: prodVariations
-          ? [{ name: 'Option', options: prodVariations.split(',').map((v) => v.trim()).filter(Boolean) }]
-          : undefined,
-        sellerId: seller.id,
-        sellerName: seller.fullName,
-        sellerBusinessName: seller.businessName || `${seller.fullName}'s Enterprise`,
-        isApproved: false,
-        approvalStatus: 'pending_approval',
-      });
-    }
+    const payload = {
+      name: prodName.trim(),
+      category: prodCategory,
+      price: Number(prodPrice),
+      originalPrice: Number(prodOriginalPrice || prodPrice),
+      discountPercentage: prodOriginalPrice > prodPrice
+        ? Math.round(((prodOriginalPrice - prodPrice) / prodOriginalPrice) * 100)
+        : 0,
+      stockQuantity: Number(prodStock),
+      image: prodImage,
+      images: [prodImage],
+      description: prodDescription,
+      colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
+      sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
+      variations: prodVariations
+        ? [{ name: 'Option', options: prodVariations.split(',').map((value) => value.trim()).filter(Boolean) }]
+        : [],
+    };
 
-    setShowAddProductModal(false);
-    setEditingProduct(null);
-    triggerRefresh();
+    try {
+      if (editingProduct) {
+        await marketplaceApi.sellerProducts.update(editingProduct.id, payload);
+      } else {
+        await marketplaceApi.sellerProducts.create(payload);
+      }
+      setShowAddProductModal(false);
+      setEditingProduct(null);
+      triggerRefresh();
+      alert('Product saved. It is now awaiting Admin approval before appearing in the public store.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to save product. Please try again.');
+    }
   };
 
   const openAddProduct = () => {
@@ -200,10 +198,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setShowAddProductModal(true);
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      db.deleteProduct(productId);
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
+    try {
+      await marketplaceApi.sellerProducts.remove(productId);
       triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to delete product. Please try again.');
     }
   };
 
