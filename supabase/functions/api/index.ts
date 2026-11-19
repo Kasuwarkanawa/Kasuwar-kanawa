@@ -785,6 +785,9 @@ Deno.serve(async (req: Request) => {
   if (["POST","PUT","PATCH","DELETE"].includes(req.method) && origin && !allowedOrigins.has(origin)) return reply({error:"Request origin is not allowed."},403,origin);
   try { return await dispatch(req,origin); }
   catch (error) {
+    if (error instanceof z.ZodError) {
+      return reply({error:error.issues[0]?.message ?? "Invalid request."},400,origin);
+    }
     const status = Number((error as any)?.status ?? ((error as any)?.code === "23505" ? 409 : 500));
     const message = status >= 500 ? "The service could not complete this request." : String((error as Error)?.message ?? "Request failed.");
     if (status >= 500) console.error("Edge API error:",error);
