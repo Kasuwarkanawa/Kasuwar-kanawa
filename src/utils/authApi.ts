@@ -76,6 +76,17 @@ export const authApi = {
     return result.user;
   },
 
+  async bootstrapAdmin(data: { setupToken: string; fullName: string; email: string; phone: string; password: string }): Promise<User> {
+    const result = await request<AuthResponse>('/auth/bootstrap-admin', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!result.success || !result.user || result.user.accountType !== 'admin') {
+      throw new Error(result.error || 'First Super Admin setup failed.');
+    }
+    return result.user;
+  },
+
   async register(data: RegistrationData): Promise<AuthResponse> {
     const result = await request<AuthResponse>('/auth/register', {
       method: 'POST',
