@@ -2928,117 +2928,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
 
               {/* ============================================================ */}
-              {/* TAB: LOGISTICS MANAGEMENT - BATCH 2 */}
+              {/* Backend logistics console: all shipment records and status changes come from Supabase. */}
               {activeTab === 'logistics' && (
                 <div className="space-y-4">
-                  <div className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#16274a] p-5 text-white">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-[#E6007E] p-3"><Truck className="h-6 w-6" /></div>
-                      <div>
-                        <h2 className="text-xl font-black">Logistics Management</h2>
-                        <p className="text-xs text-slate-300">Manage companies, approvals and delivery records</p>
-                      </div>
-                    </div>
+                  <div className="rounded-2xl bg-[#0B172E] p-5 text-white">
+                    <h2 className="text-xl font-black">Logistics & Live Tracking</h2>
+                    <p className="mt-1 text-xs text-slate-300">Seller records the carrier and tracking number. Super Admin verifies every progress update here.</p>
                     <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{logisticsCompanies.length}</strong><span className="text-[10px] text-slate-200">Companies</span></div>
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{pendingLogisticsCompanies.length}</strong><span className="text-[10px] text-slate-200">Pending</span></div>
-                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{logisticsShipments.length}</strong><span className="text-[10px] text-slate-200">Shipments</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => !!o.trackingNumber).length}</strong><span className="text-[10px] text-slate-200">Shipments</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => o.status === 'dispatched').length}</strong><span className="text-[10px] text-slate-200">In Transit</span></div>
+                      <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => o.status === 'delivered').length}</strong><span className="text-[10px] text-slate-200">Delivered</span></div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      { id: 'companies', label: 'Registered Logistics', count: logisticsCompanies.length },
-                      { id: 'approvals', label: 'Registration Approvals', count: pendingLogisticsCompanies.length },
-                      { id: 'deliveries', label: 'All Deliveries', count: logisticsShipments.length },
-                      { id: 'agents', label: 'Delivery Agents', count: logisticsAgents.length },
-                      { id: 'tracking', label: 'Tracking & Reports', count: logisticsShipments.length },
-                    ].map((item) => (
-                      <button key={item.id} type="button" onClick={() => { setLogisticsSection(item.id as any); setShowLogisticsForm(false); }}
-                        className={`rounded-xl border p-3 text-left ${logisticsSection === item.id ? 'border-[#E6007E] bg-pink-50 text-[#E6007E]' : 'border-slate-200 bg-white text-slate-700'}`}>
-                        <span className="block text-xs font-black">{item.label}</span>
-                        <span className="mt-1 block text-lg font-black">{item.count}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {logisticsSection === 'companies' && (
-                    <div className="space-y-3">
+                  {backendOrders.filter((o) => !!o.trackingNumber).length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">No seller hand-offs have been recorded yet.</div>
+                  ) : backendOrders.filter((o) => !!o.trackingNumber).map((order) => (
+                    <div key={order.id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="font-black text-[#0B172E]">Registered Logistics Companies</h3>
-                        <button type="button" onClick={() => setShowLogisticsForm((value) => !value)} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white">
-                          {showLogisticsForm ? 'Close Form' : '+ Add Logistics'}
-                        </button>
+                        <div><strong className="text-sm text-[#0B172E]">Order #{order.orderNumber}</strong><p className="text-xs text-slate-500">{order.logisticsCompanyName} · {order.trackingNumber}</p></div>
+                        <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black uppercase text-[#E6007E]">{String(order.logisticsStatus || order.status).replace(/_/g,' ')}</span>
                       </div>
-                      {showLogisticsForm && (
-                        <form onSubmit={handleAddLogisticsCompany} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                          <h4 className="font-black text-sm text-[#0B172E]">Register Logistics Company</h4>
-                          <div className="flex items-center gap-3">
-                            {logisticsLogo ? <img src={logisticsLogo} alt="Company logo preview" className="h-16 w-16 rounded-xl border object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white text-slate-400"><ImageIcon /></div>}
-                            <label className="cursor-pointer rounded-lg border bg-white px-3 py-2 text-xs font-bold text-slate-700">Upload Company Logo<input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogisticsLogoUpload(e.target.files?.[0])} /></label>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <input required value={logisticsName} onChange={(e) => setLogisticsName(e.target.value)} placeholder="Company Name" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsOwner} onChange={(e) => setLogisticsOwner(e.target.value)} placeholder="Owner / Manager Name" className="rounded-lg border p-3 text-sm" />
-                            <input required type="email" value={logisticsEmail} onChange={(e) => setLogisticsEmail(e.target.value)} placeholder="Email Address" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsPhone} onChange={(e) => setLogisticsPhone(e.target.value)} placeholder="Phone Number" className="rounded-lg border p-3 text-sm" />
-                            <input value={logisticsWhatsApp} onChange={(e) => setLogisticsWhatsApp(e.target.value)} placeholder="WhatsApp Number" className="rounded-lg border p-3 text-sm" />
-                            <input required type="password" value={logisticsPassword} onChange={(e) => setLogisticsPassword(e.target.value)} placeholder="Temporary Password" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsAddress} onChange={(e) => setLogisticsAddress(e.target.value)} placeholder="Business Address" className="rounded-lg border p-3 text-sm sm:col-span-2" />
-                            <input required value={logisticsCity} onChange={(e) => setLogisticsCity(e.target.value)} placeholder="City" className="rounded-lg border p-3 text-sm" />
-                            <input required value={logisticsState} onChange={(e) => setLogisticsState(e.target.value)} placeholder="State" className="rounded-lg border p-3 text-sm" />
-                            <input required type="number" min="0" value={logisticsFee} onChange={(e) => setLogisticsFee(e.target.value)} placeholder="Starting Delivery Fee (₦)" className="rounded-lg border p-3 text-sm sm:col-span-2" />
-                          </div>
-                          <p className="text-xs text-amber-700">New company accounts remain pending until Super Admin approval.</p>
-                          <button type="submit" className="w-full rounded-lg bg-[#E6007E] py-3 text-sm font-black text-white">Register Company</button>
-                        </form>
-                      )}
-                      {logisticsCompanies.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No logistics companies registered yet.</p> :
-                        logisticsCompanies.map((company) => (
-                          <div key={company.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                            {company.logo ? <img src={company.logo} alt="" className="h-12 w-12 rounded-lg border object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-50 text-[#E6007E]"><Building /></div>}
-                            <div className="min-w-0 flex-1"><p className="font-black text-sm text-slate-800">{company.companyName}</p><p className="text-xs text-slate-500">{company.contactName} · {company.phone}</p><p className="text-xs text-slate-500">{company.whatsAppNumber || 'No WhatsApp'} · {company.city}, {company.state}</p></div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-black ${company.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : company.approvalStatus === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{company.approvalStatus}</span>
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                        <div className="rounded-lg bg-slate-50 p-3"><strong className="block text-slate-800">{order.buyerName}</strong><span className="text-slate-500">{order.buyerPhone}</span><p className="mt-1 text-slate-600">{order.shippingAddress?.completeAddress}, {order.shippingAddress?.city}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><strong className="block text-slate-800">{order.sellerBusinessName || order.sellerName}</strong><span className="text-slate-500">Order total: ₦{Number(order.totalAmount).toLocaleString()}</span><p className="mt-1 text-slate-500">Last updated: {new Date(order.updatedAt || order.createdAt).toLocaleString()}</p></div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select value={selectedBackendLogisticsStatuses[order.id] || ''} onChange={(e) => setSelectedBackendLogisticsStatuses((prev) => ({...prev,[order.id]:e.target.value as any}))} className="min-w-0 flex-1 rounded-lg border border-slate-300 p-2 text-xs">
+                          <option value="">Select next tracking status</option>
+                          <option value="picked_up">Picked up</option><option value="in_transit">In transit</option><option value="out_for_delivery">Out for delivery</option><option value="delivered">Delivered</option><option value="failed">Delivery attempt failed</option>
+                        </select>
+                        <button type="button" disabled={logisticsUpdateBusy===order.id} onClick={() => void handleBackendLogisticsUpdate(order)} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{logisticsUpdateBusy===order.id?'Saving…':'Save tracking update'}</button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
+                        {(order.trackingTimeline || []).map((step:any,index:number)=><span key={index} className={`rounded-md px-2 py-1 text-[10px] font-bold ${step.completed?'bg-emerald-100 text-emerald-800':'bg-slate-100 text-slate-500'}`}>{step.title}</span>)}
+                      </div>
                     </div>
-                  )}
-
-                  {logisticsSection === 'approvals' && (
-                    <div className="space-y-3">
-                      <h3 className="font-black text-[#0B172E]">Pending Registration Approvals ({pendingLogisticsCompanies.length})</h3>
-                      {pendingLogisticsCompanies.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No pending applications.</p> :
-                        pendingLogisticsCompanies.map((company) => (
-                          <div key={company.id} className="space-y-3 rounded-xl border border-amber-200 bg-white p-4">
-                            <div className="flex items-center gap-3">{company.logo ? <img src={company.logo} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <Building className="h-8 w-8 text-slate-400" />}<div><p className="font-black text-sm">{company.companyName}</p><p className="text-xs text-slate-500">{company.contactName}</p></div></div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600"><p>Email: {company.email}</p><p>Phone: {company.phone}</p><p>WhatsApp: {company.whatsAppNumber || '—'}</p><p>Location: {company.city}, {company.state}</p><p className="sm:col-span-2">Address: {company.address}</p></div>
-                            <textarea value={logisticsAdminNotes} onChange={(e) => setLogisticsAdminNotes(e.target.value)} placeholder="Admin note (optional)" className="w-full rounded-lg border p-2 text-sm" rows={2} />
-                            <div className="flex gap-2"><button type="button" onClick={() => handleLogisticsApproval(company.id, 'approved')} className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white">Approve</button><button type="button" onClick={() => handleLogisticsApproval(company.id, 'rejected')} className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-black text-white">Reject</button></div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  {logisticsSection === 'deliveries' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">All Logistics Deliveries</h3>
-                      {logisticsShipments.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No logistics shipments have been created yet.</p> : logisticsShipments.map((shipment) => {
-                        const company = logisticsCompanies.find((item) => item.id === shipment.logisticsCompanyId);
-                        return <div key={shipment.id} className="rounded-xl border bg-white p-3"><div className="flex justify-between gap-2"><strong className="text-sm">{shipment.trackingNumber}</strong><span className="text-xs font-bold text-[#E6007E]">{shipment.status.replace(/_/g, ' ')}</span></div><p className="mt-1 text-xs text-slate-600">Order: {shipment.orderId} · {company?.companyName || 'Company unavailable'}</p><p className="text-xs text-slate-500">Recipient: {shipment.recipientName} · {shipment.recipientPhone}</p><p className="text-xs text-slate-500">{shipment.deliveryAddress.completeAddress}, {shipment.deliveryAddress.city}</p></div>;
-                      })}</div>
-                  )}
-
-                  {logisticsSection === 'agents' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">Delivery Agents</h3>
-                      {logisticsAgents.length === 0 ? <p className="rounded-xl border bg-slate-50 p-6 text-center text-sm text-slate-500">No delivery agents registered yet. Agent management is part of the next batch.</p> : logisticsAgents.map((agent) => <div key={agent.id} className="rounded-xl border bg-white p-3"><p className="font-bold text-sm">{agent.fullName}</p><p className="text-xs text-slate-500">{agent.phone} · {agent.whatsAppNumber || 'No WhatsApp'}</p><p className="text-xs text-slate-500">{logisticsCompanies.find((company) => company.id === agent.logisticsCompanyId)?.companyName || 'Company unavailable'} · {agent.status}</p></div>)}
-                    </div>
-                  )}
-
-                  {logisticsSection === 'tracking' && (
-                    <div className="space-y-3"><h3 className="font-black text-[#0B172E]">Tracking & Delivery Reports</h3>
-                      <div className="grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{logisticsShipments.filter((item) => item.status === 'delivered').length}</strong><span className="text-xs text-slate-500">Delivered</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{logisticsShipments.filter((item) => !['delivered', 'cancelled', 'failed'].includes(item.status)).length}</strong><span className="text-xs text-slate-500">In Progress</span></div></div>
-                      {logisticsShipments.map((shipment) => <div key={shipment.id} className="rounded-xl border bg-white p-3"><p className="font-black text-sm">{shipment.trackingNumber}</p><p className="text-xs text-slate-500">{shipment.trackingTimeline?.length || 0} tracking updates · {shipment.status.replace(/_/g, ' ')}</p></div>)}
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
 
