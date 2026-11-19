@@ -2806,6 +2806,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   {/* Render based on report subtab */}
                   {reportSubTab === 'product_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
                       {productReports.length === 0 ? (
                         <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">
                           No product reports filed.
@@ -2881,6 +2883,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {reportSubTab === 'seller_reports' && (
                     <div className="space-y-3">
+                      {buyerReportsLoading && <div className="text-xs font-bold text-slate-500">Loading reports from database...</div>}
+                      {buyerReportsError && <div className="rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{buyerReportsError}</div>}
+                      {sellerReports.length === 0 && !buyerReportsLoading && <div className="text-center py-8 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl">No seller reports filed.</div>}
                       {sellerReports.map((sr) => (
                         <div key={sr.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
                           <div className="flex items-center justify-between">
