@@ -29,7 +29,7 @@ contentRouter.delete('/admin/advertisements/:id', ...adminOnly, async (req, res,
 contentRouter.get('/admin/newsletter', ...adminOnly, async (_req, res, next) => { try { return res.json(await prisma.newsletterSubscription.findMany({ orderBy: { createdAt: 'desc' }, take: 500 })); } catch (error) { return next(error); } });
 
 
-const flashSaleSchema = z.object({
+const flashSaleBaseSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).optional(),
   discountPercentage: z.number().int().min(1).max(100),
@@ -37,7 +37,8 @@ const flashSaleSchema = z.object({
   endTime: z.string().datetime(),
   productIds: z.array(z.string().trim().min(1).max(128)).max(100),
   isActive: z.boolean().default(false),
-}).refine((value) => new Date(value.endTime) > new Date(value.startTime), {
+});
+const flashSaleSchema = flashSaleBaseSchema.refine((value) => new Date(value.endTime) > new Date(value.startTime), {
   message: 'Flash sale end time must be after its start time.',
   path: ['endTime'],
 });
@@ -109,7 +110,7 @@ contentRouter.post('/admin/flash-sales', ...adminOnly, async (req, res, next) =>
 
 contentRouter.patch('/admin/flash-sales/:id', ...adminOnly, async (req, res, next) => {
   try {
-    const body = flashSaleSchema.partial().parse(req.body);
+    const body = flashSaleBaseSchema.partial().parse(req.body);
     if (body.startTime && body.endTime && new Date(body.endTime) <= new Date(body.startTime)) {
       return res.status(400).json({ error: 'Flash sale end time must be after its start time.' });
     }
