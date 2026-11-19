@@ -686,55 +686,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsAddingUser(true);
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      db.adminUpdateUser(editingUser.id, {
-        fullName: userFullName,
-        email: userEmail,
-        phone: userPhone,
-        whatsAppNumber: userWhatsApp,
-        address: userAddress,
-        businessName: userBusinessName,
-        accountType: userRole,
-        status: userStatus,
-        profileImage: userProfileImage.trim() || undefined,
-      });
-      showNotification(`User ${userFullName} updated successfully!`);
-    } else {
-      db.adminAddUser({
+    if (!editingUser) {
+      showNotification('New buyers and sellers must register through the secure registration form.');
+      return;
+    }
+    try {
+      const result = await marketplaceApi.adminUsers.updateProfile(editingUser.id, {
         fullName: userFullName,
         email: userEmail,
         phone: userPhone,
         whatsAppNumber: userWhatsApp || userPhone,
         address: userAddress,
-        businessAddress: userAddress,
-        city: 'Kano City',
-        state: 'Kano State',
-        area: 'Kano Municipal',
-        accountType: userRole,
-        status: userStatus,
-        profileImage: userProfileImage.trim() || undefined,
-        businessName: userRole === 'seller' ? userBusinessName || `${userFullName} Trade Hub` : undefined,
+        businessName: userBusinessName || null,
+        profileImage: userProfileImage.trim() || null,
       });
-      showNotification(`New user ${userFullName} created successfully!`);
-    }
-    setIsAddingUser(false);
-    triggerRefresh();
-  };
-
-  const handleDeleteUser = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to permanently delete user "${name}"?`)) {
-      db.adminDeleteUser(id);
-      showNotification(`User ${name} deleted.`);
+      setBackendUsers((previous) => previous.map((user) => user.id === editingUser.id ? result.user as User : user));
+      showNotification(`User ${userFullName} updated successfully!`);
+      setIsAddingUser(false);
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update user profile.');
     }
   };
 
-  const handleSetUserStatus = (id: string, status: 'active' | 'suspended' | 'rejected' | 'approved') => {
-    db.adminSetUserStatus(id, status);
-    showNotification(`User status changed to "${status.toUpperCase()}".`);
-    triggerRefresh();
+  const handleDeleteUser = (_id: string, name: string) => {
+    showNotification(`Permanent deletion is disabled for ${name}. Suspend the account instead to preserve the audit trail.`);
+  };
+
+  const handleSetUserStatus = async (id: string, status: 'active' | 'suspended' | 'rejected' | 'approved') => {
+    const apiStatus = status === 'approved' || status === 'active' ? 'ACTIVE' : status === 'suspended' ? 'SUSPENDED' : 'REJECTED';
+    try {
+      const result = await marketplaceApi.adminUsers.setStatus(id, apiStatus);
+      setBackendUsers((previous) => previous.map((user) => user.id === id ? result.user as User : user));
+      showNotification(`User status changed to "${status.toUpperCase()}".`);
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to update account status.');
+    }
   };
 
   // Product Handlers
