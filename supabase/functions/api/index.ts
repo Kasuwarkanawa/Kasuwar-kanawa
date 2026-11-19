@@ -531,6 +531,96 @@ async function dispatch(req: Request, origin: string | null) {
     return reply(orderForBuyer(order),201,origin);
   }
 
+
+  async function runOrderAction(orderId:string,auth:any,action:string,payload:any={}) {
+    const {data,error}=await db.rpc("edge_order_action",{p_order_id:orderId,p_actor_id:auth.user.id,p_action:action,p_payload:payload});
+    if(error) {
+      const msg=String(error.message??"");
+      if(msg.includes("not found"))fail(msg,404);
+      if(msg.includes("permission") || msg.includes("Authentication"))fail(msg,403);
+      if(msg.includes("required") || msg.includes("Invalid"))fail(msg,400);
+      if(msg.includes("already") || msg.includes("cannot") || msg.includes("not available") || msg.includes("must be") || msg.includes("awaiting") || msg.includes("transition") || msg.includes("no longer"))fail(msg,409);
+      throw error;
+    }
+    const order=await getOrder(data);if(!order)throw new Error("Updated order could not be loaded.");
+    return order;
+  }
+  const paymentConfirmMatch=path.match(/^\\/orders\\/([^/]+)\\/payment-confirmation$/);
+  if(paymentConfirmMatch && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);const b=z.object({senderName:z.string().trim().min(2).max(120),transactionReference:z.string().trim().min(3).max(160)}).strict().parse(await bodyJson(req));
+    const order=await runOrderAction(decodeURIComponent(paymentConfirmMatch[1]),auth,"submit_payment",b);
+    return reply(orderForBuyer(order),200,origin);
+  }
+  const receiptUploadMatch=path.match(/^\\/orders\\/([^/]+)\\/payment-receipt$/);
+  if(receiptUploadMatch && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);const orderId=decodeURIComponent(receiptUploadMatch[1]);
+    const {data:existing}=await db.from("Order").select("id,buyerId,paymentMethod,status,paymentConfirmation").eq("id",orderId).maybeSingle();
+    if(!existing || existing.buyerId!==auth.user.id)fail("Order not found.",404);
+    if(existing.paymentMethod!=="opay" || !["pending_payment","pending_verification","rejected"].includes(existing.status))fail("Receipt upload is not available for this order.",409);
+    if((existing.paymentConfirmation??{}).senderName?.trim?.().length<2 || (existing.paymentConfirmation??{}).transactionReference?.trim?.().length<3)fail("Submit your sender name and transaction reference before uploading the receipt.",409);
+    const contentType=(req.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
+    const allowed=["image/jpeg","image/png","image/webp","application/pdf"];const bytes=new Uint8Array(await req.arrayBuffer());
+    if(!allowed.includes(contentType) || bytes.length<12 || bytes.length>5*1024*1024)fail("Upload JPG, PNG, WEBP or PDF up to 5 MB.",400);
+    const starts=(arr:number[])=>arr.every((v,i)=>bytes[i]===v);
+    const valid=contentType==="image/jpeg"?starts([255,216]):contentType==="image/png"?starts([137,80,78,71,13,10,26,10]):contentType==="image/webp"?new TextDecoder().decode(bytes.slice(0,4))==="RIFF" && new TextDecoder().decode(bytes.slice(8,12))==="WEBP":new TextDecoder().decode(bytes.slice(0,5))==="%PDF-";
+    if(!valid)fail("File content does not match its selected type.",400);
+    const ext=contentType==="image/jpeg"?"jpg":contentType==="image/png"?"png":contentType==="image/webp"?"webp":"pdf";
+    const receiptPath=orderId+"/"+crypto.randomUUID().replaceAll("-","")+"."+ext;
+    const {error:uploadError}=await db.storage.from("payment-receipts").upload(receiptPath,bytes,{contentType,upsert:false});
+    if(uploadError)throw uploadError;
+    try {
+      const order=await runOrderAction(orderId,auth,"receipt_uploaded",{receiptPath,receiptMimeType:contentType});
+      return reply(orderForBuyer(order),200,origin);
+    } catch(error) {
+      await db.storage.from("payment-receipts").remove([receiptPath]);
+      throw error;
+    }
+  }
+  const receiptAdminMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/payment-receipt$/);
+  if(receiptAdminMatch && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const orderId=decodeURIComponent(receiptAdminMatch[1]);
+    const {data:order}=await db.from("Order").select("id,paymentConfirmation").eq("id",orderId).maybeSingle();
+    if(!order)fail("Order not found.",404);const receiptPath=order.paymentConfirmation?.receiptPath;
+    if(typeof receiptPath!=="string" || !receiptPath.startsWith(orderId+"/"))fail("Payment receipt not found.",404);
+    const {data,error}=await db.storage.from("payment-receipts").createSignedUrl(receiptPath,300);
+    if(error || !data?.signedUrl)throw error??new Error("Could not create secure receipt link.");
+    return reply({url:data.signedUrl,expiresIn:300},200,origin);
+  }
+  const codApprovalMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/cod-approval$/);
+  if(codApprovalMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({decision:z.enum(["approve","reject"]),adminNotes:z.string().trim().min(2).max(1000).optional()}).strict().parse(await bodyJson(req));
+    if(b.decision==="reject"&&!b.adminNotes)fail("A rejection reason is required.",400);
+    const order=await runOrderAction(decodeURIComponent(codApprovalMatch[1]),auth,"cod_approval",b);return reply(serializeOrder(order),200,origin);
+  }
+  const sellerStatusMatch=path.match(/^\\/orders\\/([^/]+)\\/status$/);
+  if(sellerStatusMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SELLER"]);const b=z.object({status:z.enum(["processing","rejected"]),reason:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    if(b.status==="rejected"&&!b.reason)fail("A reason is required to reject an order.",400);
+    const order=await runOrderAction(decodeURIComponent(sellerStatusMatch[1]),auth,"seller_status",{status:b.status,notes:b.reason});
+    return reply(orderForSeller(order),200,origin);
+  }
+  const handoffMatch=path.match(/^\\/orders\\/([^/]+)\\/logistics-handoff$/);
+  if(handoffMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SELLER"]);const b=z.object({logisticsCompanyName:z.string().trim().min(2).max(160),trackingNumber:z.string().trim().min(3).max(100),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    const order=await runOrderAction(decodeURIComponent(handoffMatch[1]),auth,"logistics_handoff",b);return reply(orderForSeller(order),200,origin);
+  }
+  const logisticsMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/logistics-update$/);
+  if(logisticsMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().min(2).max(1000)}).strict().parse(await bodyJson(req));
+    const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);return reply(serializeOrder(order),200,origin);
+  }
+  const cancelMatch=path.match(/^\\/orders\\/([^/]+)\\/cancel$/);
+  if(cancelMatch && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);const order=await runOrderAction(decodeURIComponent(cancelMatch[1]),auth,"cancel",{});
+    return reply(orderForBuyer(order),200,origin);
+  }
+  const verifyMatch=path.match(/^\\/orders\\/admin\\/([^/]+)\\/payment-verification$/);
+  if(verifyMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({decision:z.enum(["approve","reject"]),adminNotes:z.string().trim().min(2).max(1000).optional()}).strict().parse(await bodyJson(req));
+    if(b.decision==="reject"&&!b.adminNotes)fail("A reason is required to reject payment.",400);
+    const order=await runOrderAction(decodeURIComponent(verifyMatch[1]),auth,"payment_verification",b);return reply(serializeOrder(order),200,origin);
+  }
+
   // Order read endpoints. Sensitive fields are filtered per role.
   if(path==="/orders/mine" && method==="GET") {
     const auth=await requireRole(req,["BUYER"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
