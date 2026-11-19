@@ -49,8 +49,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [state, setState] = useState('Kano State');
   const [area, setArea] = useState('Kano Municipal');
   const [profileImage, setProfileImage] = useState('');
-  const [companyLogo, setCompanyLogo] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState('1500');
 
   // Login states
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -73,10 +71,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    if (accountType === 'logistics') {
-      setError('Logistics registration is being connected to the secure backend in a later phase. No local-only account has been created.');
-      return;
-    }
     if (accountType !== 'buyer' && accountType !== 'seller') {
       setError('This account type cannot be self-registered.');
       return;
@@ -172,7 +166,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {mode === 'login'
                   ? 'Buyer & Admin Login'
                   : mode === 'register'
-                  ? 'Buyer, Seller & Logistics Registration'
+                  ? 'Buyer & Seller Registration'
                   : mode === 'bootstrap'
                   ? 'First Super Admin Setup'
                   : 'Reset Password'}
@@ -376,26 +370,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <span className="text-[10px] font-normal text-slate-500">Sell on Kanawa</span>
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setAccountType('logistics')}
-                    className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
-                      accountType === 'logistics'
-                        ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Building className="w-4 h-4 shrink-0" />
-                    <div className="text-left">
-                      <div>Logistics Company</div>
-                      <span className="text-[10px] font-normal text-slate-500">Delivery services</span>
-                    </div>
-                  </button>
+
                 </div>
               </div>
 
               {/* Profile Image Upload (Buyer & Seller) */}
-              {accountType !== 'logistics' && <ProfileImageUploader
+              <ProfileImageUploader
                 value={profileImage}
                 onChange={setProfileImage}
                 name={fullName || (accountType === 'seller' ? businessName : 'New User')}
@@ -410,18 +390,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     ? 'Upload your store logo or merchant photo from gallery/camera. Auto-resized to 512x512 WebP.'
                     : 'Select your profile photo from camera or gallery. Auto-optimized to max 512x512 WebP.'
                 }
-              />}
-
-              {accountType === 'logistics' && (
-                <ProfileImageUploader
-                  value={companyLogo}
-                  onChange={setCompanyLogo}
-                  name={businessName || 'Logistics Company'}
-                  role="logistics"
-                  label="Logistics Company Logo (Alamar Kamfani) *"
-                  helperText="Upload your company logo from your phone gallery or camera."
-                />
-              )}
+              />
 
               {/* Full Name */}
               <div>
@@ -442,17 +411,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* SELLER SPECIFIC: Business Name */}
-              {(accountType === 'seller' || accountType === 'logistics') && (
+              {(accountType === 'seller') && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {accountType === 'logistics' ? 'Logistics Company Name (Sunan Kamfani) *' : 'Business / Store Name (Sunan Kasuwanci) *'}
+                    Business / Store Name (Sunan Kasuwanci) *
                   </label>
                   <div className="relative">
                     <Building className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       required
-                      placeholder={accountType === 'logistics' ? 'e.g. Kanawa Express Logistics' : 'e.g. Danladi Textiles & Brocade Hub'}
+                      placeholder="e.g. Danladi Textiles & Brocade Hub"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
@@ -482,7 +451,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {accountType === 'seller' || accountType === 'logistics' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
+                    {accountType === 'seller' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
                   </label>
                   <div className="relative">
                     {accountType === 'seller' || accountType === 'logistics' ? (
@@ -606,20 +575,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {accountType === 'logistics' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Starting Delivery Fee (NGN) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={deliveryFee}
-                    onChange={(e) => setDeliveryFee(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
-                    placeholder="e.g. 1500"
-                  />
-                </div>
-              )}
+)}
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
