@@ -45,7 +45,7 @@ export default function App() {
   const [publishedAnnouncements, setPublishedAnnouncements] = useState<Announcement[]>([]);
 
   const refreshLiveProducts = useCallback(async () => {
-    const [productsResult, promotionsResult, flashSalesResult, argumentsResult] = await Promise.allSettled([
+    const [productsResult, promotionsResult, flashSalesResult, announcementsResult] = await Promise.allSettled([
       marketplaceApi.catalog.list({ take: 100 }),
       marketplaceApi.content.publicPromotions(),
       marketplaceApi.content.publicFlashSales(),
@@ -272,17 +272,11 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
     if (user.accountType === 'logistics') {
-      const company = db.getLogisticsCompanyByOwner(user.id);
-      if (!company || company.approvalStatus !== 'approved' || user.status !== 'active') {
-        db.logout();
-        setCurrentUser(null);
-        showToast('Your logistics account is awaiting admin approval.');
-        return;
-      }
-      setLogisticsDashboardOpen(true);
+      showToast('Separate logistics accounts are not enabled. Super Admin manages verified tracking updates.');
+      return;
     }
+    setCurrentUser(user);
     showToast(`Welcome, ${user.fullName}!`);
   };
 
@@ -388,21 +382,7 @@ export default function App() {
   };
 
   const openLogisticsDashboard = () => {
-    if (!currentUser) {
-      setAuthInitialMode('login');
-      setAuthModalOpen(true);
-      return;
-    }
-    if (currentUser.accountType !== 'logistics') {
-      showToast('Access Restricted: Logistics companies only.');
-      return;
-    }
-    const company = db.getLogisticsCompanyByOwner(currentUser.id);
-    if (!company || company.approvalStatus !== 'approved' || currentUser.status !== 'active') {
-      showToast('Your logistics account is awaiting admin approval.');
-      return;
-    }
-    setLogisticsDashboardOpen(true);
+    showToast('Logistics tracking updates are managed by the Super Admin in the Admin Logistics console.');
   };
 
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
