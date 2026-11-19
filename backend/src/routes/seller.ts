@@ -90,16 +90,34 @@ sellerRouter.delete('/products/:id', async (req, res, next) => {
 });
 sellerRouter.post('/reports/buyers', async (req, res, next) => {
   try {
-    const body = z.object({ buyerId: z.string().min(1), orderId: z.string().min(1).optional(), reason: z.string().trim().min(2).max(200), details: z.string().trim().min(2).max(2000) }).strict().parse(req.body);
-    const buyer = await prisma.user.findFirst({ where: { id: body.buyerId, role: 'BUYER' }, select: { id: true } });
-    if (!buyer) return res.status(404).json({ error: 'Buyer not found.' });
-    const order = body.orderId ? await prisma.order.findFirst({ where: { id: body.orderId, sellerId: req.authUser!.id, buyerId: buyer.id } }) : null;
-    if (body.orderId && !order) return res.status(404).json({ error: 'Matching order not found.' });
-    const report = await prisma.buyerReport.create({ data: { sellerId: req.authUser!.id, buyerId: buyer.id, orderId: order?.id, orderNumber: order?.orderNumber, reason: body.reason, details: body.details } });
+    const body = z.object({ buyerId: z.string().min(1), orderId: z.string().min(1), reason: z.string().trim().min(2).max(200), details: z.string().trim().min(2).max(2000) }).strict().parse(req.body);
+    const order = await prisma.order.findFirst({
+      where: { id: body.orderId, sellerId: req.authUser!.id, buyerId: body.buyerId },
+      select: { id: true, orderNumber: true, status: true, paymentMethod: true, paymentConfirmation: true },
+    });
+    if (!order) return res.status(404).json({ error: 'Matching seller order not found.' });
+    const confirmation = order.paymentConfirmation && typeof order.paymentConfirmation === 'object' && !Array.isArray(order.paymentConfirmation)
+      ? order.paymentConfirmation as Record<string, unknown> : {};
+    const approved = order.paymentMethod === 'opay'
+      ? confirmation.verifiedByAdmin === true
+      : confirmation.adminApproved === true;
+    if (!approved || order.status === 'rejected' || order.status === 'cancelled') {
+      return res.status(403).json({ error: 'A buyer report can only be filed against an Admin-approved order.' });
+    }
+    const report = await prisma.buyerReport.create({
+      data: { sellerId: req.authUser!.id, buyerId: body.buyerId, orderId: order.id, orderNumber: order.orderNumber, reason: body.reason, details: body.details },
+      include: { buyer: { select: { id: true, fullName: true, phone: true } } },
+    });
     return res.status(201).json(report);
   } catch (error) { return next(error); }
 });
 sellerRouter.get('/reports/buyers', async (req, res, next) => {
-  try { return res.json(await prisma.buyerReport.findMany({ where: { sellerId: req.authUser!.id }, orderBy: { createdAt: 'desc' } })); }
-  catch (error) { return next(error); }
+  try {
+    const reports = await prisma.buyerReport.findMany({
+      where: { sellerId: req.authUser!.id },
+      include: { buyer: { select: { id: true, fullName: true, phone: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json(reports);
+  } catch (error) { return next(error); }
 });
