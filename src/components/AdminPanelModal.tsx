@@ -110,6 +110,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [pendingProductsLoading, setPendingProductsLoading] = useState(false);
   const [pendingProductsError, setPendingProductsError] = useState<string | null>(null);
   const [productDecisionBusy, setProductDecisionBusy] = useState<string | null>(null);
+  const [backendFlashSales, setBackendFlashSales] = useState<FlashSale[]>([]);
+  const [backendPromotions, setBackendPromotions] = useState<PromotionalAdvertisement[]>([]);
+  const [backendApprovedProducts, setBackendApprovedProducts] = useState<Product[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [promotionSaving, setPromotionSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen || currentUser?.accountType !== 'admin') return;
@@ -130,6 +136,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       .catch((error) => { if (active) setBackendOrdersError(error instanceof Error ? error.message : 'Unable to load backend orders.'); });
     return () => { active = false; };
   }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser?.accountType !== 'admin') return;
+    let active = true;
+    setContentLoading(true);
+    Promise.all([
+      marketplaceApi.content.adminFlashSales(),
+      marketplaceApi.content.adminPromotions(),
+      marketplaceApi.catalog.list({ take: 100 }),
+    ])
+      .then(([sales, promotions, products]) => {
+        if (!active) return;
+        setBackendFlashSales(sales);
+        setBackendPromotions(promotions);
+        setBackendApprovedProducts(products);
+        setContentError(null);
+      })
+      .catch((error) => {
+        if (active) setContentError(error instanceof Error ? error.message : 'Unable to load promotional content from the database.');
+      })
+      .finally(() => { if (active) setContentLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, currentUser?.id, currentUser?.accountType, refreshKey]);
+
 
 
   // Authentication State for Super Admin Gate
@@ -420,8 +450,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const productReports = db.getReports();
   const buyerReports = db.getBuyerReports();
   const sellerReports = db.getSellerReports();
-  const allFlashSales = db.getFlashSales();
-  const allAds = db.getPromotionalAds();
+  const allFlashSales = backendFlashSales;
+  const allAds = backendPromotions;
   const allAnnouncements = db.getAnnouncements();
   const dispatchedAndDelivered = db.getDispatchedAndDeliveredOrders();
   const logisticsCompanies = db.getLogisticsCompanies();
@@ -862,40 +892,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsCreatingFlashSale(true);
   };
 
-  const handleSaveFlashSale = (e: React.FormEvent) => {
+  const handleSaveFlashSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingFlashSale) {
-      db.updateFlashSale(editingFlashSale.id, {
-        title: fsTitle,
-        description: fsDescription,
-        discountPercentage: Number(fsDiscount),
-        startTime: new Date(fsStartTime).toISOString(),
-        endTime: new Date(fsEndTime).toISOString(),
-        productIds: fsProductIds,
-        isActive: fsIsActive,
-      });
-      showNotification('Flash Sale updated!');
-    } else {
-      db.createFlashSale({
-        title: fsTitle,
-        description: fsDescription,
-        discountPercentage: Number(fsDiscount),
-        startTime: new Date(fsStartTime).toISOString(),
-        endTime: new Date(fsEndTime).toISOString(),
-        productIds: fsProductIds,
-        isActive: fsIsActive,
-      });
-      showNotification('Flash Sale created and activated on homepage!');
+    const payload = {
+      title: fsTitle.trim(),
+      description: fsDescription.trim(),
+      discountPercentage: Number(fsDiscount),
+      startTime: new Date(fsStartTime).toISOString(),
+      endTime: new Date(fsEndTime).toISOString(),
+      productIds: fsProductIds.filter((id) => backendApprovedProducts.some((product) => product.id === id)),
+      isActive: fsIsActive,
+    };
+    try {
+      const saved = editingFlashSale
+        ? await marketplaceApi.content.updateFlashSale(editingFlashSale.id, payload)
+        : await marketplaceApi.content.createFlashSale(payload);
+      setBackendFlashSales((previous) => editingFlashSale
+        ? previous.map((sale) => sale.id === saved.id ? saved : sale)
+        : [saved, ...previous]);
+      setIsCreatingFlashSale(false);
+      showNotification(editingFlashSale ? 'Flash Sale updated in database.' : 'Flash Sale saved to database.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not save Flash Sale.');
     }
-    setIsCreatingFlashSale(false);
-    triggerRefresh();
   };
 
-  const handleDeleteFlashSale = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this Flash Sale?')) {
-      db.deleteFlashSale(id);
-      showNotification('Flash Sale deleted.');
+  const handleDeleteFlashSale = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this Flash Sale?')) return;
+    try {
+      await marketplaceApi.content.deleteFlashSale(id);
+      setBackendFlashSales((previous) => previous.filter((sale) => sale.id !== id));
+      showNotification('Flash Sale deleted from database.');
       triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not delete Flash Sale.');
     }
   };
 
