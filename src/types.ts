@@ -111,6 +111,8 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  categoryId?: string;
+  createdAt?: string;
   price: number;
   originalPrice: number;
   discountPercentage: number;
