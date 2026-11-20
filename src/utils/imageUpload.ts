@@ -1,10 +1,10 @@
 /**
- * Profile Image Upload & Optimization Utility for KASUWAR KANAWA
- * Resizes images to max 512x512, compresses to WebP/JPEG target <= 200KB,
- * validates file types against executables, and uploads to the server storage.
- * Uses the server URL when available. On static hosting without an upload API,
- * returns the optimized data URL for the existing localStorage profile flow.
+ * Profile image upload for KASUWAR KANAWA.
+ * Images are resized to 512x512 and stored in the public Supabase Storage
+ * bucket. Only the resulting short public URL is sent to registration.
  */
+
+import { SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 export interface ValidationResult {
   valid: boolean;
@@ -14,7 +14,6 @@ export interface ValidationResult {
 export interface OptimizedImageResult {
   blob: Blob;
   mimeType: string;
-  dataUrl: string;
   fileName: string;
   fileSizeBytes: number;
 }
@@ -25,211 +24,122 @@ export interface UploadResult {
   error?: string;
 }
 
-// Dangerous extensions that must be rejected immediately
+const SUPABASE_URL = 'https://efirbpzfimzmpchsovbz.supabase.co';
+const PROFILE_BUCKET = 'profile-images';
+const MAX_IMAGE_SIZE = 200 * 1024;
 const DANGEROUS_EXTENSIONS = [
   'exe', 'bat', 'cmd', 'sh', 'php', 'js', 'mjs', 'ts', 'html', 'htm',
   'svg', 'vbs', 'ps1', 'jar', 'apk', 'bin', 'py', 'pl', 'cgi', 'asp',
   'aspx', 'jsp', 'scr', 'pif', 'com'
 ];
-
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
-/**
- * Validate that a file is a safe, supported image format
- */
 export function validateImageFile(file: File): ValidationResult {
-  if (!file) {
-    return { valid: false, error: 'No file was selected.' };
-  }
+  if (!file) return { valid: false, error: 'No file was selected.' };
 
-  // Check filename extension
-  const fileNameParts = file.name.split('.');
-  const extension = fileNameParts.length > 1 ? fileNameParts.pop()!.toLowerCase() : '';
-
+  const extension = file.name.split('.').pop()?.toLowerCase() || '';
   if (DANGEROUS_EXTENSIONS.includes(extension)) {
-    return {
-      valid: false,
-      error: `Security Alert: Files with .${extension} extension are not allowed. Please upload a JPEG, PNG, or WebP photo.`
-    };
+    return { valid: false, error: `Security Alert: Files with .${extension} extension are not allowed. Please upload a JPEG, PNG, or WebP photo.` };
   }
-
-  // Check mime type
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return {
-      valid: false,
-      error: 'Unsupported file format. Please upload a standard photo (JPEG, PNG, or WebP).'
-    };
+    return { valid: false, error: 'Unsupported file format. Please upload a standard photo (JPEG, PNG, or WebP).' };
   }
-
-  // Raw file size check (15MB maximum before optimization)
-  const MAX_RAW_SIZE_MB = 15;
-  if (file.size > MAX_RAW_SIZE_MB * 1024 * 1024) {
-    return {
-      valid: false,
-      error: `The selected image is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose an image under 15MB.`
-    };
+  if (file.size > 15 * 1024 * 1024) {
+    return { valid: false, error: `The selected image is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose an image under 15MB.` };
   }
-
   return { valid: true };
 }
 
-/**
- * Resize image to max 512x512 pixels and compress to WebP (or JPEG fallback)
- * targeting <= 200KB
- */
+/** Resize to 512x512 maximum and compress below the Storage bucket's 200KB limit. */
 export async function optimizeProfileImage(file: File): Promise<OptimizedImageResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onerror = () => reject(new Error('Failed to read the selected image file.'));
-
     reader.onload = () => {
       const img = new Image();
       img.onerror = () => reject(new Error('Failed to decode the image file. Ensure it is a valid image.'));
-
       img.onload = async () => {
         try {
-          const maxDimension = 512;
-          let width = img.width;
-          let height = img.height;
-
-          // Scale proportionally to fit within 512x512
-          if (width > maxDimension || height > maxDimension) {
-            if (width > height) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            } else {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
+          const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+          const width = Math.max(1, Math.round(img.width * scale));
+          const height = Math.max(1, Math.round(img.height * scale));
           const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, width);
-          canvas.height = Math.max(1, height);
+          canvas.width = width;
+          canvas.height = height;
           const ctx = canvas.getContext('2d');
-
-          if (!ctx) {
-            reject(new Error('Browser canvas rendering is not supported on this device.'));
-            return;
-          }
-
-          // Use high quality image smoothing
+          if (!ctx) throw new Error('Browser canvas rendering is not supported on this device.');
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Test WebP support with progressive compression
-          const testWebp = canvas.toDataURL('image/webp');
-          const isWebpSupported = testWebp.indexOf('data:image/webp') === 0;
-          const outputFormat = isWebpSupported ? 'image/webp' : 'image/jpeg';
-          const fileExtension = isWebpSupported ? 'webp' : 'jpg';
-
-          // Compress to target <= 200KB
+          const webpSupported = canvas.toDataURL('image/webp').startsWith('data:image/webp');
+          const mimeType = webpSupported ? 'image/webp' : 'image/jpeg';
+          const extension = webpSupported ? 'webp' : 'jpg';
           let quality = 0.85;
           let blob: Blob | null = null;
 
-          for (let attempt = 0; attempt < 3; attempt++) {
-            blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, outputFormat, quality));
-            if (blob && blob.size <= 200 * 1024) {
-              break;
-            }
-            quality -= 0.15; // Reduce quality if file > 200KB
+          for (let attempt = 0; attempt < 6; attempt++) {
+            blob = await new Promise<Blob | null>(res => canvas.toBlob(res, mimeType, quality));
+            if (blob && blob.size <= MAX_IMAGE_SIZE) break;
+            quality = Math.max(0.2, quality - 0.12);
+          }
+          if (!blob) throw new Error('Failed to generate optimized image.');
+          if (blob.size > MAX_IMAGE_SIZE) {
+            throw new Error('This image could not be compressed below 200KB. Please choose another photo.');
           }
 
-          if (!blob) {
-            reject(new Error('Failed to generate optimized image blob.'));
-            return;
-          }
-
-          // Convert optimized blob to base64 for transmission to the server API
-          const optimizedReader = new FileReader();
-          optimizedReader.onloadend = () => {
-            const dataUrl = optimizedReader.result as string;
-            const randomSuffix = Math.random().toString(36).substring(2, 8);
-            const generatedFileName = `profile_${Date.now()}_${randomSuffix}.${fileExtension}`;
-
-            resolve({
-              blob,
-              mimeType: outputFormat,
-              dataUrl,
-              fileName: generatedFileName,
-              fileSizeBytes: blob.size,
-            });
-          };
-          optimizedReader.readAsDataURL(blob);
-        } catch (err: any) {
-          reject(new Error(err?.message || 'Error processing and resizing image.'));
+          resolve({
+            blob,
+            mimeType,
+            fileName: `${crypto.randomUUID()}.${extension}`,
+            fileSizeBytes: blob.size,
+          });
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('Error optimizing image.'));
         }
       };
-
       img.src = reader.result as string;
     };
-
     reader.readAsDataURL(file);
   });
 }
 
-/**
- * Upload optimized profile image to server storage endpoint
- * Uses a static URL when the server endpoint is available. Static hosts such as
- * GitHub Pages have no API route, so a small optimized data URL is returned as
- * a compatibility fallback for the current localStorage-based application.
- */
+/** Upload directly to Supabase Storage; never send a base64 image in registration JSON. */
 export async function uploadProfileImage(file: File): Promise<UploadResult> {
-  // Step 1: Client-side validation
   const validation = validateImageFile(file);
-  if (!validation.valid) {
-    return { success: false, error: validation.error };
-  }
+  if (!validation.valid) return { success: false, error: validation.error };
 
   try {
-    // Step 2: Client-side optimization (max 512x512, <= 200KB WebP/JPEG)
     const optimized = await optimizeProfileImage(file);
-
-    // Step 3: Send optimized payload to server endpoint
-    const response = await fetch('/api/upload-profile-image', {
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${PROFILE_BUCKET}/${optimized.fileName}`;
+    const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLIC_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
+        'Content-Type': optimized.mimeType,
+        'x-upsert': 'false',
       },
-      body: JSON.stringify({
-        fileName: optimized.fileName,
-        fileData: optimized.dataUrl,
-        mimeType: optimized.mimeType,
-      }),
+      body: optimized.blob,
     });
 
     if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-
-      // GitHub Pages is a static host and does not provide /api routes.
-      // For static deployments, keep the optimized image as a data URL so
-      // the existing localStorage-based profile flow can still save it.
-      if ([403, 404, 405, 501].includes(response.status)) {
-        return {
-          success: true,
-          url: optimized.dataUrl,
-        };
-      }
-
+      const details = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: errData.error || `Server upload failed with status code ${response.status}.`,
+        error: details.message || details.error || `Supabase image upload failed (${response.status}). Please try again.`,
       };
     }
 
-    const data = await response.json();
-    if (data.success && data.url) {
-      return { success: true, url: data.url };
-    }
-
-    return { success: false, error: data.error || 'Server did not return a valid image URL.' };
-  } catch (err: any) {
-    console.error('Image upload failed:', err);
+    return {
+      success: true,
+      url: `${SUPABASE_URL}/storage/v1/object/public/${PROFILE_BUCKET}/${optimized.fileName}`,
+    };
+  } catch (error) {
+    console.error('Profile image upload failed:', error);
     return {
       success: false,
-      error: err?.message || 'Network error while uploading profile image. Please check your connection.',
+      error: error instanceof Error ? error.message : 'Network error while uploading your photo. Please try again.',
     };
   }
 }
