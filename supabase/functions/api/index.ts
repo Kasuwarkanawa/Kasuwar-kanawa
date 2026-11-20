@@ -1070,6 +1070,137 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;return reply({success:true,order:data},200,origin);
   }
 
+
+  // COD settlement workflow. All money-state transitions are role-checked server-side.
+  const receiptContent = async (req: Request) => {
+    const contentType=(req.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
+    const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
+    const bytes=new Uint8Array(await req.arrayBuffer());
+    if(!allowed.includes(contentType) || bytes.length<12 || bytes.length>5*1024*1024)fail("Upload JPG, PNG, WEBP or PDF up to 5 MB.",400);
+    const starts=(arr:number[])=>arr.every((v,i)=>bytes[i]===v);
+    const valid=contentType==="image/jpeg"?starts([255,216]):contentType==="image/png"?starts([137,80,78,71,13,10,26,10]):contentType==="image/webp"?new TextDecoder().decode(bytes.slice(0,4))==="RIFF"&&new TextDecoder().decode(bytes.slice(8,12))==="WEBP":new TextDecoder().decode(bytes.slice(0,5))==="%PDF-";
+    if(!valid)fail("File content does not match its selected type.",400);
+    const ext=contentType==="image/jpeg"?"jpg":contentType==="image/png"?"png":contentType==="image/webp"?"webp":"pdf";
+    return {bytes,contentType,ext};
+  };
+  const settlementDetails = async (row:any) => {
+    const {data:order,error}=await db.from("Order").select("id,orderNumber,buyerName,buyerPhone,subtotal,deliveryFee,totalAmount,paymentMethod,items:OrderItem(productSnapshot,quantity,unitPrice)").eq("id",row.orderId).single();
+    if(error)throw error;
+    const {data:seller,error:sellerError}=await db.from("User").select("id,fullName,businessName,phone,payoutBankName,payoutAccountName,payoutAccountNumber").eq("id",row.sellerId).single();
+    if(sellerError)throw sellerError;
+    return {...row,order,seller:{id:seller.id,fullName:seller.fullName,businessName:seller.businessName,phone:seller.phone,payoutBankName:seller.payoutBankName,payoutAccountName:seller.payoutAccountName,payoutAccountNumber:seller.payoutAccountNumber}};
+  };
+  if(path==="/logistics/remittance-account" && method==="GET") {
+    await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("MarketplacePayoutSettings").select("bankName,accountName,accountNumber").eq("id","default").single();
+    if(error)throw error;
+    if(!data.bankName||!data.accountName||!data.accountNumber)fail("Marketplace COD remittance bank details have not been configured by Super Admin.",409);
+    return reply(data,200,origin);
+  }
+  if(path==="/logistics/cod-settlements" && method==="GET") {
+    const {company}=await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("CODSettlement").select("*").eq("logisticsCompanyId",company.id).order("createdAt",{ascending:false}).limit(100);
+    if(error)throw error;
+    const rows=await Promise.all((data??[]).map(settlementDetails));
+    return reply(rows,200,origin);
+  }
+  const logisticsSettlementReceipt=path.match(/^\/logistics\/cod-settlements\/([^/]+)\/receipt$/);
+  if(logisticsSettlementReceipt && method==="POST") {
+    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(logisticsSettlementReceipt[1]);
+    const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(error)throw error;if(!row)fail("COD settlement not found.",404);
+    if(!["awaiting_logistics_transfer","logistics_receipt_rejected"].includes(row.status))fail("This COD transfer is not awaiting a receipt.",409);
+    const {bytes,contentType,ext}=await receiptContent(req),now=new Date().toISOString();
+    const objectPath="cod-settlements/"+id+"/logistics/"+crypto.randomUUID().replaceAll("-","")+"."+ext;
+    const {error:uploadError}=await db.storage.from("payment-receipts").upload(objectPath,bytes,{contentType,upsert:false});
+    if(uploadError)throw uploadError;
+    const {data:updated,error:updateError}=await db.from("CODSettlement").update({logisticsTransferReceiptPath:objectPath,status:"awaiting_admin_logistics_confirmation","logisticsTransferredAt":now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
+    if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}
+    return reply(updated,200,origin);
+  }
+  if(path==="/admin/cod-settlements" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const {data,error}=await db.from("CODSettlement").select("*").order("createdAt",{ascending:false}).limit(200);
+    if(error)throw error;
+    return reply(await Promise.all((data??[]).map(settlementDetails)),200,origin);
+  }
+  if(path==="/admin/payout-settings" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const {data,error}=await db.from("MarketplacePayoutSettings").select("*").eq("id","default").single();
+    if(error)throw error;return reply(data,200,origin);
+  }
+  if(path==="/admin/payout-settings" && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\\d{10}$/)}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("MarketplacePayoutSettings").upsert({id:"default",...b,updatedAt:new Date().toISOString()}).select("*").single();
+    if(error)throw error;return reply(data,200,origin);
+  }
+  const adminSettlementReceipt=path.match(/^\/admin\/cod-settlements\/([^/]+)\/logistics-receipt$/);
+  if(adminSettlementReceipt && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSettlementReceipt[1]);
+    const {data:row,error}=await db.from("CODSettlement").select("logisticsTransferReceiptPath").eq("id",id).maybeSingle();
+    if(error)throw error;if(!row?.logisticsTransferReceiptPath)fail("Logistics transfer receipt not found.",404);
+    const {data,error:signedError}=await db.storage.from("payment-receipts").createSignedUrl(row.logisticsTransferReceiptPath,300);
+    if(signedError||!data?.signedUrl)throw signedError??new Error("Could not create receipt link.");
+    return reply({url:data.signedUrl,expiresIn:300},200,origin);
+  }
+  const adminSettlementDecision=path.match(/^\/admin\/cod-settlements\/([^/]+)\/logistics-confirmation$/);
+  if(adminSettlementDecision && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSettlementDecision[1]);
+    const b=z.object({decision:z.enum(["confirm","reject"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).maybeSingle();
+    if(error)throw error;if(!row)fail("COD settlement not found.",404);
+    if(row.status!=="awaiting_admin_logistics_confirmation")fail("This Logistics receipt is not awaiting Admin confirmation.",409);
+    if(b.decision==="reject"&&!b.notes)fail("Add a reason before rejecting the receipt.",400);
+    const now=new Date().toISOString();
+    const {data:updated,error:updateError}=await db.from("CODSettlement").update({status:b.decision==="confirm"?"awaiting_seller_payout":"logistics_receipt_rejected",logisticsConfirmedAt:b.decision==="confirm"?now:null,adminNotes:b.notes??null,updatedAt:now}).eq("id",id).select("*").single();
+    if(updateError)throw updateError;return reply(await settlementDetails(updated),200,origin);
+  }
+  const adminSellerReceipt=path.match(/^\/admin\/cod-settlements\/([^/]+)\/seller-receipt$/);
+  if(adminSellerReceipt && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSellerReceipt[1]);
+    const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).maybeSingle();
+    if(error)throw error;if(!row)fail("COD settlement not found.",404);
+    if(row.status!=="awaiting_seller_payout" && row.status!=="seller_receipt_rejected")fail("Seller payout cannot be uploaded at this stage.",409);
+    const {bytes,contentType,ext}=await receiptContent(req),now=new Date().toISOString();
+    const objectPath="cod-settlements/"+id+"/seller/"+crypto.randomUUID().replaceAll("-","")+"."+ext;
+    const {error:uploadError}=await db.storage.from("payment-receipts").upload(objectPath,bytes,{contentType,upsert:false});
+    if(uploadError)throw uploadError;
+    const {data:updated,error:updateError}=await db.from("CODSettlement").update({sellerTransferReceiptPath:objectPath,status:"awaiting_seller_confirmation",sellerTransferredAt:now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
+    if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}
+    return reply(await settlementDetails(updated),200,origin);
+  }
+  const sellerSettlementReceipt=path.match(/^\/seller\/cod-settlements\/([^/]+)\/receipt$/);
+  if(sellerSettlementReceipt && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);const id=decodeURIComponent(sellerSettlementReceipt[1]);
+    const {data:row,error}=await db.from("CODSettlement").select("sellerTransferReceiptPath").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!row?.sellerTransferReceiptPath)fail("Seller transfer receipt not found.",404);
+    const {data,error:signedError}=await db.storage.from("payment-receipts").createSignedUrl(row.sellerTransferReceiptPath,300);
+    if(signedError||!data?.signedUrl)throw signedError??new Error("Could not create receipt link.");
+    return reply({url:data.signedUrl,expiresIn:300},200,origin);
+  }
+  if(path==="/seller/cod-settlements" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);
+    const {data,error}=await db.from("CODSettlement").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(100);
+    if(error)throw error;return reply(await Promise.all((data??[]).map(settlementDetails)),200,origin);
+  }
+  if(path==="/seller/payout-account" && method==="PATCH") {
+    const auth=await requireRole(req,["SELLER"]);
+    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\\d{10}$/)}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("User").update({payoutBankName:b.bankName,payoutAccountName:b.accountName,payoutAccountNumber:b.accountNumber,updatedAt:new Date().toISOString()}).eq("id",auth.user.id).select("payoutBankName,payoutAccountName,payoutAccountNumber").single();
+    if(error)throw error;return reply(data,200,origin);
+  }
+  const sellerSettlementAccept=path.match(/^\/seller\/cod-settlements\/([^/]+)\/accept$/);
+  if(sellerSettlementAccept && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);const id=decodeURIComponent(sellerSettlementAccept[1]);
+    const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!row)fail("COD settlement not found.",404);
+    if(row.status!=="awaiting_seller_confirmation")fail("There is no seller transfer awaiting your acceptance.",409);
+    const now=new Date().toISOString();
+    const {data:updated,error:updateError}=await db.from("CODSettlement").update({status:"completed",sellerAcceptedAt:now,updatedAt:now}).eq("id",id).select("*").single();
+    if(updateError)throw updateError;return reply(await settlementDetails(updated),200,origin);
+  }
+
   // Order read endpoints. Sensitive fields are filtered per role.
   if(path==="/orders/mine" && method==="GET") {
     const auth=await requireRole(req,["BUYER"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
