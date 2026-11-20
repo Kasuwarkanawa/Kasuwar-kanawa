@@ -648,6 +648,9 @@ export default function App() {
               </button>
             </div>
 
+            {categoryFilteredProducts.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Babu kayayyaki a wannan category tukuna.</div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
               {categoryFilteredProducts.map((product) => (
                 <ProductCard
@@ -659,11 +662,12 @@ export default function App() {
                 />
               ))}
             </div>
+            )}
           </section>
         )}
 
         {/* 5. Main Promotional Banner (Redmi Note 12) */}
-        <MainPromotionalBanner
+        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner
           onShopNow={(name) => {
             const redmi = liveProducts.find((p) => p.name.includes('Redmi Note 12'));
             if (redmi) {
@@ -674,22 +678,22 @@ export default function App() {
           }}
           onAddToCart={handleAddToCart}
           featuredProduct={liveProducts.find((p) => p.name.includes('Redmi Note 12'))}
-        />
+        />}
 
         {/* 6. Flash Sales Section with Countdown Timer */}
-        <FlashSalesSection
+        {!searchResults && !categoryFilteredProducts && <FlashSalesSection
           products={flashSaleProducts}
           activeFlashSale={activeFlashSale}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />
+        />}
 
         {/* 7. Trust Badges / 4 Value Propositions Strip */}
-        <TrustBadges />
+        {!searchResults && !categoryFilteredProducts && <TrustBadges />}
 
         {/* 8. Discount Advertisements / Promo Banners */}
-        <DiscountAdvertisements
+        {!searchResults && !categoryFilteredProducts && <DiscountAdvertisements
           promotions={activePromotions}
           onStartShopping={() => {
             const el = document.getElementById('popular-products-section');
@@ -700,10 +704,11 @@ export default function App() {
             const el = document.getElementById('category-products-section');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
-        />
+        />}
 
         {/* 9. Product Categories */}
-        <CategoriesSection
+        {!searchResults && !categoryFilteredProducts && <CategoriesSection
+          products={liveProducts}
           selectedCategory={selectedCategory}
           onSelectCategory={(catId) => {
             setSelectedCategory(catId);
@@ -712,7 +717,7 @@ export default function App() {
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }
           }}
-        />
+        />}
 
         {/* Newly added products appear immediately after categories */}
         {!searchResults && !categoryFilteredProducts && (
@@ -749,7 +754,7 @@ export default function App() {
         )}
 
         {/* 10. Special Offers Section */}
-        <SpecialOffersSection
+        {!searchResults && !categoryFilteredProducts && <SpecialOffersSection
           products={specialOfferProducts}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -757,15 +762,15 @@ export default function App() {
         />
 
         {/* 11. Popular Products Section */}
-        <PopularProductsSection
+        {!searchResults && !categoryFilteredProducts && <PopularProductsSection
           products={popularProducts}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />
+        />}
 
         {/* 13. Newsletter Signup Section (Market Updates & Special Offers) */}
-        <NewsletterSection />
+        {!searchResults && !categoryFilteredProducts && <NewsletterSection />}
       </main>
 
       {/* Dismissible oval-style flash promotion spotlight */}
