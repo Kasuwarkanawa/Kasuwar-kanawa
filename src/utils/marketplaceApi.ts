@@ -172,6 +172,21 @@ export const marketplaceApi = {
     setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
       request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   },
+  codSettlement: {
+    logisticsList: () => request<CODSettlement[]>('/logistics/cod-settlements'),
+    remittanceAccount: () => request<{bankName:string;accountName:string;accountNumber:string}>('/logistics/remittance-account'),
+    uploadLogisticsReceipt: (id:string,file:File) => request<CODSettlement>(`/logistics/cod-settlements/${encodeURIComponent(id)}/receipt`,{method:'POST',headers:{'Content-Type':file.type},body:file}),
+    adminList: () => request<CODSettlement[]>('/admin/cod-settlements'),
+    adminSettings: () => request<{bankName:string;accountName:string;accountNumber:string}>('/admin/payout-settings'),
+    saveAdminSettings: (data:{bankName:string;accountName:string;accountNumber:string}) => request<any>('/admin/payout-settings',{method:'PATCH',body:JSON.stringify(data)}),
+    logisticsReceiptUrl: (id:string) => request<{url:string}>('/admin/cod-settlements/'+encodeURIComponent(id)+'/logistics-receipt'),
+    confirmLogistics: (id:string,decision:'confirm'|'reject',notes?:string) => request<CODSettlement>('/admin/cod-settlements/'+encodeURIComponent(id)+'/logistics-confirmation',{method:'PATCH',body:JSON.stringify({decision,notes})}),
+    uploadSellerReceipt: (id:string,file:File) => request<CODSettlement>('/admin/cod-settlements/'+encodeURIComponent(id)+'/seller-receipt',{method:'POST',headers:{'Content-Type':file.type},body:file}),
+    sellerList: () => request<CODSettlement[]>('/seller/cod-settlements'),
+    sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/cod-settlements/'+encodeURIComponent(id)+'/receipt'),
+    acceptSellerPayment: (id:string) => request<CODSettlement>('/seller/cod-settlements/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
+    saveSellerBank: (data:{bankName:string;accountName:string;accountNumber:string}) => request<any>('/seller/payout-account',{method:'PATCH',body:JSON.stringify(data)}),
+  },
   logistics: {
     company: () => request<LogisticsCompany>('/logistics/company'),
     orders: () => request<Order[]>('/logistics/orders'),

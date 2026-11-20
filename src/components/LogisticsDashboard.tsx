@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ImagePreview } from './ImagePreview';
+import { CODSettlementPanel } from './CODSettlementPanel';
 import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -18,7 +19,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [shipments, setShipments] = useState<LogisticsShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'cod'>('overview');
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [agentPhone, setAgentPhone] = useState('');
@@ -126,8 +127,8 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
         <main className="p-4 sm:p-6 space-y-5">
           {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}<button onClick={() => setNotice('')} className="float-right font-bold">×</button></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex gap-2"><AlertCircle size={18} className="shrink-0"/><span>{error}</span><button onClick={() => setError('')} className="ml-auto font-bold">×</button></div>}
-          <nav className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(['overview', 'orders', 'agents', 'shipments'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : 'Overview'}</button>)}
+          <nav className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {(['overview', 'orders', 'agents', 'shipments', 'cod'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : item === 'cod' ? 'COD Remittance' : 'Overview'}</button>)}
           </nav>
 
           {tab === 'overview' && <>
@@ -152,6 +153,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           </section>}
 
           {tab === 'shipments' && <section className="space-y-3"><h2 className="font-black text-xl">Tracking & Shipments</h2>{shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <ShipmentManagementCard key={shipment.id} shipment={shipment} agents={agents} saving={saving} onAssign={agentId => void runAction(() => marketplaceApi.logistics.assignAgent(shipment.id, agentId || null), 'Delivery agent assignment saved.')} onUpdateStatus={status => void changeShipmentStatus(shipment, status)} />)}</section>}
+          {tab === 'cod' && <CODSettlementPanel role="logistics" />}
         </main>
       </div>
     </div>
