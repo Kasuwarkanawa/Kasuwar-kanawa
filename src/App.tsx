@@ -754,12 +754,14 @@ export default function App() {
         )}
 
         {/* 10. Special Offers Section */}
-        {!searchResults && !categoryFilteredProducts && <SpecialOffersSection
-          products={specialOfferProducts}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />
+        {!searchResults && !categoryFilteredProducts && (
+          <SpecialOffersSection
+            products={specialOfferProducts}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onViewDetails={(p) => setSelectedProductForDetail(p)}
+          />
+        )}
 
         {/* 11. Popular Products Section */}
         {!searchResults && !categoryFilteredProducts && <PopularProductsSection
