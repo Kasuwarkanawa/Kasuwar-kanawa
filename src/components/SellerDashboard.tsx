@@ -31,6 +31,7 @@ import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import { UserAvatar } from './UserAvatar';
+import { CODSettlementPanel } from './CODSettlementPanel';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
 interface SellerDashboardProps {
@@ -59,7 +60,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 }) => {
   const [currentSeller, setCurrentSeller] = useState<User>(seller);
   const [showLogoModal, setShowLogoModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'history' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod'>('overview');
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [searchProductQuery, setSearchProductQuery] = useState('');
@@ -513,6 +514,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('cod')}
+            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'cod' ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>COD Payouts</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('reports')}
             className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reports'
@@ -528,6 +540,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         {/* Dashboard Main Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           
+          {activeTab === 'cod' && <CODSettlementPanel role="seller" />}
+
           {/* 1. OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
