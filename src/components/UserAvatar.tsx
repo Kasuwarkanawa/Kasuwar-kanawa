@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User as UserIcon } from 'lucide-react';
+import { ImagePreview } from './ImagePreview';
 import { User, AccountType } from '../types';
 
 interface UserAvatarProps {
@@ -22,6 +23,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   showBadge = false,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const imageSrc = src || user?.profileImage;
   const displayName = name || user?.fullName || user?.businessName || 'User';
@@ -62,12 +64,9 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   return (
     <div className={`relative inline-flex flex-shrink-0 select-none ${className}`}>
       {imageSrc && !imageError ? (
-        <img
-          src={imageSrc}
-          alt={displayName}
-          onError={() => setImageError(true)}
-          className={`${sizeClasses} rounded-full object-cover border-2 border-white/80 shadow-sm bg-slate-100`}
-        />
+        <button type="button" onClick={() => setPreviewOpen(true)} className="rounded-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${displayName} profile photo`}>
+          <img src={imageSrc} alt={displayName} onError={() => setImageError(true)} className={`${sizeClasses} rounded-full object-cover border-2 border-white/80 shadow-sm bg-slate-100`} />
+        </button>
       ) : (
         <div
           className={`${sizeClasses} ${roleBg} rounded-full flex items-center justify-center font-medium shadow-sm border-2 border-white/80`}
@@ -80,6 +79,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
           )}
         </div>
       )}
+
+      {imageSrc && !imageError && <ImagePreview src={imageSrc} alt={displayName} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />}
 
       {showBadge && (
         <span
