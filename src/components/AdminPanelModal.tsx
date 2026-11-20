@@ -49,6 +49,7 @@ import { authApi } from '../utils/authApi';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
+import { CODSettlementPanel } from './CODSettlementPanel';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import {
   User,
@@ -99,6 +100,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     | 'reports'
     | 'deliveries'
     | 'logistics'
+    | 'cod_settlements'
   >('dashboard');
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1336,6 +1338,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 { id: 'reports', label: 'Reports', icon: Flag, badge: productReports.length + buyerReports.length + sellerReports.length },
                 { id: 'deliveries', label: 'Delivery Monitor', icon: Truck, badge: dispatchedAndDelivered.length },
                 { id: 'logistics', label: 'Logistics Management', icon: Truck, badge: null },
+                { id: 'cod_settlements', label: 'COD Settlement', icon: CreditCard, badge: null },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -2946,7 +2949,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* ============================================================ */}
               {/* Backend logistics console: all shipment records and status changes come from Supabase. */}
-              {activeTab === 'logistics' && (
+              {activeTab === 'cod_settlements' && <div className="p-4 sm:p-6"><CODSettlementPanel role="admin" /></div>}
+
+            {activeTab === 'logistics' && (
                 <div className="space-y-4">
                   <section className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
