@@ -44,6 +44,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Top Media Area */}
       <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
+        {/* Newly added product label */}
+        {product.isNew && (
+          <div className="absolute bottom-2 left-2 z-10 bg-emerald-600 text-white text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-md shadow-md uppercase tracking-wide">
+            NEW
+          </div>
+        )}
+
         {/* Discount Badge */}
         {product.discountPercentage > 0 && (
           <div className="absolute top-2 left-2 z-10 bg-[#E6007E] text-white text-[11px] sm:text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
@@ -73,7 +80,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             alt={product.name}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
             loading="lazy"
           />
         ) : (
