@@ -25,9 +25,11 @@ import {
   User as UserIcon,
   HelpCircle,
   RefreshCw,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
+import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
@@ -76,6 +78,46 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [prodOriginalPrice, setProdOriginalPrice] = useState<number>(0);
   const [prodStock, setProdStock] = useState<number>(10);
   const [prodImage, setProdImage] = useState(SAMPLE_PRODUCT_IMAGES[0].url);
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
+  const [productImageUploadError, setProductImageUploadError] = useState('');
+
+  const handleProductGalleryUpload = async (file?: File) => {
+    if (!file) return;
+    setProductImageUploadError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProductImageUploadError('Please choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProductImageUploadError('Image must be 5MB or smaller.');
+      return;
+    }
+    setIsUploadingProductImage(true);
+    try {
+      const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${crypto.randomUUID()}.${extension}`;
+      const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_PUBLIC_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
+          'Content-Type': file.type,
+          'x-upsert': 'false',
+        },
+        body: file,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
+      }
+      setProdImage(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`);
+    } catch (error) {
+      setProductImageUploadError(error instanceof Error ? error.message : 'Could not upload image. Please try again.');
+    } finally {
+      setIsUploadingProductImage(false);
+    }
+  };
+
   const [prodDescription, setProdDescription] = useState('');
   const [prodColors, setProdColors] = useState('White, Blue, Gold');
   const [prodSizes, setProdSizes] = useState('M, L, XL');
@@ -1344,17 +1386,28 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* Sample Image Quick Selector or Custom URL */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Product Image URL or Sample Asset</label>
-                  <input
-                    type="text"
-                    required
-                    value={prodImage}
-                    onChange={(e) => setProdImage(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-[#E6007E] mb-2"
-                  />
+                {/* Upload product image from device gallery or choose sample */}
+                <div className="space-y-3">
+                  <label className="block font-bold text-slate-700 mb-1">Product Image</label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <img src={prodImage} alt="Product preview" className="h-24 w-24 rounded-xl border border-slate-200 object-cover bg-slate-50" />
+                    <div className="flex flex-col gap-2">
+                      <label className={`inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#E6007E] px-4 py-2 text-sm font-bold text-white ${isUploadingProductImage ? 'pointer-events-none opacity-60' : ''}`}>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        {isUploadingProductImage ? 'Uploading image...' : 'Upload from Gallery'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                          disabled={isUploadingProductImage}
+                          onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file); e.currentTarget.value = ''; }} />
+                      </label>
+                      <span className="text-xs text-slate-500">JPG, PNG or WebP • Maximum 5MB</span>
+                    </div>
+                  </div>
+                  {productImageUploadError && <p role="alert" className="text-sm font-semibold text-red-600">{productImageUploadError}</p>}
+                  <details className="text-sm">
+                    <summary className="cursor-pointer font-semibold text-slate-600">Or enter an image URL</summary>
+                    <input type="url" value={prodImage} onChange={(e) => setProdImage(e.target.value)}
+                      placeholder="https://..." className="mt-2 w-full rounded-lg border border-slate-300 p-2" />
+                  </details>
                   <div className="text-[11px] text-slate-500 mb-1">Or choose a high quality sample photo:</div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {SAMPLE_PRODUCT_IMAGES.map((img, idx) => (
