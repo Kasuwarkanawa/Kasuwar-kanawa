@@ -977,9 +977,9 @@ async function dispatch(req: Request, origin: string | null) {
     const {data:agent,error:agentError}=await db.from("DeliveryAgent").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
     if(agentError)throw agentError;if(!agent)fail("Delivery agent not found.",404);
     if(method==="DELETE") {
-      const {data:active,error}=await db.from("LogisticsShipment").select("id").eq("deliveryAgentId",id).not("status","in","(delivered,cancelled)").limit(1);
-      if(error)throw error;if(active?.length)fail("Reassign this agent's active shipments before removing the agent.",409);
-      const {error}=await db.from("DeliveryAgent").delete().eq("id",id).eq("logisticsCompanyId",company.id);if(error)throw error;
+      const {data:active,error:activeShipmentsError}=await db.from("LogisticsShipment").select("id").eq("deliveryAgentId",id).not("status","in","(delivered,cancelled)").limit(1);
+      if(activeShipmentsError)throw activeShipmentsError;if(active?.length)fail("Reassign this agent's active shipments before removing the agent.",409);
+      const {error:deleteAgentError}=await db.from("DeliveryAgent").delete().eq("id",id).eq("logisticsCompanyId",company.id);if(deleteAgentError)throw deleteAgentError;
       return reply({success:true},200,origin);
     }
     const b=z.object({status:z.enum(["active","inactive","suspended"])}).strict().parse(await bodyJson(req));
