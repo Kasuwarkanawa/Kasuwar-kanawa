@@ -272,10 +272,6 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User) => {
-    if (user.accountType === 'logistics') {
-      showToast('Separate logistics accounts are not enabled. Super Admin manages verified tracking updates.');
-      return;
-    }
     setCurrentUser(user);
     showToast(`Welcome, ${user.fullName}!`);
   };
@@ -384,7 +380,11 @@ export default function App() {
   };
 
   const openLogisticsDashboard = () => {
-    showToast('Logistics tracking updates are managed by the Super Admin in the Admin Logistics console.');
+    if (!currentUser || currentUser.accountType !== 'logistics') {
+      showToast('Please sign in with an approved logistics company account.');
+      return;
+    }
+    setLogisticsDashboardOpen(true);
   };
 
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
