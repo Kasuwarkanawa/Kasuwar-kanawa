@@ -580,6 +580,33 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;return reply(await withProductDetails(data??[]),200,origin);
   }
 
+  if(path==="/admin/products" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({
+      name:z.string().trim().min(2).max(180),category:z.string().trim().min(1).max(120),
+      price:z.number().positive(),originalPrice:z.number().nonnegative().optional(),
+      discountPercentage:z.number().int().min(0).max(100).optional(),
+      image:z.string().trim().url().max(1000),description:z.string().max(10000).optional(),
+      stockQuantity:z.number().int().min(0).max(100000).default(0),
+      sellerId:z.string().min(1),
+    }).strict().parse(await bodyJson(req));
+    const {data:seller,error:sellerError}=await db.from("User").select("id,role,status").eq("id",b.sellerId).maybeSingle();
+    if(sellerError)throw sellerError;
+    if(!seller || seller.role!=="SELLER" || seller.status!=="ACTIVE")fail("Choose an active approved seller for this product.",400);
+    const {data:category}=await db.from("Category").select("id").eq("name",b.category).maybeSingle();
+    const now=new Date().toISOString();
+    const row={
+      id:crypto.randomUUID(),name:b.name,category:b.category,categoryId:category?.id??null,
+      price:b.price,originalPrice:b.originalPrice??b.price,discountPercentage:b.discountPercentage??0,
+      image:b.image,images:[],colors:[],sizes:[],variations:[],badge:null,
+      stockQuantity:b.stockQuantity,isFlashSale:false,isPopular:false,isNew:true,isSpecialOffer:false,
+      description:b.description??"",sellerId:b.sellerId,approvalStatus:"APPROVED",createdAt:now,updatedAt:now,
+    };
+    const {data,error}=await db.from("Product").insert(row).select("*").single();
+    if(error)throw error;
+    return reply(serializeProduct(data),201,origin);
+  }
+
   const adminProductMatch=path.match(/^[/]admin[/]products[/]([^/]+)$/);
   if(adminProductMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
