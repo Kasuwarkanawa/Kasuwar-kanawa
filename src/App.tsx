@@ -380,7 +380,16 @@ export default function App() {
   };
 
   const openLogisticsDashboard = () => {
-    showToast('Logistics tracking updates are managed by the Super Admin in the Admin Logistics console.');
+    if (!currentUser) {
+      setAuthInitialMode('login');
+      setAuthModalOpen(true);
+      return;
+    }
+    if (currentUser.accountType !== 'logistics') {
+      showToast('Access Restricted: Approved logistics companies only.');
+      return;
+    }
+    setLogisticsDashboardOpen(true);
   };
 
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
