@@ -275,6 +275,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [userRole, setUserRole] = useState<'buyer' | 'seller' | 'admin'>('buyer');
   const [userStatus, setUserStatus] = useState<'active' | 'pending' | 'suspended' | 'rejected'>('active');
   const [userProfileImage, setUserProfileImage] = useState('');
+  const [userPassword, setUserPassword] = useState('');
 
   // Product Management Modals
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -585,7 +586,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) {
-      showNotification('New buyers and sellers must register through the secure registration form.');
+      try {
+        if (userPassword.length < 12) {
+          showNotification('Set a strong temporary password with at least 12 characters.');
+          return;
+        }
+        const result = await marketplaceApi.adminUsers.create({
+          fullName: userFullName,
+          email: userEmail,
+          phone: userPhone,
+          password: userPassword,
+          accountType: userRole,
+          ...(userRole === 'seller' ? { businessName: userBusinessName, productCategory: userBusinessName ? 'General Merchandise' : undefined } : {}),
+          address: userAddress,
+        });
+        setBackendUsers((previous) => [result.user as User, ...previous]);
+        setUserPassword('');
+        showNotification(userRole === 'seller' ? 'Seller created. Seller account is pending approval.' : 'Buyer account created successfully.');
+        setIsAddingUser(false);
+        triggerRefresh();
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to create user account.');
+      }
       return;
     }
     try {
@@ -653,8 +675,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) {
-      showNotification('Products must be created by an approved Seller account.');
-      setIsAddingProduct(false);
+      try {
+        const created = await marketplaceApi.adminProducts.create({
+          name: prodName, category: prodCategory, price: Number(prodPrice),
+          originalPrice: Number(prodOrigPrice), discountPercentage: Number(prodDiscountPercent),
+          image: prodImage, description: prodDescription, stockQuantity: 0, sellerId: prodSellerId,
+        });
+        setBackendApprovedProducts((items) => [created, ...items]);
+        showNotification('Product created and published to the marketplace.');
+        setIsAddingProduct(false);
+        triggerRefresh();
+      } catch (error) {
+        showNotification(error instanceof Error ? error.message : 'Unable to create product.');
+      }
       return;
     }
     try {
@@ -1505,6 +1538,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
 
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => {
+                      setEditingUser(null); setUserFullName(''); setUserEmail(''); setUserPhone('');
+                      setUserWhatsApp(''); setUserAddress(''); setUserBusinessName(''); setUserRole('buyer');
+                      setUserStatus('active'); setUserPassword(''); setIsAddingUser(true);
+                    }} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white">
+                      <Plus className="mr-1 inline h-3.5 w-3.5" /> Add Buyer / Seller
+                    </button>
+                  </div>
+
                   {/* Users Table */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
                     <table className="w-full text-left text-xs">
@@ -1594,8 +1637,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   Suspend
                                 </button>
                               )}
-
-
+                              {u.status !== 'rejected' && (
+                                <button type="button" onClick={() => handleSetUserStatus(u.id, 'rejected')}
+                                  className="px-2 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded-md text-[10px] font-bold cursor-pointer"
+                                  title="Reject User">Reject</button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1811,18 +1857,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500">
-                              Revenue: <strong className="text-emerald-700">₦{stats.totalRevenue.toLocaleString()}</strong>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSellerForHistory(seller)}
-                              className="px-3 py-1.5 bg-[#0B172E] hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                            >
-                              <Store className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Sales History</span>
-                            </button>
+                          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              {seller.status !== 'active' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'approved')}
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white">Approve Seller</button>
+                              )}
+                              {seller.status === 'active' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'suspended')}
+                                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-800">Suspend</button>
+                              )}
+                              {seller.status !== 'rejected' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'rejected')}
+                                  className="rounded-lg bg-red-100 px-3 py-1.5 text-[10px] font-black text-red-700">Reject</button>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-500">
+                                Revenue: <strong className="text-emerald-700">₦{stats.totalRevenue.toLocaleString()}</strong>
+                              </span>
+                              <button type="button" onClick={() => setSelectedSellerForHistory(seller)}
+                                className="flex items-center gap-1 rounded-lg bg-[#0B172E] px-3 py-1.5 text-xs font-bold text-white">
+                                <Store className="h-3.5 w-3.5 text-emerald-400" /><span>Sales History</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1836,6 +1894,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* ============================================================ */}
               {activeTab === 'products' && (
                 <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button type="button" onClick={handleOpenAddProduct} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white">
+                      <Plus className="mr-1 inline h-3.5 w-3.5" /> Add Product
+                    </button>
+                  </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div className="flex items-center gap-2 flex-1 max-w-sm">
                       <Search className="w-4 h-4 text-slate-400" />
@@ -2960,7 +3023,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           <div className="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-2">
               <h3 className="font-black text-sm text-[#0B172E]">
-                {editingUser ? 'Edit User Profile' : 'Add New User'}
+                {editingUser ? 'Edit User Profile' : 'Create Buyer / Seller Account'}
               </h3>
               <button onClick={() => setIsAddingUser(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />
@@ -3022,6 +3085,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               </div>
 
+              {!editingUser && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Temporary Password (minimum 12 characters)</label>
+                  <input type="password" required minLength={12} autoComplete="new-password" value={userPassword}
+                    onChange={(e) => setUserPassword(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2" />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Account Role</label>
@@ -3032,7 +3102,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   >
                     <option value="buyer">Buyer</option>
                     <option value="seller">Seller (Merchant)</option>
-                    <option value="admin">Super Admin</option>
+
                   </select>
                 </div>
                 <div>

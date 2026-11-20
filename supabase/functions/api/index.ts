@@ -519,6 +519,43 @@ async function dispatch(req: Request, origin: string | null) {
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
     const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
   }
+  if(path==="/admin/users" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({
+      fullName:z.string().trim().min(2).max(120),
+      email:z.string().trim().email().max(254),
+      phone:z.string().trim().min(7).max(24),
+      password:z.string().min(12).max(128),
+      accountType:z.enum(["buyer","seller"]),
+      businessName:z.string().trim().min(2).max(120).optional(),
+      productCategory:z.string().trim().min(2).max(120).optional(),
+      address:z.string().trim().max(300).optional(),
+      city:z.string().trim().max(100).optional(),
+      state:z.string().trim().max(100).optional(),
+      area:z.string().trim().max(100).optional(),
+    }).strict().parse(await bodyJson(req));
+    if(b.accountType==="seller" && (!b.businessName || !b.productCategory)) fail("Seller accounts require a business name and product category.",400);
+    const email=b.email.toLowerCase(), phone=b.phone.replace(/[\\s()-]/g,"");
+    const [{data:byEmail},{data:byPhone}]=await Promise.all([
+      db.from("User").select("id").eq("email",email).maybeSingle(),
+      db.from("User").select("id").eq("phone",phone).maybeSingle(),
+    ]);
+    if(byEmail || byPhone) fail("An account with this email or phone already exists.",409);
+    const now=new Date().toISOString(), role=b.accountType==="seller"?"SELLER":"BUYER";
+    const row={
+      id:crypto.randomUUID(),fullName:b.fullName,email,phone,
+      whatsAppNumber:phone,passwordHash:await bcrypt.hash(b.password,12),
+      businessName:role==="SELLER"?b.businessName:null,
+      productCategory:role==="SELLER"?b.productCategory:null,
+      address:b.address??"",businessAddress:role==="SELLER"?(b.address??null):null,
+      city:b.city??"Kano City",state:b.state??"Kano State",area:b.area??"Kano Municipal",
+      role,status:role==="SELLER"?"PENDING":"ACTIVE",profileImage:null,
+      createdAt:now,updatedAt:now,
+    };
+    const {data,error}=await db.from("User").insert(row).select("*").single();
+    if(error){if(error.code==="23505")fail("An account with this email or phone already exists.",409);throw error;}
+    return reply({user:safeUser(data)},201,origin);
+  }
 
   const adminUserProfileMatch=path.match(/^[/]admin[/]users[/]([^/]+)$/);
   if(adminUserProfileMatch && method==="PATCH") {
@@ -541,6 +578,33 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
     const {data,error}=await db.from("Product").select("*").eq("approvalStatus","PENDING_APPROVAL").order("createdAt",{ascending:true}).range(skip,skip+take-1);
     if(error)throw error;return reply(await withProductDetails(data??[]),200,origin);
+  }
+
+  if(path==="/admin/products" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({
+      name:z.string().trim().min(2).max(180),category:z.string().trim().min(1).max(120),
+      price:z.number().positive(),originalPrice:z.number().nonnegative().optional(),
+      discountPercentage:z.number().int().min(0).max(100).optional(),
+      image:z.string().trim().url().max(1000),description:z.string().max(10000).optional(),
+      stockQuantity:z.number().int().min(0).max(100000).default(0),
+      sellerId:z.string().min(1),
+    }).strict().parse(await bodyJson(req));
+    const {data:seller,error:sellerError}=await db.from("User").select("id,role,status").eq("id",b.sellerId).maybeSingle();
+    if(sellerError)throw sellerError;
+    if(!seller || seller.role!=="SELLER" || seller.status!=="ACTIVE")fail("Choose an active approved seller for this product.",400);
+    const {data:category}=await db.from("Category").select("id").eq("name",b.category).maybeSingle();
+    const now=new Date().toISOString();
+    const row={
+      id:crypto.randomUUID(),name:b.name,category:b.category,categoryId:category?.id??null,
+      price:b.price,originalPrice:b.originalPrice??b.price,discountPercentage:b.discountPercentage??0,
+      image:b.image,images:[],colors:[],sizes:[],variations:[],badge:null,
+      stockQuantity:b.stockQuantity,isFlashSale:false,isPopular:false,isNew:true,isSpecialOffer:false,
+      description:b.description??"",sellerId:b.sellerId,approvalStatus:"APPROVED",createdAt:now,updatedAt:now,
+    };
+    const {data,error}=await db.from("Product").insert(row).select("*").single();
+    if(error)throw error;
+    return reply(serializeProduct(data),201,origin);
   }
 
   const adminProductMatch=path.match(/^[/]admin[/]products[/]([^/]+)$/);
