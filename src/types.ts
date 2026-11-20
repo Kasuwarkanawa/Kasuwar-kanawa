@@ -17,6 +17,7 @@ export interface User {
   accountType: AccountType;
   status?: 'active' | 'pending' | 'suspended' | 'rejected';
   profileImage?: string;
+  logisticsCompanyId?: string;
   createdAt: string;
 }
 
