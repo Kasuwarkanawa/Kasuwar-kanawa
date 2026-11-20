@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, DeliveryStatus } from '../types';
+import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 
