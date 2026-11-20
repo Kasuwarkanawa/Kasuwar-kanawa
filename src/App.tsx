@@ -380,11 +380,7 @@ export default function App() {
   };
 
   const openLogisticsDashboard = () => {
-    if (!currentUser || currentUser.accountType !== 'logistics') {
-      showToast('Please sign in with an approved logistics company account.');
-      return;
-    }
-    setLogisticsDashboardOpen(true);
+    showToast('Logistics tracking updates are managed by the Super Admin in the Admin Logistics console.');
   };
 
   // Guests may open the admin sign-in screen; signed-in non-admin users are blocked.
