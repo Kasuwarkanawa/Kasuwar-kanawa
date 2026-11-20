@@ -15,6 +15,7 @@ import {
 import { Product, ProductReview, CartItem, User } from '../types';
 import { formatPrice } from '../utils/format';
 import { marketplaceApi } from '../utils/marketplaceApi';
+import { ImagePreview } from './ImagePreview';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -37,6 +38,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   // Selected Variations state - all hooks must run unconditionally at the top
   const [selectedImage, setSelectedImage] = useState<string>(product?.image || '');
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(
     product?.colors && product.colors.length > 0 ? product.colors[0] : ''
   );
@@ -140,6 +142,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4">
+      <ImagePreview src={selectedImage} alt={product.name} isOpen={imagePreviewOpen} onClose={() => setImagePreviewOpen(false)} />
       {/* Backdrop */}
       <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
 
@@ -175,11 +178,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     -{product.discountPercentage}% OFF
                   </div>
                 )}
-                <img
-                  src={selectedImage}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                <button type="button" onClick={() => setImagePreviewOpen(true)} className="w-full h-full cursor-zoom-in focus:outline-none" aria-label={`Preview ${product.name} image`}>
+                  <img src={selectedImage} alt={product.name} className="w-full h-full object-contain" />
+                </button>
               </div>
 
               {/* Thumbnails */}
