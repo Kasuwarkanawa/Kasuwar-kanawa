@@ -11,6 +11,7 @@ import {
   Building,
   ShoppingBag,
   Store,
+  Truck,
   KeyRound,
   ArrowRight,
 } from 'lucide-react';
@@ -71,30 +72,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    if (accountType !== 'buyer' && accountType !== 'seller') {
+    if (accountType !== 'buyer' && accountType !== 'seller' && accountType !== 'logistics') {
       setError('This account type cannot be self-registered.');
       return;
     }
     if (password !== confirmPassword) { setError('Passwords do not match. Please re-enter.'); return; }
     if (password.length < 10) { setError('Password must be at least 10 characters long.'); return; }
-    if (accountType === 'seller' && (!businessName.trim() || !productCategory.trim())) {
-      setError('Please provide your Business Name and Product Category as a seller.'); return;
+    if ((accountType === 'seller' || accountType === 'logistics') && !businessName.trim()) {
+      setError('Please provide your business or company name.'); return;
+    }
+    if (accountType === 'seller' && !productCategory.trim()) {
+      setError('Please provide your Product Category as a seller.'); return;
     }
     setIsSubmitting(true);
     try {
       const result = await authApi.register({
         fullName: fullName.trim(),
-        businessName: accountType === 'seller' ? businessName.trim() : undefined,
+        businessName: accountType === 'seller' || accountType === 'logistics' ? businessName.trim() : undefined,
         phone: phone.trim(),
         whatsAppNumber: whatsAppNumber.trim() || phone.trim(),
         email: email.trim(), password, address: address.trim(),
-        businessAddress: accountType === 'seller' ? (businessAddress.trim() || address.trim()) : undefined,
+        businessAddress: accountType === 'seller' || accountType === 'logistics' ? (businessAddress.trim() || address.trim()) : undefined,
         city: city.trim(), state: state.trim(), area: area.trim(),
         productCategory: accountType === 'seller' ? productCategory : undefined,
         accountType, profileImage: profileImage.trim() || undefined,
       });
-      if (accountType === 'seller') {
-        setSuccessMessage(result.message || 'Seller registration received. Administrator approval is required before sign-in.');
+      if (accountType === 'seller' || accountType === 'logistics') {
+        setSuccessMessage(result.message || (accountType === 'logistics' ? 'Logistics company registration received. Super Admin approval is required before sign-in.' : 'Seller registration received. Administrator approval is required before sign-in.'));
         return;
       }
       if (!result.user) { setSuccessMessage('Registration completed. Please sign in to continue.'); setMode('login'); return; }
@@ -164,9 +168,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               <h3 className="font-extrabold text-base">
                 {mode === 'login'
-                  ? 'Buyer & Admin Login'
+                  ? 'Account Login'
                   : mode === 'register'
-                  ? 'Buyer & Seller Registration'
+                  ? 'Buyer, Seller & Logistics Registration'
                   : mode === 'bootstrap'
                   ? 'First Super Admin Setup'
                   : 'Reset Password'}
@@ -338,7 +342,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select Account Type (Nau'in Asusun)
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setAccountType('buyer')}
@@ -371,6 +375,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={() => setAccountType('logistics')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                      accountType === 'logistics'
+                        ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Truck className="w-4 h-4 shrink-0" />
+                    <div className="text-left">
+                      <div>Logistics Company</div>
+                      <span className="text-[10px] font-normal text-slate-500">Delivery partner</span>
+                    </div>
+                  </button>
+
                 </div>
               </div>
 
@@ -378,17 +398,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <ProfileImageUploader
                 value={profileImage}
                 onChange={setProfileImage}
-                name={fullName || (accountType === 'seller' ? businessName : 'New User')}
+                name={fullName || ((accountType === 'seller' || accountType === 'logistics') ? businessName : 'New User')}
                 role={accountType}
                 label={
-                  accountType === 'seller'
-                    ? 'Seller / Store Logo & Profile Picture (Hoton Bayani)'
-                    : 'Buyer Profile Picture (Hoton Bayani Mai Siyayya)'
+                  accountType === 'seller' ? 'Seller / Store Logo & Profile Picture (Hoton Bayani)' : accountType === 'logistics' ? 'Logistics Company Logo & Profile Picture' : 'Buyer Profile Picture (Hoton Bayani Mai Siyayya)'
                 }
                 helperText={
-                  accountType === 'seller'
-                    ? 'Upload your store logo or merchant photo from gallery/camera. Auto-resized to 512x512 WebP.'
-                    : 'Select your profile photo from camera or gallery. Auto-optimized to max 512x512 WebP.'
+                  accountType === 'seller' ? 'Upload your store logo or merchant photo from gallery/camera. Auto-resized to 512x512 WebP.' : accountType === 'logistics' ? 'Upload your logistics company logo from gallery/camera.' : 'Select your profile photo from camera or gallery. Auto-optimized to max 512x512 WebP.'
                 }
               />
 
@@ -411,7 +427,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* SELLER SPECIFIC: Business Name */}
-              {(accountType === 'seller') && (
+              {(accountType === 'seller' || accountType === 'logistics') && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Business / Store Name (Sunan Kasuwanci) *
@@ -421,7 +437,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Danladi Textiles & Brocade Hub"
+                      placeholder={accountType === 'logistics' ? 'e.g. Yakasai Logistics' : 'e.g. Danladi Textiles & Brocade Hub'}
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
@@ -451,21 +467,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {accountType === 'seller' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
+                    {accountType !== 'buyer' ? 'WhatsApp Number (Lambar WhatsApp) *' : 'Email Address *'}
                   </label>
                   <div className="relative">
-                    {accountType === 'seller' ? (
+                    {accountType !== 'buyer' ? (
                       <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     ) : (
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     )}
                     <input
-                      type={accountType === 'seller' ? 'tel' : 'email'}
+                      type={accountType !== 'buyer' ? 'tel' : 'email'}
                       required
-                      placeholder={accountType === 'seller' ? 'e.g. 2348000000000' : 'you@gmail.com'}
-                      value={accountType === 'seller' ? whatsAppNumber : email}
+                      placeholder={accountType !== 'buyer' ? 'e.g. 2348000000000' : 'you@gmail.com'}
+                      value={accountType !== 'buyer' ? whatsAppNumber : email}
                       onChange={(e) =>
-                        accountType === 'seller' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
+                        accountType !== 'buyer' ? setWhatsAppNumber(e.target.value) : setEmail(e.target.value)
                       }
                       className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                     />
@@ -474,7 +490,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* For Seller: Additional Email & Product Category */}
-              {(accountType === 'seller') && (
+              {(accountType !== 'buyer') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -554,7 +570,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Address Information */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {accountType === 'seller' ? 'Business Address (Adireshin Kamfani / Kasuwa) *' : 'Complete Delivery Address *'}
+                  {accountType !== 'buyer' ? 'Business / Company Address (Adireshin Kamfani) *' : 'Complete Delivery Address *'}
                 </label>
                 <div className="relative">
                   <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -562,13 +578,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="text"
                     required
                     placeholder={
-                      accountType === 'seller'
-                        ? 'e.g. Shop 42, Block B, Kasuwar Kwari Market, Kano'
+                      accountType !== 'buyer'
+                        ? 'e.g. Kano Logistics Office, Kano'
                         : 'e.g. No. 25 Zoo Road / Sabo Garba Way'
                     }
-                    value={accountType === 'seller' ? businessAddress : address}
+                    value={accountType !== 'buyer' ? businessAddress : address}
                     onChange={(e) =>
-                      accountType === 'seller' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
+                      accountType !== 'buyer' ? setBusinessAddress(e.target.value) : setAddress(e.target.value)
                     }
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#E6007E] focus:outline-hidden"
                   />
