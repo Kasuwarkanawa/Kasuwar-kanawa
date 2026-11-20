@@ -142,6 +142,8 @@ export const marketplaceApi = {
     deleteAnnouncement: (id: string) => request<{ success: boolean }>(`/content/admin/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   },
   adminProducts: {
+    create: (data: { name: string; category: string; price: number; originalPrice?: number; discountPercentage?: number; image: string; description?: string; stockQuantity: number; sellerId: string }) =>
+      request<Product>('/admin/products', { method: 'POST', body: JSON.stringify(data) }),
     pending: () => request<Product[]>('/admin/products/pending?take=100'),
     update: (id: string, data: Partial<Product>) => request<Product>(`/admin/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (id: string) => request<{ success: boolean }>(`/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -151,6 +153,8 @@ export const marketplaceApi = {
     }),
   },
   adminUsers: {
+    create: (data: { fullName: string; email: string; phone: string; password: string; accountType: 'buyer' | 'seller'; businessName?: string; productCategory?: string; address?: string }) =>
+      request<{ user: any }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     list: (params: { role?: 'BUYER' | 'SELLER'; status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'; take?: number; skip?: number } = {}) => {
       const query = new URLSearchParams();
       if (params.role) query.set('role', params.role);
