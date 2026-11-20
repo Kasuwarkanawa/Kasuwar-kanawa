@@ -965,7 +965,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("DeliveryAgent").insert({id:crypto.randomUUID(),logisticsCompanyId:company.id,...b,phone:b.phone.replace(/[\\s()-]/g,""),status:"active"}).select("*").single();
     if(error)throw error;return reply(data,201,origin);
   }
-  const logisticsAgentMatch=path.match(/^\\/logistics\\/agents\\/([^/]+)$/);
+  const logisticsAgentMatch=path.match(/^\/logistics\/agents\/([^/]+)$/);
   if(logisticsAgentMatch && (method==="PATCH" || method==="DELETE")) {
     const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(logisticsAgentMatch[1]);
     const {data:agent,error:agentError}=await db.from("DeliveryAgent").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
@@ -1011,7 +1011,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(buyerStepError)throw buyerStepError;
     return reply({...shipment,trackingTimeline:[{title:"Awaiting Pickup",date:new Date(now).toLocaleString(),completed:true,description:step.description}]},201,origin);
   }
-  const shipmentAgentMatch=path.match(/^\\/logistics\\/shipments\\/([^/]+)\\/agent$/);
+  const shipmentAgentMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/agent$/);
   if(shipmentAgentMatch && method==="PATCH") {
     const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentAgentMatch[1]);
     const b=z.object({deliveryAgentId:z.string().min(1).max(128).nullable()}).strict().parse(await bodyJson(req));
@@ -1027,7 +1027,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert({id:crypto.randomUUID(),shipmentId:id,title:b.deliveryAgentId?"Delivery Agent Assigned":"Delivery Agent Unassigned",dateLabel:new Date(now).toLocaleString(),completed:true,description:b.deliveryAgentId?"A delivery agent has been assigned.":"The delivery agent assignment was removed.",sortOrder:(steps?.[0]?.sortOrder??0)+1,createdAt:now});
     if(stepError)throw stepError;return reply(updateError?null:update,200,origin);
   }
-  const shipmentStatusMatch=path.match(/^\\/logistics\\/shipments\\/([^/]+)\\/status$/);
+  const shipmentStatusMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/status$/);
   if(shipmentStatusMatch && method==="PATCH") {
     const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentStatusMatch[1]);
     const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
@@ -1052,7 +1052,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(buyerStepError)throw buyerStepError;
     return reply(updated,200,origin);
   }
-  const logisticsAssignmentMatch=path.match(/^\\/admin\\/orders\\/([^/]+)\\/logistics-assignment$/);
+  const logisticsAssignmentMatch=path.match(/^\/admin\/orders\/([^/]+)\/logistics-assignment$/);
   if(logisticsAssignmentMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const orderId=decodeURIComponent(logisticsAssignmentMatch[1]);
     const b=z.object({logisticsCompanyId:z.string().min(1).max(128).nullable()}).strict().parse(await bodyJson(req));
