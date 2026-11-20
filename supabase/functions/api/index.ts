@@ -519,6 +519,43 @@ async function dispatch(req: Request, origin: string | null) {
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
     const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
   }
+  if(path==="/admin/users" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({
+      fullName:z.string().trim().min(2).max(120),
+      email:z.string().trim().email().max(254),
+      phone:z.string().trim().min(7).max(24),
+      password:z.string().min(12).max(128),
+      accountType:z.enum(["buyer","seller"]),
+      businessName:z.string().trim().min(2).max(120).optional(),
+      productCategory:z.string().trim().min(2).max(120).optional(),
+      address:z.string().trim().max(300).optional(),
+      city:z.string().trim().max(100).optional(),
+      state:z.string().trim().max(100).optional(),
+      area:z.string().trim().max(100).optional(),
+    }).strict().parse(await bodyJson(req));
+    if(b.accountType==="seller" && (!b.businessName || !b.productCategory)) fail("Seller accounts require a business name and product category.",400);
+    const email=b.email.toLowerCase(), phone=b.phone.replace(/[\\s()-]/g,"");
+    const [{data:byEmail},{data:byPhone}]=await Promise.all([
+      db.from("User").select("id").eq("email",email).maybeSingle(),
+      db.from("User").select("id").eq("phone",phone).maybeSingle(),
+    ]);
+    if(byEmail || byPhone) fail("An account with this email or phone already exists.",409);
+    const now=new Date().toISOString(), role=b.accountType==="seller"?"SELLER":"BUYER";
+    const row={
+      id:crypto.randomUUID(),fullName:b.fullName,email,phone,
+      whatsAppNumber:phone,passwordHash:await bcrypt.hash(b.password,12),
+      businessName:role==="SELLER"?b.businessName:null,
+      productCategory:role==="SELLER"?b.productCategory:null,
+      address:b.address??"",businessAddress:role==="SELLER"?(b.address??null):null,
+      city:b.city??"Kano City",state:b.state??"Kano State",area:b.area??"Kano Municipal",
+      role,status:role==="SELLER"?"PENDING":"ACTIVE",profileImage:null,
+      createdAt:now,updatedAt:now,
+    };
+    const {data,error}=await db.from("User").insert(row).select("*").single();
+    if(error){if(error.code==="23505")fail("An account with this email or phone already exists.",409);throw error;}
+    return reply({user:safeUser(data)},201,origin);
+  }
 
   const adminUserProfileMatch=path.match(/^[/]admin[/]users[/]([^/]+)$/);
   if(adminUserProfileMatch && method==="PATCH") {
