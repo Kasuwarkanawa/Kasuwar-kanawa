@@ -118,6 +118,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   };
 
+  const averageReviewRating = reviews.length ? Number((reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)) : product.rating;
+
   const currentCartItem: CartItem = {
     id: `cart-${product.id}-${selectedColor}-${selectedSize}-${selectedVariation}`,
     product,
@@ -223,7 +225,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       <Star
                         key={i}
                         className={`w-4 h-4 ${
-                          i < Math.floor(product.rating)
+                          i < Math.floor(averageReviewRating)
                             ? 'fill-amber-400 text-amber-400'
                             : 'text-slate-300'
                         }`}
@@ -231,10 +233,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     ))}
                   </div>
                   <span className="text-xs font-bold text-slate-800 tabular-nums">
-                    {product.rating} / 5.0
+                    {averageReviewRating} / 5.0
                   </span>
                   <span className="text-xs text-slate-400">
-                    ({reviews.length} customer reviews)
+                    ({reviews.length || product.reviewsCount || 0} customer reviews)
                   </span>
                   <span className="text-emerald-700 bg-emerald-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
                     ✓ In Stock (Kano Hub)
