@@ -1857,18 +1857,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500">
-                              Revenue: <strong className="text-emerald-700">₦{stats.totalRevenue.toLocaleString()}</strong>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSellerForHistory(seller)}
-                              className="px-3 py-1.5 bg-[#0B172E] hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                            >
-                              <Store className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Sales History</span>
-                            </button>
+                          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              {seller.status !== 'active' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'approved')}
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-white">Approve Seller</button>
+                              )}
+                              {seller.status === 'active' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'suspended')}
+                                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-800">Suspend</button>
+                              )}
+                              {seller.status !== 'rejected' && (
+                                <button type="button" onClick={() => handleSetUserStatus(seller.id, 'rejected')}
+                                  className="rounded-lg bg-red-100 px-3 py-1.5 text-[10px] font-black text-red-700">Reject</button>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-500">
+                                Revenue: <strong className="text-emerald-700">₦{stats.totalRevenue.toLocaleString()}</strong>
+                              </span>
+                              <button type="button" onClick={() => setSelectedSellerForHistory(seller)}
+                                className="flex items-center gap-1 rounded-lg bg-[#0B172E] px-3 py-1.5 text-xs font-bold text-white">
+                                <Store className="h-3.5 w-3.5 text-emerald-400" /><span>Sales History</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
