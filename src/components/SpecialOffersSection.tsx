@@ -16,6 +16,7 @@ export const SpecialOffersSection: React.FC<SpecialOffersSectionProps> = ({
   onBuyNow,
   onViewDetails,
 }) => {
+  if (products.length === 0) return null;
   return (
     <section id="special-offers-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
       {/* Section Header */}
