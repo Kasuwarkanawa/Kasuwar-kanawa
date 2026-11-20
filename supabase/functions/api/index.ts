@@ -876,7 +876,13 @@ async function dispatch(req: Request, origin: string | null) {
   const handoffMatch=path.match(/^\/orders\/([^/]+)\/logistics-handoff$/);
   if(handoffMatch && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);const b=z.object({logisticsCompanyName:z.string().trim().min(2).max(160),trackingNumber:z.string().trim().min(3).max(100),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
-    const order=await runOrderAction(decodeURIComponent(handoffMatch[1]),auth,"logistics_handoff",b);return reply(orderForSeller(order),200,origin);
+    const {data:company,error:companyError}=await db.from("LogisticsCompany").select("id,companyName").ilike("companyName",b.logisticsCompanyName).eq("approvalStatus","approved").maybeSingle();
+    if(companyError)throw companyError;if(!company)fail("Choose a logistics company that has been registered and approved by Super Admin.",400);
+    const orderId=decodeURIComponent(handoffMatch[1]);
+    const order=await runOrderAction(orderId,auth,"logistics_handoff",b);
+    const {error:assignmentError}=await db.from("Order").update({logisticsCompanyId:company.id,logisticsCompanyName:company.companyName,updatedAt:new Date().toISOString()}).eq("id",orderId).eq("sellerId",auth.user.id);
+    if(assignmentError)throw assignmentError;
+    return reply(orderForSeller(await getOrder(orderId)),200,origin);
   }
   const logisticsMatch=path.match(/^\/orders\/admin\/([^/]+)\/logistics-update$/);
   if(logisticsMatch && method==="PATCH") {
