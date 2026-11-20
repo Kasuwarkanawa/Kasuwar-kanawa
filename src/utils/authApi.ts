@@ -19,7 +19,7 @@ export interface RegistrationData {
   state?: string;
   area?: string;
   productCategory?: string;
-  accountType: 'buyer' | 'seller';
+  accountType: 'buyer' | 'seller' | 'logistics';
   profileImage?: string;
 }
 

@@ -272,10 +272,6 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User) => {
-    if (user.accountType === 'logistics') {
-      showToast('Separate logistics accounts are not enabled. Super Admin manages verified tracking updates.');
-      return;
-    }
     setCurrentUser(user);
     showToast(`Welcome, ${user.fullName}!`);
   };

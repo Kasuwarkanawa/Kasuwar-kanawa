@@ -75,7 +75,7 @@ async function bodyJson(req: Request) {
 }
 function safeUser(user: Record<string, any>) {
   const { passwordHash: _secret, role, status, ...safe } = user;
-  return { ...safe, status: String(status).toLowerCase(), accountType: role === "BUYER" ? "buyer" : role === "SELLER" ? "seller" : "admin" };
+  return { ...safe, status: String(status).toLowerCase(), accountType: role === "BUYER" ? "buyer" : role === "SELLER" ? "seller" : role === "LOGISTICS" ? "logistics" : "admin" };
 }
 async function currentUser(req: Request) {
   const token = cookieValue(req, COOKIE_NAME);
@@ -112,7 +112,7 @@ const registerSchema = z.object({
   email: z.string().trim().email().max(254), password: z.string().min(10).max(128),
   address: z.string().trim().max(300).optional(), businessAddress: z.string().trim().max(300).optional(),
   city: z.string().trim().max(100).optional(), state: z.string().trim().max(100).optional(), area: z.string().trim().max(100).optional(),
-  productCategory: z.string().trim().max(120).optional(), accountType: z.enum(["buyer","seller"]), profileImage: z.string().url().max(1000).optional(),
+  productCategory: z.string().trim().max(120).optional(), accountType: z.enum(["buyer","seller","logistics"]), profileImage: z.string().url().max(1000).optional(),
 }).strict();
 const loginSchema = z.object({ identifier: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) }).strict();
 
@@ -208,8 +208,9 @@ async function dispatch(req: Request, origin: string | null) {
 
   if (path === "/auth/register" && method === "POST") {
     const data = registerSchema.parse(await bodyJson(req));
-    const role = data.accountType === "seller" ? "SELLER" : "BUYER";
-    if (role === "SELLER" && (!data.businessName || !data.productCategory)) fail("Seller registration requires a business name and product category.",400);
+    const role = data.accountType === "seller" ? "SELLER" : data.accountType === "logistics" ? "LOGISTICS" : "BUYER";
+    if ((role === "SELLER" || role === "LOGISTICS") && !data.businessName) fail("Business or company name is required.",400);
+    if (role === "SELLER" && !data.productCategory) fail("Seller registration requires a product category.",400);
     const email = data.email.trim().toLowerCase();
     const phone = data.phone.replace(/[\s()-]/g,"");
     const [{ data: byEmail }, { data: byPhone }] = await Promise.all([
@@ -219,10 +220,10 @@ async function dispatch(req: Request, origin: string | null) {
     if (byEmail || byPhone) fail("An account with this email or phone already exists.",409);
     const now = new Date().toISOString();
     const userRow = {
-      id: crypto.randomUUID(), fullName: data.fullName, businessName: role === "SELLER" ? data.businessName : null,
+      id: crypto.randomUUID(), fullName: data.fullName, businessName: role === "SELLER" || role === "LOGISTICS" ? data.businessName : null,
       phone, whatsAppNumber: data.whatsAppNumber ? data.whatsAppNumber.replace(/[\s()-]/g,"") : phone,
       email, passwordHash: await bcrypt.hash(data.password,12), address: data.address || data.businessAddress || "",
-      businessAddress: role === "SELLER" ? (data.businessAddress || data.address || null) : null,
+      businessAddress: role === "SELLER" || role === "LOGISTICS" ? (data.businessAddress || data.address || null) : null,
       city: data.city || "Kano City", state: data.state || "Kano State", area: data.area || "Kano Municipal",
       productCategory: role === "SELLER" ? data.productCategory : null, role,
       status: role === "BUYER" ? "ACTIVE" : "PENDING", profileImage: data.profileImage ?? null, createdAt: now, updatedAt: now,
@@ -233,17 +234,17 @@ async function dispatch(req: Request, origin: string | null) {
       const token = await issueSession(user.id);
       return reply({success:true,user:safeUser(user)},201,origin,{"Set-Cookie":sessionCookie(token)});
     }
-    return reply({success:true,user:safeUser(user),message:"Seller account awaits administrator approval."},201,origin);
+    return reply({success:true,user:safeUser(user),message:role === "LOGISTICS" ? "Logistics company registration received. Super Admin approval is required before sign-in." : "Seller account awaits administrator approval."},201,origin);
   }
 
-  if (path === "/auth/login" || path === "/auth/buyer/login" || path === "/auth/seller/login" || path === "/auth/admin/login") {
+  if (path === "/auth/login" || path === "/auth/buyer/login" || path === "/auth/seller/login" || path === "/auth/logistics/login" || path === "/auth/admin/login") {
     if (method !== "POST") fail("Method not allowed.",405);
     const {identifier,password} = loginSchema.parse(await bodyJson(req));
     const clean = identifier.includes("@") ? identifier.trim().toLowerCase() : identifier.replace(/[\s()-]/g,"");
     const {data:user} = await db.from("User").select("*").or(`email.eq.${clean},phone.eq.${clean}`).limit(1).maybeSingle();
     const dummy = "$2a$12$C6UzMDM.H6dfI/f/IKcEe.5JYKoM2e9sX.YXxTzFNtNrdL7vG4S5e";
     const matches = await bcrypt.compare(password,user?.passwordHash ?? dummy).catch(()=>false);
-    const requiredRole = path.includes("/admin/") ? "SUPER_ADMIN" : path.includes("/seller/") ? "SELLER" : path.includes("/buyer/") ? "BUYER" : null;
+    const requiredRole = path.includes("/admin/") ? "SUPER_ADMIN" : path.includes("/seller/") ? "SELLER" : path.includes("/logistics/") ? "LOGISTICS" : path.includes("/buyer/") ? "BUYER" : null;
     if (!user || (requiredRole && user.role !== requiredRole) || !matches) fail("Invalid credentials.",401);
     if (user.status !== "ACTIVE") fail(user.status === "PENDING" ? "Account approval is pending." : `Account is ${String(user.status).toLowerCase()}.`,403);
     const token = await issueSession(user.id);
