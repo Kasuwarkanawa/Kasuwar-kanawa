@@ -49,6 +49,7 @@ import { authApi } from '../utils/authApi';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
+import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import {
   User,
   Product,
@@ -286,8 +287,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [prodOrigPrice, setProdOrigPrice] = useState<number>(20000);
   const [prodDiscountPercent, setProdDiscountPercent] = useState<number>(25);
   const [prodImage, setProdImage] = useState('https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=600&q=80');
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
+  const [productImageUploadError, setProductImageUploadError] = useState('');
+
   const [prodDescription, setProdDescription] = useState('');
   const [prodSellerId, setProdSellerId] = useState('usr-seller-1');
+
+  const handleProductGalleryUpload = async (file?: File) => {
+    if (!file) return;
+    setProductImageUploadError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProductImageUploadError('Please choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProductImageUploadError('Image must be 5MB or smaller.');
+      return;
+    }
+    setIsUploadingProductImage(true);
+    try {
+      const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${crypto.randomUUID()}.${extension}`;
+      const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_PUBLIC_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
+          'Content-Type': file.type,
+          'x-upsert': 'false',
+        },
+        body: file,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
+      }
+      setProdImage(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`);
+    } catch (error) {
+      setProductImageUploadError(error instanceof Error ? error.message : 'Could not upload image. Please try again.');
+    } finally {
+      setIsUploadingProductImage(false);
+    }
+  };
 
   // Category Management Modals
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -3153,7 +3194,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#E6007E] text-white font-bold rounded-lg"
+                  disabled={isUploadingProductImage}
+                  className="px-4 py-1.5 bg-[#E6007E] text-white font-bold rounded-lg disabled:opacity-50"
                 >
                   Save User
                 </button>
@@ -3329,15 +3371,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Image URL</label>
-                <input
-                  type="text"
-                  required
-                  value={prodImage}
-                  onChange={(e) => setProdImage(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2"
-                />
+              <div className="space-y-3">
+                <label className="block font-bold text-slate-700 mb-1">Product Image</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <img src={prodImage} alt="Product preview" className="h-24 w-24 rounded-xl border border-slate-200 object-cover bg-slate-50" />
+                  <div className="flex flex-col gap-2">
+                    <label className={`inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#E6007E] px-4 py-2 text-sm font-bold text-white ${isUploadingProductImage ? 'pointer-events-none opacity-60' : ''}`}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      {isUploadingProductImage ? 'Uploading image...' : 'Upload from Gallery'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={isUploadingProductImage}
+                        onChange={(e) => {
+                          const file = e.currentTarget.files?.[0];
+                          void handleProductGalleryUpload(file);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                    <span className="text-xs text-slate-500">JPG, PNG or WebP • Maximum 5MB</span>
+                  </div>
+                </div>
+                {productImageUploadError && <p role="alert" className="text-sm font-semibold text-red-600">{productImageUploadError}</p>}
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-semibold text-slate-600">Or enter an image URL</summary>
+                  <input
+                    type="url"
+                    value={prodImage}
+                    onChange={(e) => setProdImage(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-slate-300 p-2"
+                    placeholder="https://example.com/product-image.jpg"
+                  />
+                </details>
               </div>
 
               <div>
