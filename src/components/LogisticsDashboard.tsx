@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ImagePreview } from './ImagePreview';
 import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -27,6 +28,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [vehiclePlateNumber, setVehiclePlateNumber] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [companyImagePreviewOpen, setCompanyImagePreviewOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError('');
@@ -108,9 +110,10 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950/70 flex items-start justify-center p-0 sm:p-4">
       <div className="w-full max-w-5xl h-[100dvh] sm:h-[92vh] bg-slate-50 sm:rounded-2xl shadow-2xl overflow-y-auto">
+        {company.logo && <ImagePreview src={company.logo} alt={company.companyName} isOpen={companyImagePreviewOpen} onClose={() => setCompanyImagePreviewOpen(false)} />}
         <header className="sticky top-0 z-20 bg-[#0B172E] text-white p-4 sm:p-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            {company.logo ? <img src={company.logo} alt="" className="w-12 h-12 rounded-xl object-cover bg-white" /> : <div className="w-12 h-12 rounded-xl bg-pink-600 flex items-center justify-center"><Truck /></div>}
+            {company.logo ? <button type="button" onClick={() => setCompanyImagePreviewOpen(true)} className="rounded-xl cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-pink-400" aria-label="Preview logistics company logo"><img src={company.logo} alt={company.companyName} className="w-12 h-12 rounded-xl object-contain bg-white" /></button> : <div className="w-12 h-12 rounded-xl bg-pink-600 flex items-center justify-center"><Truck /></div>}
             <div className="min-w-0"><p className="text-xs text-pink-300 font-bold uppercase tracking-wide">Logistics Company Dashboard</p><h1 className="font-black text-lg sm:text-xl truncate">{company.companyName}</h1><p className="text-xs text-slate-300">Connected to Kasuwar Kanawa database</p></div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
