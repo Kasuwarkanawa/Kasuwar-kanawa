@@ -403,7 +403,7 @@ async function dispatch(req: Request, origin: string | null) {
     }).strict().parse(await bodyJson(req));
     const now=new Date().toISOString();
     const {data:category}=await db.from("Category").select("id").eq("name",s.category).maybeSingle();
-    const row={id:crypto.randomUUID(),...s,categoryId:category?.id??null,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:s.isNew??false,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
+    const row={id:crypto.randomUUID(),...s,categoryId:category?.id??null,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:s.isNew??true,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
     const {data,error}=await db.from("Product").insert(row).select("*").single(); if(error) throw error;
     return reply(serializeProduct(data),201,origin);
   }
