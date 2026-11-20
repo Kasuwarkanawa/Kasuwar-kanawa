@@ -666,70 +666,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 5. Main Promotional Banner (Redmi Note 12) */}
-        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner
-          onShopNow={(name) => {
-            const redmi = liveProducts.find((p) => p.name.includes('Redmi Note 12'));
-            if (redmi) {
-              setSelectedProductForDetail(redmi);
-            } else {
-              setSearchQuery(name);
-            }
-          }}
-          onAddToCart={handleAddToCart}
-          featuredProduct={liveProducts.find((p) => p.name.includes('Redmi Note 12'))}
-        />}
-
-        {/* 6. Flash Sales Section with Countdown Timer */}
-        {!searchResults && !categoryFilteredProducts && <FlashSalesSection
-          products={flashSaleProducts}
-          activeFlashSale={activeFlashSale}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />}
-
-        {/* 7. Trust Badges / 4 Value Propositions Strip */}
-        {!searchResults && !categoryFilteredProducts && <TrustBadges />}
-
-        {/* 8. Discount Advertisements / Promo Banners */}
-        {!searchResults && !categoryFilteredProducts && <DiscountAdvertisements
-          promotions={activePromotions}
-          onStartShopping={() => {
-            const el = document.getElementById('popular-products-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-          onSelectCategory={(catId) => {
-            setSelectedCategory(catId);
-            const el = document.getElementById('category-products-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-        />}
-
-        {/* 9. Product Categories */}
-        {!searchResults && !categoryFilteredProducts && <CategoriesSection
-          products={liveProducts}
-          selectedCategory={selectedCategory}
-          onSelectCategory={(catId) => {
-            setSelectedCategory(catId);
-            if (catId !== 'all') {
-              const el = document.getElementById('category-products-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }
-          }}
-        />}
-
-        {/* Newly added products appear immediately after categories */}
-        {!searchResults && !categoryFilteredProducts && (
-          <NewProductsSection
-            products={newProducts}
-            onAddToCart={handleAddToCart}
-            onBuyNow={handleBuyNow}
-            onViewDetails={(p) => setSelectedProductForDetail(p)}
-          />
-        )}
-
-        {/* Complete public product catalogue: products are visible without searching */}
+        {/* Homepage: show the complete product catalogue as the only product collection */}
         {!searchResults && !categoryFilteredProducts && (
           <section id="all-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
             <div className="flex items-center justify-between mb-5">
@@ -753,26 +690,6 @@ export default function App() {
           </section>
         )}
 
-        {/* 10. Special Offers Section */}
-        {!searchResults && !categoryFilteredProducts && (
-          <SpecialOffersSection
-            products={specialOfferProducts}
-            onAddToCart={handleAddToCart}
-            onBuyNow={handleBuyNow}
-            onViewDetails={(p) => setSelectedProductForDetail(p)}
-          />
-        )}
-
-        {/* 11. Popular Products Section */}
-        {!searchResults && !categoryFilteredProducts && <PopularProductsSection
-          products={popularProducts}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />}
-
-        {/* 13. Newsletter Signup Section (Market Updates & Special Offers) */}
-        {!searchResults && !categoryFilteredProducts && <NewsletterSection />}
       </main>
 
       {/* Dismissible oval-style flash promotion spotlight */}

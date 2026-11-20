@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { CATEGORIES } from '../data/products';
+import { db } from '../db/database';
 
 interface NavigationBarProps {
   activeTab: string;
@@ -37,6 +38,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   cartCount,
 }) => {
   const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
+  const savedCategories = db.getCategories();
+  const categories = savedCategories.length > 0 ? savedCategories : CATEGORIES;
 
   const handleNavClick = (tabId: string, sectionId?: string) => {
     setActiveTab(tabId);
@@ -109,12 +112,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                       View All
                     </button>
                   </div>
-                  {CATEGORIES.map((cat) => (
+                  {categories.map((cat) => (
                     <button
                       key={cat.id}
                       onClick={() => {
                         onSelectCategory(cat.id);
-                        handleNavClick('category', 'categories-section');
+                        handleNavClick('category', 'category-products-section');
                         setCategoriesDropdownOpen(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-pink-50 flex items-center justify-between transition-colors cursor-pointer ${
@@ -253,15 +256,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
                 Browse Categories
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {CATEGORIES.map((cat) => (
+              <div className="flex flex-col gap-1.5">
+                {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => {
                       onSelectCategory(cat.id);
-                      handleNavClick('category', 'categories-section');
+                      handleNavClick('category', 'category-products-section');
                     }}
-                    className={`text-left p-2 rounded text-xs transition-colors cursor-pointer truncate ${
+                    className={`w-full text-left p-2.5 rounded text-xs transition-colors cursor-pointer ${
                       selectedCategory === cat.id
                         ? 'bg-[#E6007E] text-white font-bold'
                         : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
