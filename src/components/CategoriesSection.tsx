@@ -17,6 +17,7 @@ import { db } from '../db/database';
 interface CategoriesSectionProps {
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string) => void;
+  products: import('../types').Product[];
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -34,9 +35,13 @@ const ICON_MAP: Record<string, React.ElementType> = {
 export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   selectedCategory,
   onSelectCategory,
+  products,
 }) => {
   const liveCategories = db.getCategories();
-  const displayCategories = liveCategories.length > 0 ? liveCategories : CATEGORIES;
+  const allCategories = liveCategories.length > 0 ? liveCategories : CATEGORIES;
+  const displayCategories = allCategories.filter((cat) => products.some((product) =>
+    product.categoryId === cat.id || product.category === cat.id || product.category === cat.name
+  ));
   return (
     <section id="categories-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
       {/* Section Header */}

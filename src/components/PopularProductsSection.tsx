@@ -16,6 +16,7 @@ export const PopularProductsSection: React.FC<PopularProductsSectionProps> = ({
   onBuyNow,
   onViewDetails,
 }) => {
+  if (products.length === 0) return null;
   return (
     <section id="popular-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
       {/* Section Header */}
