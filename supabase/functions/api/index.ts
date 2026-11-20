@@ -1031,7 +1031,7 @@ async function dispatch(req: Request, origin: string | null) {
     await db.from("Order").update({deliveryAgentId:b.deliveryAgentId,updatedAt:now}).eq("id",shipment.orderId);
     const {data:steps}=await db.from("LogisticsShipmentTrackingStep").select("sortOrder").eq("shipmentId",id).order("sortOrder",{ascending:false}).limit(1);
     const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert({id:crypto.randomUUID(),shipmentId:id,title:b.deliveryAgentId?"Delivery Agent Assigned":"Delivery Agent Unassigned",dateLabel:new Date(now).toLocaleString(),completed:true,description:b.deliveryAgentId?"A delivery agent has been assigned.":"The delivery agent assignment was removed.",sortOrder:(steps?.[0]?.sortOrder??0)+1,createdAt:now});
-    if(stepError)throw stepError;return reply(updateError?null:update,200,origin);
+    if(stepError)throw stepError;return reply(update,200,origin);
   }
   const shipmentStatusMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/status$/);
   if(shipmentStatusMatch && method==="PATCH") {
