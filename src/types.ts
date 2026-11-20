@@ -341,3 +341,14 @@ export interface Announcement {
   isPublished: boolean;
   createdAt: string;
 }
+
+
+export interface CODSettlement {
+  id: string; orderId: string; logisticsCompanyId: string; sellerId: string;
+  grossCollectedAmount: number; commissionRate: number; commissionAmount: number; sellerPayoutAmount: number;
+  logisticsTransferReceiptPath?: string; sellerTransferReceiptPath?: string; logisticsTransferredAt?: string; logisticsConfirmedAt?: string; sellerTransferredAt?: string; sellerAcceptedAt?: string;
+  status: 'awaiting_logistics_transfer' | 'awaiting_admin_logistics_confirmation' | 'awaiting_seller_payout' | 'awaiting_seller_confirmation' | 'completed' | 'logistics_receipt_rejected' | 'seller_receipt_rejected';
+  adminNotes?: string;
+  order?: { id: string; orderNumber: string; subtotal: number; deliveryFee: number; totalAmount: number; items: Array<{ productSnapshot: any; quantity: number; unitPrice: number }> };
+  seller?: { id: string; fullName: string; businessName?: string; phone: string; payoutBankName?: string; payoutAccountName?: string; payoutAccountNumber?: string };
+}
