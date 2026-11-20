@@ -533,7 +533,12 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]); const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
     let q=db.from("User").select("*").order("createdAt",{ascending:false}).range(skip,skip+take-1);
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
-    const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
+    const {data,error}=await q;if(error)throw error;
+    const rows=data??[];
+    const logisticsUsers=rows.filter((u:any)=>u.role==="LOGISTICS").map((u:any)=>u.id);
+    let companyByOwner:Record<string,string>={};
+    if(logisticsUsers.length){const companies=await db.from("LogisticsCompany").select("id,ownerUserId").in("ownerUserId",logisticsUsers);if(companies.error)throw companies.error;companyByOwner=Object.fromEntries((companies.data??[]).map((c:any)=>[c.ownerUserId,c.id]));}
+    return reply(rows.map((u:any)=>({...safeUser(u),...(companyByOwner[u.id]?{logisticsCompanyId:companyByOwner[u.id]}:{})})),200,origin);
   }
   if(path==="/admin/users" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);
