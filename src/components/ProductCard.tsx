@@ -43,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       className="bg-white rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group cursor-pointer"
     >
       {/* Top Media Area */}
-      <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
+      <div className="relative aspect-[4/3] w-full bg-white overflow-hidden">
         {/* Newly added product label */}
         {product.isNew && (
           <div className="absolute bottom-2 left-2 z-10 bg-emerald-600 text-white text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-md shadow-md uppercase tracking-wide">
@@ -80,7 +80,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             alt={product.name}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 bg-white"
+            className="w-full h-full object-contain transition-transform duration-300 bg-white"
             loading="lazy"
           />
         ) : (
