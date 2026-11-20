@@ -64,9 +64,9 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   return (
     <div className={`relative inline-flex flex-shrink-0 select-none ${className}`}>
       {imageSrc && !imageError ? (
-        <button type="button" onClick={() => setPreviewOpen(true)} className="rounded-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${displayName} profile photo`}>
+        <span role="button" tabIndex={0} onClick={() => setPreviewOpen(true)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setPreviewOpen(true); } }} className="inline-flex rounded-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${displayName} profile photo`}>
           <img src={imageSrc} alt={displayName} onError={() => setImageError(true)} className={`${sizeClasses} rounded-full object-cover border-2 border-white/80 shadow-sm bg-slate-100`} />
-        </button>
+        </span>
       ) : (
         <div
           className={`${sizeClasses} ${roleBg} rounded-full flex items-center justify-center font-medium shadow-sm border-2 border-white/80`}
