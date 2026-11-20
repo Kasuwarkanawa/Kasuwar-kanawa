@@ -155,7 +155,7 @@ export const marketplaceApi = {
   adminUsers: {
     create: (data: { fullName: string; email: string; phone: string; password: string; accountType: 'buyer' | 'seller'; businessName?: string; productCategory?: string; address?: string }) =>
       request<{ user: any }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
-    list: (params: { role?: 'BUYER' | 'SELLER'; status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'; take?: number; skip?: number } = {}) => {
+    list: (params: { role?: 'BUYER' | 'SELLER' | 'LOGISTICS'; status?: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED'; take?: number; skip?: number } = {}) => {
       const query = new URLSearchParams();
       if (params.role) query.set('role', params.role);
       if (params.status) query.set('status', params.status);
