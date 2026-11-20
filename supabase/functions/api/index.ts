@@ -1056,6 +1056,19 @@ async function dispatch(req: Request, origin: string | null) {
     const {error:orderError}=await db.from("Order").update(orderUpdate).eq("id",shipment.orderId);if(orderError)throw orderError;
     const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:shipment.orderId,title:label,dateLabel:new Date(now).toLocaleString(),completed:true,description,sortOrder:(orderSteps?.[0]?.sortOrder??0)+1,createdAt:now});
     if(buyerStepError)throw buyerStepError;
+    if(b.status==="delivered") {
+      const {data:orderForSettlement,error:settlementOrderError}=await db.from("Order").select("id,sellerId,subtotal,totalAmount,paymentMethod").eq("id",shipment.orderId).single();
+      if(settlementOrderError)throw settlementOrderError;
+      if(orderForSettlement.paymentMethod==="cod") {
+        const gross=Number(orderForSettlement.totalAmount),subtotal=Number(orderForSettlement.subtotal),commission=Number((subtotal*0.05).toFixed(2));
+        const {error:settlementError}=await db.from("CODSettlement").upsert({
+          id:crypto.randomUUID(),orderId:orderForSettlement.id,logisticsCompanyId:company.id,sellerId:orderForSettlement.sellerId,
+          grossCollectedAmount:gross,commissionRate:5,commissionAmount:commission,sellerPayoutAmount:Number((subtotal-commission).toFixed(2)),
+          status:"awaiting_logistics_transfer",createdAt:now,updatedAt:now
+        },{onConflict:"orderId",ignoreDuplicates:true});
+        if(settlementError)throw settlementError;
+      }
+    }
     return reply(updated,200,origin);
   }
   const logisticsAssignmentMatch=path.match(/^\/admin\/orders\/([^/]+)\/logistics-assignment$/);
@@ -1102,7 +1115,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("CODSettlement").select("*").eq("logisticsCompanyId",company.id).order("createdAt",{ascending:false}).limit(100);
     if(error)throw error;
     const rows=await Promise.all((data??[]).map(settlementDetails));
-    return reply(rows,200,origin);
+    return reply(rows.map((row:any)=>({...row,seller:{id:row.seller.id,fullName:row.seller.fullName,businessName:row.seller.businessName,phone:row.seller.phone}})),200,origin);
   }
   const logisticsSettlementReceipt=path.match(/^\/logistics\/cod-settlements\/([^/]+)\/receipt$/);
   if(logisticsSettlementReceipt && method==="POST") {
