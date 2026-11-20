@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, ShoppingCart, Zap, Check, Eye } from 'lucide-react';
 import { Product } from '../types';
 import { formatPrice } from '../utils/format';
+import { ImagePreview } from './ImagePreview';
 
 interface ProductCardProps {
   product: Product;
@@ -17,6 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onViewDetails,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [addedAnimation, setAddedAnimation] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -43,7 +45,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       className="bg-white rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group cursor-pointer"
     >
       {/* Top Media Area */}
-      <div className="relative aspect-[4/3] w-full bg-white overflow-hidden">
+      <div className="relative aspect-square w-full bg-white overflow-hidden">
         {/* Newly added product label */}
         {product.isNew && (
           <div className="absolute bottom-2 left-2 z-10 bg-emerald-600 text-white text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-md shadow-md uppercase tracking-wide">
@@ -80,9 +82,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             alt={product.name}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className="w-full h-full object-contain transition-transform duration-300 bg-white"
+            className="w-full h-full object-cover transition-transform duration-300 bg-white"
             loading="lazy"
+            onClick={(event) => { event.stopPropagation(); setPreviewOpen(true); }}
           />
+          <button type="button" onClick={(event) => { event.stopPropagation(); setPreviewOpen(true); }} className="absolute bottom-2 right-2 z-20 rounded-full bg-white/95 text-[#0B172E] text-[10px] font-bold px-2.5 py-1 shadow-md">
+            Tap to view full image
+          </button>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-pink-50 text-slate-400 p-4 text-center">
             <span className="text-2xl mb-1">🛍️</span>
@@ -173,6 +179,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
         </div>
       </div>
+      <ImagePreview src={product.image} alt={product.name} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />
     </div>
   );
 };
