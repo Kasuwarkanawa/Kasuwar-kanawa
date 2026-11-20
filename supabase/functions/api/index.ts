@@ -230,6 +230,21 @@ async function dispatch(req: Request, origin: string | null) {
     };
     const { data: user, error } = await db.from("User").insert(userRow).select("*").single();
     if (error) throw error;
+    if (role === "LOGISTICS") {
+      const { error: companyError } = await db.from("LogisticsCompany").insert({
+        id: crypto.randomUUID(), ownerUserId: user.id, companyName: data.businessName!,
+        logo: data.profileImage ?? null, contactName: data.fullName, phone,
+        whatsAppNumber: data.whatsAppNumber ? data.whatsAppNumber.replace(/[\\s()-]/g,"") : phone,
+        email, address: data.businessAddress || data.address || "", city: data.city || "Kano City",
+        state: data.state || "Kano State", serviceAreas: [], pricing: [], approvalStatus: "pending",
+        createdAt: now, updatedAt: now,
+      });
+      if (companyError) {
+        await db.from("User").delete().eq("id", user.id);
+        if (companyError.code === "23505") fail("A logistics company with this name is already registered.",409);
+        throw companyError;
+      }
+    }
     if (role === "BUYER") {
       const token = await issueSession(user.id);
       return reply({success:true,user:safeUser(user)},201,origin,{"Set-Cookie":sessionCookie(token)});
@@ -518,7 +533,12 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]); const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0));
     let q=db.from("User").select("*").order("createdAt",{ascending:false}).range(skip,skip+take-1);
     const role=url.searchParams.get("role"),status=url.searchParams.get("status"); if(role)q=q.eq("role",role);if(status)q=q.eq("status",status);
-    const {data,error}=await q;if(error)throw error;return reply((data??[]).map(safeUser),200,origin);
+    const {data,error}=await q;if(error)throw error;
+    const rows=data??[];
+    const logisticsUsers=rows.filter((u:any)=>u.role==="LOGISTICS").map((u:any)=>u.id);
+    let companyByOwner:Record<string,string>={};
+    if(logisticsUsers.length){const companies=await db.from("LogisticsCompany").select("id,ownerUserId").in("ownerUserId",logisticsUsers);if(companies.error)throw companies.error;companyByOwner=Object.fromEntries((companies.data??[]).map((c:any)=>[c.ownerUserId,c.id]));}
+    return reply(rows.map((u:any)=>({...safeUser(u),...(companyByOwner[u.id]?{logisticsCompanyId:companyByOwner[u.id]}:{})})),200,origin);
   }
   if(path==="/admin/users" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);
@@ -572,6 +592,14 @@ async function dispatch(req: Request, origin: string | null) {
     const {status}=z.object({status:z.enum(["ACTIVE","SUSPENDED","REJECTED"])}).strict().parse(await bodyJson(req));
     const {data:target}=await db.from("User").select("id,role").eq("id",id).maybeSingle();if(!target)fail("User not found.",404);if(target.role==="SUPER_ADMIN")fail("Super Admin status cannot be changed through this endpoint.",403);
     const {data,error}=await db.from("User").update({status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();if(error)throw error;
+    if(target.role==="LOGISTICS") {
+      const companyStatus=status==="ACTIVE"?"approved":status==="REJECTED"?"rejected":"suspended";
+      const {error:companyError}=await db.from("LogisticsCompany").update({
+        approvalStatus:companyStatus, approvedAt:status==="ACTIVE"?new Date().toISOString():null,
+        approvedBy:status==="ACTIVE"?(await currentUser(req))?.user.id:null, updatedAt:new Date().toISOString()
+      }).eq("ownerUserId",id);
+      if(companyError)throw companyError;
+    }
     if(status!=="ACTIVE")await db.from("Session").delete().eq("userId",id);
     return reply({user:safeUser(data)},200,origin);
   }
@@ -848,7 +876,13 @@ async function dispatch(req: Request, origin: string | null) {
   const handoffMatch=path.match(/^\/orders\/([^/]+)\/logistics-handoff$/);
   if(handoffMatch && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);const b=z.object({logisticsCompanyName:z.string().trim().min(2).max(160),trackingNumber:z.string().trim().min(3).max(100),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
-    const order=await runOrderAction(decodeURIComponent(handoffMatch[1]),auth,"logistics_handoff",b);return reply(orderForSeller(order),200,origin);
+    const {data:company,error:companyError}=await db.from("LogisticsCompany").select("id,companyName").ilike("companyName",b.logisticsCompanyName).eq("approvalStatus","approved").maybeSingle();
+    if(companyError)throw companyError;if(!company)fail("Choose a logistics company that has been registered and approved by Super Admin.",400);
+    const orderId=decodeURIComponent(handoffMatch[1]);
+    const order=await runOrderAction(orderId,auth,"logistics_handoff",b);
+    const {error:assignmentError}=await db.from("Order").update({logisticsCompanyId:company.id,logisticsCompanyName:company.companyName,updatedAt:new Date().toISOString()}).eq("id",orderId).eq("sellerId",auth.user.id);
+    if(assignmentError)throw assignmentError;
+    return reply(orderForSeller(await getOrder(orderId)),200,origin);
   }
   const logisticsMatch=path.match(/^\/orders\/admin\/([^/]+)\/logistics-update$/);
   if(logisticsMatch && method==="PATCH") {
@@ -901,6 +935,139 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(flashIdMatch && method==="DELETE") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(flashIdMatch[1]);const {error}=await db.from("FlashSale").delete().eq("id",id);if(error)throw error;return reply({success:true},200,origin);
+  }
+
+  // Logistics company workspace. Every operation is scoped to the authenticated company.
+  async function approvedLogisticsCompany(req: Request) {
+    const auth=await requireRole(req,["LOGISTICS"]);
+    const {data:company,error}=await db.from("LogisticsCompany").select("*").eq("ownerUserId",auth.user.id).maybeSingle();
+    if(error)throw error;
+    if(!company || company.approvalStatus!=="approved")fail("Your logistics company is not approved yet.",403);
+    return {auth,company};
+  }
+  const shipmentStatusLabels:Record<string,string>={awaiting_pickup:"Awaiting Pickup",picked_up:"Picked Up",in_transit:"In Transit",out_for_delivery:"Out for Delivery",delivered:"Delivered",failed:"Delivery Failed",cancelled:"Cancelled"};
+  if(path==="/logistics/company" && method==="GET") {
+    const auth=await requireRole(req,["LOGISTICS"]);
+    const {data,error}=await db.from("LogisticsCompany").select("*").eq("ownerUserId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!data)fail("Logistics company profile was not found.",404);
+    return reply(data,200,origin);
+  }
+  if(path==="/logistics/orders" && method==="GET") {
+    const {company}=await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)")
+      .eq("logisticsCompanyId",company.id).eq("status","dispatched").order("createdAt",{ascending:false}).limit(100);
+    if(error)throw error;
+    const eligible=(data??[]).filter((o:any)=>o.paymentMethod==="opay"?(o.paymentConfirmation??{}).verifiedByAdmin===true:(o.paymentConfirmation??{}).adminApproved===true);
+    return reply(eligible.map(serializeOrder),200,origin);
+  }
+  if(path==="/logistics/agents" && method==="GET") {
+    const {company}=await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("DeliveryAgent").select("*").eq("logisticsCompanyId",company.id).order("createdAt",{ascending:false});
+    if(error)throw error;return reply(data??[],200,origin);
+  }
+  if(path==="/logistics/agents" && method==="POST") {
+    const {company}=await approvedLogisticsCompany(req);
+    const b=z.object({fullName:z.string().trim().min(2).max(120),phone:z.string().trim().min(7).max(24),whatsAppNumber:z.string().trim().min(7).max(24).optional(),email:z.string().trim().email().max(254).optional(),vehicleType:z.string().trim().max(80).optional(),vehiclePlateNumber:z.string().trim().max(40).optional()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("DeliveryAgent").insert({id:crypto.randomUUID(),logisticsCompanyId:company.id,...b,phone:b.phone.replace(/[\\s()-]/g,""),status:"active"}).select("*").single();
+    if(error)throw error;return reply(data,201,origin);
+  }
+  const logisticsAgentMatch=path.match(/^\/logistics\/agents\/([^/]+)$/);
+  if(logisticsAgentMatch && (method==="PATCH" || method==="DELETE")) {
+    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(logisticsAgentMatch[1]);
+    const {data:agent,error:agentError}=await db.from("DeliveryAgent").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(agentError)throw agentError;if(!agent)fail("Delivery agent not found.",404);
+    if(method==="DELETE") {
+      const {data:active,error}=await db.from("LogisticsShipment").select("id").eq("deliveryAgentId",id).not("status","in","(delivered,cancelled)").limit(1);
+      if(error)throw error;if(active?.length)fail("Reassign this agent's active shipments before removing the agent.",409);
+      const {error}=await db.from("DeliveryAgent").delete().eq("id",id).eq("logisticsCompanyId",company.id);if(error)throw error;
+      return reply({success:true},200,origin);
+    }
+    const b=z.object({status:z.enum(["active","inactive","suspended"])}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("DeliveryAgent").update({status:b.status}).eq("id",id).eq("logisticsCompanyId",company.id).select("*").single();
+    if(error)throw error;return reply(data,200,origin);
+  }
+  if(path==="/logistics/shipments" && method==="GET") {
+    const {company}=await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("LogisticsShipment").select("*,trackingTimeline:LogisticsShipmentTrackingStep(*)")
+      .eq("logisticsCompanyId",company.id).order("createdAt",{ascending:false}).limit(100);
+    if(error)throw error;
+    return reply((data??[]).map((shipment:any)=>({...shipment,trackingTimeline:[...(shipment.trackingTimeline??[])].sort((a:any,b:any)=>a.sortOrder-b.sortOrder).map((step:any)=>({title:step.title,date:step.dateLabel,completed:step.completed,description:step.description}))})),200,origin);
+  }
+  if(path==="/logistics/shipments" && method==="POST") {
+    const {company}=await approvedLogisticsCompany(req);
+    const b=z.object({orderId:z.string().min(1).max(128),deliveryAgentId:z.string().min(1).max(128).optional()}).strict().parse(await bodyJson(req));
+    const {data:order,error:orderError}=await db.from("Order").select("*").eq("id",b.orderId).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(orderError)throw orderError;if(!order || order.status!=="dispatched")fail("This dispatched order is not assigned to your company.",404);
+    const paid=order.paymentMethod==="opay"?(order.paymentConfirmation??{}).verifiedByAdmin===true:(order.paymentConfirmation??{}).adminApproved===true;
+    if(!paid)fail("The order payment must be approved before shipment creation.",409);
+    let agent:any=null;
+    if(b.deliveryAgentId){const result=await db.from("DeliveryAgent").select("id").eq("id",b.deliveryAgentId).eq("logisticsCompanyId",company.id).eq("status","active").maybeSingle();if(result.error)throw result.error;if(!result.data)fail("Choose an active agent belonging to your company.",400);agent=result.data;}
+    const now=new Date().toISOString(),trackingNumber="KN-"+crypto.randomUUID().replace(/-/g,"").slice(0,12).toUpperCase(),shipmentId=crypto.randomUUID();
+    const {data:shipment,error}=await db.from("LogisticsShipment").insert({
+      id:shipmentId,trackingNumber,orderId:order.id,logisticsCompanyId:company.id,deliveryAgentId:agent?.id??null,buyerId:order.buyerId,
+      recipientName:order.shippingAddress?.fullName??order.buyerName,recipientPhone:order.shippingAddress?.phoneNumber??order.buyerPhone,
+      deliveryAddress:order.shippingAddress,deliveryFee:order.deliveryFee,status:"awaiting_pickup",createdAt:now,updatedAt:now
+    }).select("*").single();
+    if(error){if(error.code==="23505")fail("A shipment already exists for this order.",409);throw error;}
+    const step={id:crypto.randomUUID(),shipmentId,title:"Awaiting Pickup",dateLabel:new Date(now).toLocaleString(),completed:true,description:"Shipment accepted by "+company.companyName,sortOrder:0,createdAt:now};
+    const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert(step);if(stepError)throw stepError;
+    const {error:updateError}=await db.from("Order").update({shipmentId,trackingNumber,logisticsCompanyName:company.companyName,logisticsStatus:"handed_to_logistics",deliveryAgentId:agent?.id??null,updatedAt:now}).eq("id",order.id);
+    if(updateError)throw updateError;
+    const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:order.id,title:"Awaiting Pickup",dateLabel:new Date(now).toLocaleString(),completed:true,description:"Shipment created by "+company.companyName,sortOrder:900,createdAt:now});
+    if(buyerStepError)throw buyerStepError;
+    return reply({...shipment,trackingTimeline:[{title:"Awaiting Pickup",date:new Date(now).toLocaleString(),completed:true,description:step.description}]},201,origin);
+  }
+  const shipmentAgentMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/agent$/);
+  if(shipmentAgentMatch && method==="PATCH") {
+    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentAgentMatch[1]);
+    const b=z.object({deliveryAgentId:z.string().min(1).max(128).nullable()}).strict().parse(await bodyJson(req));
+    const {data:shipment,error}=await db.from("LogisticsShipment").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(error)throw error;if(!shipment)fail("Shipment not found.",404);
+    if(["delivered","cancelled"].includes(shipment.status))fail("Completed shipments cannot be reassigned.",409);
+    if(b.deliveryAgentId){const a=await db.from("DeliveryAgent").select("id").eq("id",b.deliveryAgentId).eq("logisticsCompanyId",company.id).eq("status","active").maybeSingle();if(a.error)throw a.error;if(!a.data)fail("Choose an active agent belonging to your company.",400);}
+    const now=new Date().toISOString();
+    const {data,error:updateError}=await db.from("LogisticsShipment").update({deliveryAgentId:b.deliveryAgentId,updatedAt:now}).eq("id",id).select("*").single();
+    if(updateError)throw updateError;
+    await db.from("Order").update({deliveryAgentId:b.deliveryAgentId,updatedAt:now}).eq("id",shipment.orderId);
+    const {data:steps}=await db.from("LogisticsShipmentTrackingStep").select("sortOrder").eq("shipmentId",id).order("sortOrder",{ascending:false}).limit(1);
+    const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert({id:crypto.randomUUID(),shipmentId:id,title:b.deliveryAgentId?"Delivery Agent Assigned":"Delivery Agent Unassigned",dateLabel:new Date(now).toLocaleString(),completed:true,description:b.deliveryAgentId?"A delivery agent has been assigned.":"The delivery agent assignment was removed.",sortOrder:(steps?.[0]?.sortOrder??0)+1,createdAt:now});
+    if(stepError)throw stepError;return reply(updateError?null:update,200,origin);
+  }
+  const shipmentStatusMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/status$/);
+  if(shipmentStatusMatch && method==="PATCH") {
+    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentStatusMatch[1]);
+    const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    const {data:shipment,error}=await db.from("LogisticsShipment").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(error)throw error;if(!shipment)fail("Shipment not found.",404);
+    if(["delivered","cancelled"].includes(shipment.status))fail("This shipment is already closed.",409);
+    const orderStatusMap:Record<string,string>={picked_up:"picked_up",in_transit:"in_transit",out_for_delivery:"out_for_delivery",delivered:"delivered",failed:"failed"};
+    const now=new Date().toISOString(),label=shipmentStatusLabels[b.status];
+    const {data:updated,error:updateError}=await db.from("LogisticsShipment").update({status:b.status,pickupAt:b.status==="picked_up"?(shipment.pickupAt??now):shipment.pickupAt,deliveredAt:b.status==="delivered"?now:shipment.deliveredAt,deliveryNotes:b.notes??shipment.deliveryNotes,updatedAt:now}).eq("id",id).select("*").single();
+    if(updateError)throw updateError;
+    const {data:steps,error:stepsError}=await db.from("LogisticsShipmentTrackingStep").select("sortOrder").eq("shipmentId",id).order("sortOrder",{ascending:false}).limit(1);
+    if(stepsError)throw stepsError;
+    const description=b.notes?.trim()||label;
+    const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert({id:crypto.randomUUID(),shipmentId:id,title:label,dateLabel:new Date(now).toLocaleString(),completed:true,description,sortOrder:(steps?.[0]?.sortOrder??0)+1,createdAt:now});
+    if(stepError)throw stepError;
+    const {data:orderSteps,error:orderStepsError}=await db.from("OrderTrackingStep").select("sortOrder").eq("orderId",shipment.orderId).order("sortOrder",{ascending:false}).limit(1);
+    if(orderStepsError)throw orderStepsError;
+    const orderUpdate:any={logisticsStatus:orderStatusMap[b.status],updatedAt:now};
+    if(b.status==="delivered"){orderUpdate.status="delivered";orderUpdate.deliveredAt=now;}
+    const {error:orderError}=await db.from("Order").update(orderUpdate).eq("id",shipment.orderId);if(orderError)throw orderError;
+    const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:shipment.orderId,title:label,dateLabel:new Date(now).toLocaleString(),completed:true,description,sortOrder:(orderSteps?.[0]?.sortOrder??0)+1,createdAt:now});
+    if(buyerStepError)throw buyerStepError;
+    return reply(updated,200,origin);
+  }
+  const logisticsAssignmentMatch=path.match(/^\/admin\/orders\/([^/]+)\/logistics-assignment$/);
+  if(logisticsAssignmentMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);const orderId=decodeURIComponent(logisticsAssignmentMatch[1]);
+    const b=z.object({logisticsCompanyId:z.string().min(1).max(128).nullable()}).strict().parse(await bodyJson(req));
+    const {data:order,error:orderError}=await db.from("Order").select("id,status").eq("id",orderId).maybeSingle();
+    if(orderError)throw orderError;if(!order)fail("Order not found.",404);
+    let company:any=null;
+    if(b.logisticsCompanyId){const result=await db.from("LogisticsCompany").select("id,companyName").eq("id",b.logisticsCompanyId).eq("approvalStatus","approved").maybeSingle();if(result.error)throw result.error;if(!result.data)fail("Choose an approved logistics company.",400);company=result.data;}
+    const {data,error}=await db.from("Order").update({logisticsCompanyId:company?.id??null,logisticsCompanyName:company?.companyName??null,updatedAt:new Date().toISOString()}).eq("id",orderId).select("*").single();
+    if(error)throw error;return reply({success:true,order:data},200,origin);
   }
 
   // Order read endpoints. Sensitive fields are filtered per role.

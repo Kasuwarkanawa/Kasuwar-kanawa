@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -89,6 +89,11 @@ export const marketplaceApi = {
         method: 'PATCH',
         body: JSON.stringify({ status, notes }),
       }),
+    assignLogistics: (id: string, logisticsCompanyId: string | null) =>
+      request<{ success: boolean; order: Order }>(`/admin/orders/${encodeURIComponent(id)}/logistics-assignment`, {
+        method: 'PATCH',
+        body: JSON.stringify({ logisticsCompanyId }),
+      }),
     approveOpay: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
       request<any>(`/orders/admin/${encodeURIComponent(id)}/payment-verification`, {
         method: 'PATCH',
@@ -166,6 +171,24 @@ export const marketplaceApi = {
     updateProfile: (id: string, data: Record<string, unknown>) => request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
     setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
       request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  },
+  logistics: {
+    company: () => request<LogisticsCompany>('/logistics/company'),
+    orders: () => request<Order[]>('/logistics/orders'),
+    agents: () => request<DeliveryAgent[]>('/logistics/agents'),
+    addAgent: (data: { fullName: string; phone: string; whatsAppNumber?: string; email?: string; vehicleType?: string; vehiclePlateNumber?: string }) =>
+      request<DeliveryAgent>('/logistics/agents', { method: 'POST', body: JSON.stringify(data) }),
+    updateAgent: (id: string, status: 'active' | 'inactive' | 'suspended') =>
+      request<DeliveryAgent>(`/logistics/agents/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    removeAgent: (id: string) =>
+      request<{ success: boolean }>(`/logistics/agents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    shipments: () => request<LogisticsShipment[]>('/logistics/shipments'),
+    createShipment: (orderId: string, deliveryAgentId?: string) =>
+      request<LogisticsShipment>('/logistics/shipments', { method: 'POST', body: JSON.stringify({ orderId, deliveryAgentId }) }),
+    assignAgent: (shipmentId: string, deliveryAgentId: string | null) =>
+      request<LogisticsShipment>(`/logistics/shipments/${encodeURIComponent(shipmentId)}/agent`, { method: 'PATCH', body: JSON.stringify({ deliveryAgentId }) }),
+    updateShipmentStatus: (shipmentId: string, status: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed', notes?: string) =>
+      request<LogisticsShipment>(`/logistics/shipments/${encodeURIComponent(shipmentId)}/status`, { method: 'PATCH', body: JSON.stringify({ status, notes }) }),
   },
   adminReports: {
     list: () => request<{ products: any[]; buyers: any[]; sellers: any[] }>('/admin/reports?take=100'),
