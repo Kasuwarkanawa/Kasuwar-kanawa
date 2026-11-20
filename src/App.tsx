@@ -314,9 +314,10 @@ export default function App() {
     [liveProducts]
   );
   const newProducts = useMemo(
-    () => liveProducts.filter((p) => p.isNew),
+    () => liveProducts.filter((p) => p.isNew).sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '')).slice(0, 12),
     [liveProducts]
   );
+  const allProducts = useMemo(() => [...liveProducts].sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '')), [liveProducts]);
   const specialOfferProducts = useMemo(
     () => liveProducts.filter((p) => p.isSpecialOffer || (p.discountPercentage && p.discountPercentage >= 15)),
     [liveProducts]
@@ -337,7 +338,7 @@ export default function App() {
   // Category Filter Results
   const categoryFilteredProducts = useMemo(() => {
     if (!selectedCategory || selectedCategory === 'all') return null;
-    return liveProducts.filter((p) => p.category === selectedCategory);
+    return liveProducts.filter((p) => p.category === selectedCategory || p.categoryId === selectedCategory).sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''));
   }, [selectedCategory, liveProducts]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -713,6 +714,40 @@ export default function App() {
           }}
         />
 
+        {/* Newly added products appear immediately after categories */}
+        {!searchResults && !categoryFilteredProducts && (
+          <NewProductsSection
+            products={newProducts}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onViewDetails={(p) => setSelectedProductForDetail(p)}
+          />
+        )}
+
+        {/* Complete public product catalogue: products are visible without searching */}
+        {!searchResults && !categoryFilteredProducts && (
+          <section id="all-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-[#E6007E] rounded-full inline-block" />
+                  <h2 className="text-xl sm:text-2xl font-black text-[#0B172E]">All Products</h2>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 ml-4">Browse all approved products in Kasuwar Kanawa ({allProducts.length})</p>
+              </div>
+            </div>
+            {allProducts.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No approved products are available yet.</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+                {allProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={(p) => setSelectedProductForDetail(p)} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* 10. Special Offers Section */}
         <SpecialOffersSection
           products={specialOfferProducts}
@@ -724,14 +759,6 @@ export default function App() {
         {/* 11. Popular Products Section */}
         <PopularProductsSection
           products={popularProducts}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onViewDetails={(p) => setSelectedProductForDetail(p)}
-        />
-
-        {/* 12. New Products Section */}
-        <NewProductsSection
-          products={newProducts}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           onViewDetails={(p) => setSelectedProductForDetail(p)}
