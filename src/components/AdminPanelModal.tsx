@@ -430,6 +430,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const [selectedBackendLogisticsStatuses, setSelectedBackendLogisticsStatuses] = useState<Record<string, 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed'>>({});
   const [logisticsUpdateBusy, setLogisticsUpdateBusy] = useState<string | null>(null);
+  const [selectedBackendLogisticsCompanies, setSelectedBackendLogisticsCompanies] = useState<Record<string, string>>({});
+  const [logisticsAssignBusy, setLogisticsAssignBusy] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setToastMessage(msg);
@@ -856,6 +858,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       return;
     }
     showNotification('This COD order is not in the Supabase order list. Refresh and try again.');
+  };
+
+  const handleAssignLogisticsCompany = async (order: Order) => {
+    const logisticsCompanyId = selectedBackendLogisticsCompanies[order.id] ?? order.logisticsCompanyId ?? '';
+    setLogisticsAssignBusy(order.id);
+    try {
+      const result = await marketplaceApi.orders.assignLogistics(order.id, logisticsCompanyId || null);
+      setBackendOrders((items) => items.map((item) => item.id === order.id ? { ...item, ...result.order } as Order : item));
+      showNotification(logisticsCompanyId ? 'Order assigned to the selected approved logistics company.' : 'Logistics company assignment removed.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Unable to assign logistics company.');
+    } finally {
+      setLogisticsAssignBusy(null);
+    }
   };
 
   const handleBackendLogisticsUpdate = async (order: Order) => {
@@ -2998,6 +3015,34 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <div className="rounded-lg bg-white/10 p-2"><strong className="block text-xl">{backendOrders.filter((o) => o.status === 'delivered').length}</strong><span className="text-[10px] text-slate-200">Delivered</span></div>
                     </div>
                   </div>
+                  <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                    <div>
+                      <h3 className="text-sm font-black text-[#0B172E]">Assign Orders to Approved Logistics Companies</h3>
+                      <p className="text-xs text-slate-500">Only paid orders marked Dispatched can be accepted by a logistics company.</p>
+                    </div>
+                    {backendOrders.filter((order) => order.status === 'dispatched').length === 0 ? (
+                      <p className="rounded-lg bg-slate-50 p-4 text-xs text-slate-500">No dispatched orders are waiting for logistics assignment.</p>
+                    ) : backendOrders.filter((order) => order.status === 'dispatched').map((order) => {
+                      const approvedCompanies = backendUsers.filter((account) => account.accountType === 'logistics' && account.status === 'active' && account.logisticsCompanyId);
+                      const selectedCompany = selectedBackendLogisticsCompanies[order.id] ?? order.logisticsCompanyId ?? '';
+                      return (
+                        <div key={order.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3 space-y-2">
+                          <div className="flex flex-wrap justify-between gap-2">
+                            <strong className="text-xs text-slate-800">Order #{order.orderNumber}</strong>
+                            <span className="text-[10px] font-bold text-slate-500">{order.buyerName} · ₦{Number(order.totalAmount).toLocaleString()}</span>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <select value={selectedCompany} onChange={(event) => setSelectedBackendLogisticsCompanies((previous) => ({ ...previous, [order.id]: event.target.value }))} className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white p-2 text-xs">
+                              <option value="">Unassigned / Remove assignment</option>
+                              {approvedCompanies.map((company) => <option key={company.logisticsCompanyId} value={company.logisticsCompanyId}>{company.businessName || company.fullName}</option>)}
+                            </select>
+                            <button type="button" disabled={logisticsAssignBusy === order.id || !approvedCompanies.length} onClick={() => void handleAssignLogisticsCompany(order)} className="rounded-lg bg-[#0B172E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{logisticsAssignBusy === order.id ? 'Saving…' : 'Save Assignment'}</button>
+                          </div>
+                          {order.logisticsCompanyName && <p className="text-[10px] text-emerald-700">Currently assigned to: {order.logisticsCompanyName}</p>}
+                        </div>
+                      );
+                    })}
+                  </section>
                   {backendOrders.filter((o) => !!o.trackingNumber).length === 0 ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">No seller hand-offs have been recorded yet.</div>
                   ) : backendOrders.filter((o) => !!o.trackingNumber).map((order) => (
