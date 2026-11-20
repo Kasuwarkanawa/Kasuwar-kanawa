@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Tag, Truck, ShieldCheck } from 'lucide-react';
 import { CartItem } from '../types';
 import { formatPrice } from '../utils/format';
+import { ImagePreview } from './ImagePreview';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem,
   onProceedCheckout,
 }) => {
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   if (!isOpen) return null;
 
   // 3. AUTOMATIC PRICE CALCULATION
@@ -131,11 +133,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   >
                     <div className="flex gap-3">
                       {/* Product Image */}
-                      <img
-                        src={item.product.image}
-                        alt={item.product.name}
-                        className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl object-cover bg-white shrink-0 border border-slate-200 shadow-2xs"
-                      />
+                      <div className="shrink-0 flex flex-col items-center gap-1">
+                        <button type="button" onClick={() => setPreviewImage({ src: item.product.image, alt: item.product.name })} className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${item.product.name} image`}>
+                          <img src={item.product.image} alt={item.product.name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-contain bg-white border border-slate-200 shadow-2xs" />
+                        </button>
+                        <span className="text-[9px] text-[#E6007E] font-semibold">Tap to preview</span>
+                      </div>
 
                       {/* Product Details */}
                       <div className="flex-1 min-w-0">
@@ -292,6 +295,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           )}
         </div>
       </div>
+      <ImagePreview src={previewImage?.src || ''} alt={previewImage?.alt || 'Product image'} isOpen={!!previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 };
