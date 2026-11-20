@@ -2931,6 +2931,64 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* Backend logistics console: all shipment records and status changes come from Supabase. */}
               {activeTab === 'logistics' && (
                 <div className="space-y-4">
+                  <section className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-black text-[#0B172E]">Logistics Company Applications</h3>
+                        <p className="text-xs text-slate-500">Approve, reject or suspend logistics companies registered on Kasuwar Kanawa.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[10px] font-black">
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">Pending: {backendUsers.filter((u) => u.accountType === 'logistics' && u.status === 'pending').length}</span>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800">Approved: {backendUsers.filter((u) => u.accountType === 'logistics' && u.status === 'active').length}</span>
+                        <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-800">Suspended / Rejected: {backendUsers.filter((u) => u.accountType === 'logistics' && (u.status === 'suspended' || u.status === 'rejected')).length}</span>
+                      </div>
+                    </div>
+                    {backendUsers.filter((u) => u.accountType === 'logistics').length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                        <Truck className="mx-auto mb-2 h-7 w-7 text-slate-400" />
+                        <p className="text-sm font-bold text-slate-700">No logistics company applications yet.</p>
+                        <p className="mt-1 text-xs text-slate-500">New company registrations will appear here for Super Admin review.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {backendUsers.filter((u) => u.accountType === 'logistics').map((company) => (
+                          <article key={company.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-[#E6007E]"><Truck className="h-5 w-5" /></div>
+                                <div className="min-w-0">
+                                  <h4 className="truncate text-sm font-black text-[#0B172E]">{company.businessName || company.fullName}</h4>
+                                  <p className="text-[11px] text-slate-500">Contact: {company.fullName}</p>
+                                </div>
+                              </div>
+                              <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black uppercase ${company.status === 'active' ? 'bg-emerald-100 text-emerald-800' : company.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}`}>{company.status || 'unknown'}</span>
+                            </div>
+                            <div className="mt-3 space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                              <p><strong>Email:</strong> {company.email}</p>
+                              <p><strong>Phone:</strong> {company.phone}</p>
+                              <p><strong>Address:</strong> {company.businessAddress || company.address || 'Not provided'}</p>
+                              <p><strong>Location:</strong> {[company.area, company.city, company.state].filter(Boolean).join(', ')}</p>
+                              <p><strong>Registered:</strong> {new Date(company.createdAt).toLocaleString()}</p>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                              {company.status !== 'active' && company.status !== 'rejected' && (
+                                <button type="button" onClick={() => void handleSetUserStatus(company.id, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white">Approve Company</button>
+                              )}
+                              {company.status !== 'suspended' && company.status !== 'rejected' && (
+                                <button type="button" onClick={() => void handleSetUserStatus(company.id, 'suspended')} className="rounded-lg bg-amber-100 px-3 py-2 text-[10px] font-black text-amber-800">Suspend</button>
+                              )}
+                              {company.status !== 'rejected' && (
+                                <button type="button" onClick={() => void handleSetUserStatus(company.id, 'rejected')} className="rounded-lg bg-red-100 px-3 py-2 text-[10px] font-black text-red-700">Reject</button>
+                              )}
+                              {(company.status === 'suspended' || company.status === 'rejected') && (
+                                <button type="button" onClick={() => void handleSetUserStatus(company.id, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[10px] font-black text-white">Restore & Approve</button>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                   <div className="rounded-2xl bg-[#0B172E] p-5 text-white">
                     <h2 className="text-xl font-black">Logistics & Live Tracking</h2>
                     <p className="mt-1 text-xs text-slate-300">Seller records the carrier and tracking number. Super Admin verifies every progress update here.</p>
