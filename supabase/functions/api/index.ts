@@ -961,6 +961,41 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;if(!data)fail("Logistics company profile was not found.",404);
     return reply(data,200,origin);
   }
+  if(path==="/logistics/company" && method==="PATCH") {
+    const {auth,company}=await approvedLogisticsCompany(req);
+    const b=z.object({
+      serviceAreas:z.array(z.object({
+        state:z.string().trim().min(1).max(100),
+        cities:z.array(z.string().trim().min(1).max(100)).min(1).max(100),
+        areas:z.array(z.string().trim().min(1).max(100)).max(300).optional(),
+      }).strict()).max(100),
+      pricing:z.array(z.object({
+        state:z.string().trim().min(1).max(100),
+        city:z.string().trim().min(1).max(100),
+        fee:z.number().finite().min(0).max(10000000),
+        currency:z.literal("NGN").optional(),
+      }).strict()).max(1000),
+    }).strict().parse(await bodyJson(req));
+    const normalize=(value:string)=>value.trim().toLocaleLowerCase();
+    const seen=new Set<string>();
+    for(const row of b.pricing) {
+      const area=b.serviceAreas.find(item=>normalize(item.state)===normalize(row.state));
+      if(!area || !area.cities.some(city=>normalize(city)===normalize(row.city))) fail(`Add ${row.city}, ${row.state} to service areas before setting its fee.`,400);
+      const key=normalize(row.state)+"|"+normalize(row.city);
+      if(seen.has(key))fail("Each state and city can have only one delivery fee.",400);
+      seen.add(key);
+    }
+    for(const area of b.serviceAreas) {
+      if(new Set(area.cities.map(normalize)).size!==area.cities.length)fail("Duplicate cities are not allowed within a state.",400);
+    }
+    const {data,error}=await db.from("LogisticsCompany").update({
+      serviceAreas:b.serviceAreas.map(area=>({...area,state:area.state.trim(),cities:area.cities.map(city=>city.trim()),areas:area.areas?.map(value=>value.trim())})),
+      pricing:b.pricing.map(row=>({...row,state:row.state.trim(),city:row.city.trim(),currency:"NGN"})),
+      updatedAt:new Date().toISOString(),
+    }).eq("id",company.id).eq("ownerUserId",auth.user.id).select("*").single();
+    if(error)throw error;
+    return reply(data,200,origin);
+  }
   if(path==="/logistics/orders" && method==="GET") {
     const {company}=await approvedLogisticsCompany(req);
     const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)")
