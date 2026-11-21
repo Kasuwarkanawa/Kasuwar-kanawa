@@ -1197,12 +1197,6 @@ async function dispatch(req: Request, origin: string | null) {
     const {data,error}=await db.from("CODSettlement").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(100);
     if(error)throw error;return reply(await Promise.all((data??[]).map(settlementDetails)),200,origin);
   }
-  if(path==="/seller/payout-account" && method==="GET") {
-    const auth=await requireRole(req,["SELLER"]);
-    const {data,error}=await db.from("User").select("payoutBankName,payoutAccountName,payoutAccountNumber").eq("id",auth.user.id).single();
-    if(error)throw error;
-    return reply({bankName:data.payoutBankName??"",accountName:data.payoutAccountName??"",accountNumber:data.payoutAccountNumber??""},200,origin);
-  }
   if(path==="/seller/payout-account" && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);
     const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\d{10}$/)}).strict().parse(await bodyJson(req));
