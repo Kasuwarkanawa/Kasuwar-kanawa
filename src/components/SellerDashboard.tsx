@@ -32,6 +32,7 @@ import { marketplaceApi } from '../utils/marketplaceApi';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import { UserAvatar } from './UserAvatar';
 import { CODSettlementPanel } from './CODSettlementPanel';
+import { TransferPayoutPanel } from './TransferPayoutPanel';
 import { ProfileImageUploader } from './ProfileImageUploader';
 
 interface SellerDashboardProps {
@@ -525,6 +526,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('transfer')}
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
+              activeTab === 'transfer' ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>Bank Transfer Payouts</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('reports')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'reports'
@@ -541,6 +553,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           
           {activeTab === 'cod' && <CODSettlementPanel role="seller" />}
+          {activeTab === 'transfer' && <TransferPayoutPanel role="seller" />}
 
           {/* 1. OVERVIEW TAB */}
           {activeTab === 'overview' && (
