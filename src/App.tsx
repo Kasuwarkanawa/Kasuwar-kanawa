@@ -692,64 +692,6 @@ export default function App() {
 
       </main>
 
-      {/* Dismissible oval-style flash promotion spotlight */}
-      {showSpotlight && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 px-4 py-6" role="dialog" aria-modal="true" aria-label="Flash sale promotion">
-          <div className="relative w-full max-w-xl overflow-hidden rounded-[2rem] border-4 border-amber-300 bg-gradient-to-br from-[#E6007E] via-rose-600 to-orange-500 text-white shadow-2xl animate-[pulse_2.4s_ease-in-out_infinite]">
-            <button
-              type="button"
-              onClick={() => setDismissedSpotlightId(spotlightId)}
-              aria-label="Close promotion"
-              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/75 text-white shadow-lg transition hover:scale-110 hover:bg-black"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            {spotlightPromotion?.image ? (
-              <div className="relative h-40 sm:h-52">
-                <img src={spotlightPromotion.image} alt={spotlightPromotion.title} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-rose-950/90 via-rose-950/20 to-transparent" />
-                <span className="absolute left-4 top-4 rounded-full bg-yellow-300 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-950">
-                  {spotlightPromotion.badge || 'FLASH PROMO'}
-                </span>
-              </div>
-            ) : (
-              <div className="px-6 pt-7 text-center">
-                <span className="inline-flex rounded-full bg-yellow-300 px-4 py-1 text-xs font-black uppercase tracking-widest text-rose-950">⚡ FLASH SALE</span>
-              </div>
-            )}
-            <div className="px-6 pb-6 pt-4 text-center sm:px-9">
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-yellow-200">KASUWAR KANAWA • LIMITED OFFER</p>
-              <h2 className="text-2xl font-black leading-tight sm:text-3xl">
-                {spotlightPromotion?.title || activeFlashSale?.title || 'Special Flash Sale'}
-              </h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-white/95 sm:text-base">
-                {spotlightPromotion?.description || activeFlashSale?.description || 'Grab selected deals before the offer ends!'}
-              </p>
-              {(spotlightPromotion?.discountTag || activeFlashSale?.discountPercentage) && (
-                <div className="mx-auto mt-3 inline-flex rounded-full border-2 border-yellow-200 bg-yellow-300 px-5 py-2 text-lg font-black text-rose-950 shadow-lg">
-                  {spotlightPromotion?.discountTag || `UP TO ${activeFlashSale?.discountPercentage}% OFF`}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setDismissedSpotlightId(spotlightId);
-                  const target = spotlightPromotion?.linkUrl;
-                  if (target?.startsWith('#')) {
-                    document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  } else {
-                    document.getElementById('popular-products-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }}
-                className="mt-5 rounded-full border-2 border-white bg-white px-8 py-3 text-sm font-black uppercase tracking-wide text-[#E6007E] shadow-xl transition hover:scale-105 hover:bg-yellow-100"
-              >
-                {spotlightPromotion?.linkText || 'Shop Flash Deals'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Product Details Modal (Colors, Sizes, Variations, Reviews, WhatsApp, Report) */}
       {selectedProductForDetail && (
         <ProductDetailModal
