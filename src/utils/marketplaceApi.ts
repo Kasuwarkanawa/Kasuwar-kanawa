@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, TransferPayout } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -186,6 +186,14 @@ export const marketplaceApi = {
     sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/cod-settlements/'+encodeURIComponent(id)+'/receipt'),
     acceptSellerPayment: (id:string) => request<CODSettlement>('/seller/cod-settlements/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
     saveSellerBank: (data:{bankName:string;accountName:string;accountNumber:string}) => request<any>('/seller/payout-account',{method:'PATCH',body:JSON.stringify(data)}),
+  },
+  transferPayout: {
+    adminList: () => request<TransferPayout[]>('/admin/transfer-payouts'),
+    sellerList: () => request<TransferPayout[]>('/seller/transfer-payouts'),
+    uploadAdminReceipt: (id:string,file:File) => request<TransferPayout>('/admin/transfer-payouts/'+encodeURIComponent(id)+'/receipt',{method:'POST',headers:{'Content-Type':file.type},body:file}),
+    adminReceiptUrl: (id:string) => request<{url:string}>('/admin/transfer-payouts/'+encodeURIComponent(id)+'/receipt'),
+    sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/transfer-payouts/'+encodeURIComponent(id)+'/receipt'),
+    acceptSellerPayment: (id:string) => request<TransferPayout>('/seller/transfer-payouts/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
   },
   logistics: {
     company: () => request<LogisticsCompany>('/logistics/company'),
