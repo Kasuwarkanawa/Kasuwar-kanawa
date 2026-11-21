@@ -50,6 +50,7 @@ import { marketplaceApi } from '../utils/marketplaceApi';
 import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 import { CODSettlementPanel } from './CODSettlementPanel';
+import { TransferPayoutPanel } from './TransferPayoutPanel';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import {
   User,
@@ -1339,6 +1340,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 { id: 'deliveries', label: 'Delivery Monitor', icon: Truck, badge: dispatchedAndDelivered.length },
                 { id: 'logistics', label: 'Logistics Management', icon: Truck, badge: null },
                 { id: 'cod_settlements', label: 'COD Settlement', icon: CreditCard, badge: null },
+                { id: 'transfer_payouts', label: 'Bank Transfer Payouts', icon: CreditCard, badge: null },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -2950,6 +2952,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* ============================================================ */}
               {/* Backend logistics console: all shipment records and status changes come from Supabase. */}
               {activeTab === 'cod_settlements' && <div className="p-4 sm:p-6"><CODSettlementPanel role="admin" /></div>}
+              {activeTab === 'transfer_payouts' && <div className="p-4 sm:p-6"><TransferPayoutPanel role="admin" /></div>}
 
             {activeTab === 'logistics' && (
                 <div className="space-y-4">
