@@ -22,7 +22,7 @@ export const CODSettlementPanel:React.FC<{role:Role}> = ({role}) => {
    try{const a=await marketplaceApi.codSettlement.adminSettings();setAccount(a);}
    catch(e){setAccount({bankName:'',accountName:'',accountNumber:''});setError(e instanceof Error?e.message:'Marketplace payout settings are not configured.');}
   }
-  if(role==='seller){try{setRows(await marketplaceApi.codSettlement.sellerList());}catch(e){setError(e instanceof Error?e.message:'Could not load seller COD payments.');}}
+  if(role==='seller'){try{setRows(await marketplaceApi.codSettlement.sellerList());}catch(e){setError(e instanceof Error?e.message:'Could not load seller COD payments.');}}
  };
  useEffect(()=>{void refresh();},[role]);
  const action=async(fn:()=>Promise<unknown>,msg:string)=>{setBusy(true);setError('');setNotice('');try{await fn();setNotice(msg);await refresh();}catch(e){setError(e instanceof Error?e.message:'Action failed.');}finally{setBusy(false);}};
