@@ -77,6 +77,7 @@ export interface DeliveryAgent {
   email?: string;
   vehicleType?: string;
   vehiclePlateNumber?: string;
+  profileImage?: string;
   status: 'active' | 'inactive' | 'suspended';
   createdAt: string;
 }
