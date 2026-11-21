@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { CODSettlementPanel } from './CODSettlementPanel';
+import { ProfileImageUploader } from './ProfileImageUploader';
 import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -25,6 +26,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [agentPhone, setAgentPhone] = useState('');
   const [agentWhatsApp, setAgentWhatsApp] = useState('');
   const [agentEmail, setAgentEmail] = useState('');
+  const [agentProfileImage, setAgentProfileImage] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   const [vehiclePlateNumber, setVehiclePlateNumber] = useState('');
   const [notice, setNotice] = useState('');
@@ -65,9 +67,10 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
     await runAction(() => marketplaceApi.logistics.addAgent({
       fullName: agentName.trim(), phone: agentPhone.trim(),
       whatsAppNumber: agentWhatsApp.trim() || undefined, email: agentEmail.trim() || undefined,
+      profileImage: agentProfileImage.trim() || undefined,
       vehicleType: vehicleType.trim() || undefined, vehiclePlateNumber: vehiclePlateNumber.trim() || undefined,
     }), 'Delivery agent added successfully.');
-    setAgentName(''); setAgentPhone(''); setAgentWhatsApp(''); setAgentEmail('');
+    setAgentName(''); setAgentPhone(''); setAgentWhatsApp(''); setAgentEmail(''); setAgentProfileImage('');
     setVehicleType(''); setVehiclePlateNumber(''); setShowAgentForm(false);
   };
 
@@ -141,6 +144,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           {tab === 'agents' && <section className="space-y-3">
             <div className="flex items-center justify-between gap-3"><h2 className="font-black text-xl">Delivery Agents</h2><button disabled={saving} onClick={() => setShowAgentForm(v => !v)} className="rounded-xl bg-pink-600 text-white px-4 py-2 font-bold flex items-center gap-2 disabled:opacity-50"><Plus size={17}/> Add Agent</button></div>
             {showAgentForm && <form onSubmit={addAgent} className="bg-white border rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2"><ProfileImageUploader value={agentProfileImage} onChange={setAgentProfileImage} label="Agent Profile Photo" name={agentName || 'Delivery Agent'} role="logistics" /></div>
               <input value={agentName} onChange={e => setAgentName(e.target.value)} placeholder="Agent full name" className="border rounded-xl p-3" required />
               <input value={agentPhone} onChange={e => setAgentPhone(e.target.value)} placeholder="Phone number" className="border rounded-xl p-3" required />
               <input value={agentWhatsApp} onChange={e => setAgentWhatsApp(e.target.value)} placeholder="WhatsApp number (optional)" className="border rounded-xl p-3" />
@@ -149,7 +153,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
               <input value={vehiclePlateNumber} onChange={e => setVehiclePlateNumber(e.target.value)} placeholder="Vehicle plate number (optional)" className="border rounded-xl p-3" />
               <button disabled={saving} className="sm:col-span-2 rounded-xl bg-[#0B172E] text-white p-3 font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save Delivery Agent'}</button>
             </form>}
-            {agents.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No delivery agents added yet.</div> : agents.map(agent => <div key={agent.id} className="bg-white rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div className="min-w-0"><p className="font-bold text-slate-900">{agent.fullName}</p><p className="text-sm text-slate-500 break-words">{agent.phone} · WhatsApp: {agent.whatsAppNumber || agent.phone}</p><p className="text-xs text-slate-500">{[agent.vehicleType,agent.vehiclePlateNumber].filter(Boolean).join(' · ') || 'Vehicle not specified'}</p><span className={`inline-flex mt-2 text-xs font-bold rounded-full px-2 py-1 ${agent.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{agent.status}</span></div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void runAction(() => marketplaceApi.logistics.updateAgent(agent.id, agent.status === 'active' ? 'inactive' : 'active'), `${agent.fullName} status updated.`)} className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50">{agent.status === 'active' ? 'Deactivate' : 'Activate'}</button><button type="button" disabled={saving} onClick={() => { if (window.confirm(`Remove ${agent.fullName} from your delivery agents?`)) void runAction(() => marketplaceApi.logistics.removeAgent(agent.id), 'Delivery agent removed.'); }} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 disabled:opacity-50">Remove</button></div></div>)}
+            {agents.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No delivery agents added yet.</div> : agents.map(agent => <div key={agent.id} className="bg-white rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-3">{agent.profileImage ? <img src={agent.profileImage} alt={agent.fullName} className="w-12 h-12 rounded-full object-cover border" /> : <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><Users size={20}/></div>}<div><p className="font-bold text-slate-900">{agent.fullName}</p><p className="text-sm text-slate-500 break-words">{agent.phone} · WhatsApp: {agent.whatsAppNumber || agent.phone}</p><p className="text-xs text-slate-500">{[agent.vehicleType,agent.vehiclePlateNumber].filter(Boolean).join(' · ') || 'Vehicle not specified'}</p><span className={`inline-flex mt-2 text-xs font-bold rounded-full px-2 py-1 ${agent.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{agent.status}</span></div></div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void runAction(() => marketplaceApi.logistics.updateAgent(agent.id, agent.status === 'active' ? 'inactive' : 'active'), `${agent.fullName} status updated.`)} className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50">{agent.status === 'active' ? 'Deactivate' : 'Activate'}</button><button type="button" disabled={saving} onClick={() => { if (window.confirm(`Remove ${agent.fullName} from your delivery agents?`)) void runAction(() => marketplaceApi.logistics.removeAgent(agent.id), 'Delivery agent removed.'); }} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 disabled:opacity-50">Remove</button></div></div>)}
           </section>}
 
           {tab === 'shipments' && <section className="space-y-3"><h2 className="font-black text-xl">Tracking & Shipments</h2>{shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <ShipmentManagementCard key={shipment.id} shipment={shipment} agents={agents} saving={saving} onAssign={agentId => void runAction(() => marketplaceApi.logistics.assignAgent(shipment.id, agentId || null), 'Delivery agent assignment saved.')} onUpdateStatus={status => void changeShipmentStatus(shipment, status)} />)}</section>}
