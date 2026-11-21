@@ -55,6 +55,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [city, setCity] = useState(currentUser?.city || 'Kano City');
   const [area, setArea] = useState(currentUser?.area || 'Kano Municipal');
   const [completeAddress, setCompleteAddress] = useState(currentUser?.address || '');
+  const [shippingQuote, setShippingQuote] = useState<{ companyId: string; companyName: string; deliveryFee: number; freeDelivery: boolean; state: string; city: string; subtotal: number } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // Payment method (Section 7: Only OPay Bank Transfer & Cash on Delivery)
   const [paymentMethod, setPaymentMethod] = useState<'opay' | 'cod'>('opay');
@@ -81,6 +84,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [currentUser]);
 
+  const quoteSubtotal = checkoutItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  useEffect(() => {
+    if (!isOpen || checkoutItems.length === 0 || !state.trim() || !city.trim()) {
+      setShippingQuote(null);
+      setQuoteError(null);
+      setQuoteLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setShippingQuote(null);
+    setQuoteError(null);
+    setQuoteLoading(true);
+    marketplaceApi.shipping.quote(state.trim(), city.trim(), quoteSubtotal)
+      .then(quote => { if (!cancelled) setShippingQuote(quote); })
+      .catch(error => { if (!cancelled) setQuoteError(error instanceof Error ? error.message : 'Delivery is not available for this location.'); })
+      .finally(() => { if (!cancelled) setQuoteLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, state, city, quoteSubtotal, checkoutItems.length]);
+
   if (!isOpen) return null;
 
   // 3. AUTOMATIC PRICE CALCULATION
@@ -96,8 +118,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   );
 
   const totalDiscount = Math.max(0, totalOriginal - subtotal);
-  const freeDeliveryThreshold = 25000;
-  const shippingCharge = subtotal >= freeDeliveryThreshold ? 0 : checkoutItems.length > 0 ? 1500 : 0;
+  const shippingCharge = shippingQuote ? shippingQuote.deliveryFee : 0;
   const grandTotal = subtotal + shippingCharge;
 
   // Quantity updates in checkout
@@ -142,6 +163,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
     if (checkoutItems.length === 0) {
       setErrorMessage('Your checkout basket is empty. Please add items to checkout.');
+      return;
+    }
+    if (quoteLoading || !shippingQuote || shippingQuote.state.trim().toLowerCase() !== state.trim().toLowerCase() || shippingQuote.city.trim().toLowerCase() !== city.trim().toLowerCase() || Number(shippingQuote.subtotal) !== Number(subtotal)) {
+      setErrorMessage(quoteError || 'Please wait for the delivery fee to be confirmed for your address before placing the order.');
       return;
     }
     if (checkoutItems.some((item) => !item.product.id || item.product.id.startsWith('sample-') || item.product.id.startsWith('prod-'))) {
@@ -552,11 +577,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               )}
 
               <div className="flex justify-between text-slate-600">
-                <span>Shipping Charge (Kano Delivery):</span>
-                <span className={`font-bold tabular-nums ${shippingCharge === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                  {shippingCharge === 0 ? 'FREE' : formatPrice(shippingCharge)}
+                <span>Shipping Charge ({shippingQuote?.companyName || 'Delivery'}):</span>
+                <span className={`font-bold tabular-nums ${shippingCharge === 0 && shippingQuote ? 'text-emerald-600' : 'text-slate-900'}`}>
+                  {quoteLoading ? 'Calculating…' : shippingQuote ? (shippingCharge === 0 ? 'FREE' : formatPrice(shippingCharge)) : 'Unavailable'}
                 </span>
               </div>
+              {quoteError && <p className="text-[11px] text-red-600">{quoteError}</p>}
+              {shippingQuote && <p className="text-[11px] text-slate-500">Delivery available to {shippingQuote.city}, {shippingQuote.state}.</p>}
 
               <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline">
                 <span className="font-black text-slate-900 uppercase">Total Amount Payable:</span>
@@ -569,7 +596,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* 6. CONFIRM ORDER BUTTON */}
             <button
               type="submit"
-              disabled={isSubmitting || checkoutItems.length === 0}
+              disabled={isSubmitting || checkoutItems.length === 0 || quoteLoading || !shippingQuote}
               className="w-full py-3.5 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
