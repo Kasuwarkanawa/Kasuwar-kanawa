@@ -580,6 +580,9 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1">
+        {/* Featured homepage banner advertisement */}
+        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner />}
+
         {/* Active Search Results View (if search active) */}
         {searchResults && (
           <section
