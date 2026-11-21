@@ -191,7 +191,7 @@ export const marketplaceApi = {
     company: () => request<LogisticsCompany>('/logistics/company'),
     orders: () => request<Order[]>('/logistics/orders'),
     agents: () => request<DeliveryAgent[]>('/logistics/agents'),
-    addAgent: (data: { fullName: string; phone: string; whatsAppNumber?: string; email?: string; vehicleType?: string; vehiclePlateNumber?: string }) =>
+    addAgent: (data: { fullName: string; phone: string; whatsAppNumber?: string; email?: string; vehicleType?: string; vehiclePlateNumber?: string; profileImage?: string }) =>
       request<DeliveryAgent>('/logistics/agents', { method: 'POST', body: JSON.stringify(data) }),
     updateAgent: (id: string, status: 'active' | 'inactive' | 'suspended') =>
       request<DeliveryAgent>(`/logistics/agents/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
