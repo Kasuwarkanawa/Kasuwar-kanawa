@@ -459,11 +459,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white border-b border-slate-200 px-5 flex overflow-x-auto gap-2">
+        <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'overview'
                 ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -476,7 +476,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('products')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'products'
                 ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -489,7 +489,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'orders'
                 ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -502,7 +502,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'history'
                 ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -515,7 +515,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('cod')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'cod' ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -526,7 +526,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('reports')}
-            className={`py-3 px-3.5 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'reports'
                 ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
