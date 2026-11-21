@@ -185,7 +185,6 @@ export const marketplaceApi = {
     sellerList: () => request<CODSettlement[]>('/seller/cod-settlements'),
     sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/cod-settlements/'+encodeURIComponent(id)+'/receipt'),
     acceptSellerPayment: (id:string) => request<CODSettlement>('/seller/cod-settlements/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
-    sellerBankAccount: () => request<{bankName:string;accountName:string;accountNumber:string}>('/seller/payout-account'),
     saveSellerBank: (data:{bankName:string;accountName:string;accountNumber:string}) => request<any>('/seller/payout-account',{method:'PATCH',body:JSON.stringify(data)}),
   },
   logistics: {
