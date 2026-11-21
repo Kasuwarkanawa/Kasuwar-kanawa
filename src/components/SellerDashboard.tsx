@@ -520,7 +520,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>COD Payouts</span>
+            <span>COD Payouts / Awaiting Payment</span>
           </button>
 
           <button
