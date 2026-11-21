@@ -19,7 +19,7 @@ export const CODSettlementPanel:React.FC<{role:Role}> = ({role}) => {
   if(role==='admin'){
    try{const r=await marketplaceApi.codSettlement.adminList();setRows(r);}
    catch(e){setError(e instanceof Error?e.message:'Could not load Admin COD records.');return;}
-   try{const a=await marketplaceApi.codSettlement.adminSettings();setAccount(a);}
+   try{const a=await marketplaceApi.codSettlement.adminSettings();setAccount({bankName:a.bankName??'',accountName:a.accountName??'',accountNumber:a.accountNumber??''});}
    catch(e){setAccount({bankName:'',accountName:'',accountNumber:''});setError(e instanceof Error?e.message:'Marketplace payout settings are not configured.');}
   }
   if(role==='seller'){try{setRows(await marketplaceApi.codSettlement.sellerList());}catch(e){setError(e instanceof Error?e.message:'Could not load seller COD payments.');}}
