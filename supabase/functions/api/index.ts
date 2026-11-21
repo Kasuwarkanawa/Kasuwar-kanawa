@@ -797,6 +797,25 @@ async function dispatch(req: Request, origin: string | null) {
   }
 
 
+  if (path === "/shipping/quote" && method === "GET") {
+    await requireRole(req,["BUYER"]);
+    const state=(url.searchParams.get("state") ?? "").trim();
+    const city=(url.searchParams.get("city") ?? "").trim();
+    const subtotal=Number(url.searchParams.get("subtotal"));
+    if(!state || !city || !Number.isFinite(subtotal) || subtotal < 0) fail("A valid state, city and subtotal are required.",400);
+    const {data,error}=await db.rpc("edge_resolve_delivery_quote",{p_state:state,p_city:city,p_subtotal:subtotal});
+    if(error)throw error;
+    const quote=Array.isArray(data)?data[0]:data;
+    if(!quote?.logistics_company_id) fail("Delivery is not available for the selected state and city. Please choose a supported delivery location.",404);
+    return reply({
+      companyId:quote.logistics_company_id,
+      companyName:quote.logistics_company_name,
+      deliveryFee:Number(quote.delivery_fee),
+      freeDelivery:subtotal>=25000,
+      state,city,subtotal
+    },200,origin);
+  }
+
   if(path==="/orders" && method==="POST") {
     const auth=await requireRole(req,["BUYER"]);
     const b=z.object({
