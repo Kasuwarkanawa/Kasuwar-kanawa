@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, TransferPayout } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, TransferPayout, LogisticsServiceArea, LogisticsPricing } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -194,6 +194,10 @@ export const marketplaceApi = {
     adminReceiptUrl: (id:string) => request<{url:string}>('/admin/transfer-payouts/'+encodeURIComponent(id)+'/receipt'),
     sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/transfer-payouts/'+encodeURIComponent(id)+'/receipt'),
     acceptSellerPayment: (id:string) => request<TransferPayout>('/seller/transfer-payouts/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
+  },
+  shipping: {
+    quote: (state: string, city: string, subtotal: number) =>
+      request<{ companyId: string; companyName: string; deliveryFee: number; freeDelivery: boolean; state: string; city: string; subtotal: number }>(`/shipping/quote?state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}&subtotal=${encodeURIComponent(String(subtotal))}`),
   },
   logistics: {
     company: () => request<LogisticsCompany>('/logistics/company'),
