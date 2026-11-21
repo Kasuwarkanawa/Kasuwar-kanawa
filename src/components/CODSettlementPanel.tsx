@@ -37,14 +37,14 @@ export const CODSettlementPanel:React.FC<{role:Role}> = ({role}) => {
    <h3 className="font-black">Marketplace COD remittance bank account</h3>
    <input className="w-full border rounded-lg p-3" placeholder="Bank name" value={account.bankName} onChange={e=>setAccount({...account,bankName:e.target.value})} required/>
    <input className="w-full border rounded-lg p-3" placeholder="Account name" value={account.accountName} onChange={e=>setAccount({...account,accountName:e.target.value})} required/>
-   <input className="w-full border rounded-lg p-3" placeholder="10-digit account number" inputMode="numeric" maxLength={10} value={account.accountNumber} onChange={e=>setAccount({...account,accountNumber:e.target.value})} required/>
+   <input className="w-full border rounded-lg p-3" placeholder="10-digit account number" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={account.accountNumber} onChange={e=>setAccount({...account,accountNumber:e.target.value.replace(/\D/g,'').slice(0,10)})} required/>
    <button disabled={busy} className="rounded-lg bg-slate-900 text-white px-4 py-3 font-bold">Save bank details</button>
   </form>}
   {role==='seller'&&<form className="bg-white border rounded-2xl p-4 space-y-3" onSubmit={e=>{e.preventDefault();void action(()=>marketplaceApi.codSettlement.saveSellerBank(bank),'Seller bank account saved.');}}>
    <h3 className="font-black">Your bank account for seller payouts</h3>
    <input className="w-full border rounded-lg p-3" placeholder="Bank name" value={bank.bankName} onChange={e=>setBank({...bank,bankName:e.target.value})} required/>
    <input className="w-full border rounded-lg p-3" placeholder="Account name" value={bank.accountName} onChange={e=>setBank({...bank,accountName:e.target.value})} required/>
-   <input className="w-full border rounded-lg p-3" placeholder="10-digit account number" inputMode="numeric" maxLength={10} value={bank.accountNumber} onChange={e=>setBank({...bank,accountNumber:e.target.value})} required/>
+   <input className="w-full border rounded-lg p-3" placeholder="10-digit account number" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={bank.accountNumber} onChange={e=>setBank({...bank,accountNumber:e.target.value.replace(/\D/g,'').slice(0,10)})} required/>
    <button disabled={busy} className="rounded-lg bg-slate-900 text-white px-4 py-3 font-bold">Save payout account</button>
   </form>}
   {rows.length===0&&<div className="bg-white border rounded-xl p-5 text-center text-slate-500">No COD settlement records yet.</div>}
