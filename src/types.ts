@@ -344,6 +344,16 @@ export interface Announcement {
 }
 
 
+export interface TransferPayout {
+  id:string; orderId:string; sellerId:string; grossOrderAmount:number; commissionRate:number;
+  commissionAmount:number; sellerPayoutAmount:number; sellerTransferReceiptPath?:string;
+  sellerTransferredAt?:string; sellerAcceptedAt?:string;
+  status:'awaiting_admin_payout'|'awaiting_seller_confirmation'|'completed'|'seller_receipt_rejected';
+  adminNotes?:string; createdAt:string; updatedAt:string;
+  order?:{id:string;orderNumber:string;subtotal:number;totalAmount:number;paymentMethod:'opay'|'cod';items:Array<{productSnapshot:any;quantity:number;unitPrice:number}>};
+  seller?:{id:string;fullName:string;businessName?:string;phone:string;payoutBankName?:string;payoutAccountName?:string;payoutAccountNumber?:string};
+}
+
 export interface CODSettlement {
   id: string; orderId: string; logisticsCompanyId: string; sellerId: string;
   grossCollectedAmount: number; commissionRate: number; commissionAmount: number; sellerPayoutAmount: number;
