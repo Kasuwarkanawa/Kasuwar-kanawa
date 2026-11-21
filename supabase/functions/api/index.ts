@@ -967,7 +967,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/logistics/agents" && method==="POST") {
     const {company}=await approvedLogisticsCompany(req);
-    const b=z.object({fullName:z.string().trim().min(2).max(120),phone:z.string().trim().min(7).max(24),whatsAppNumber:z.string().trim().min(7).max(24).optional(),email:z.string().trim().email().max(254).optional(),vehicleType:z.string().trim().max(80).optional(),vehiclePlateNumber:z.string().trim().max(40).optional()}).strict().parse(await bodyJson(req));
+    const b=z.object({fullName:z.string().trim().min(2).max(120),phone:z.string().trim().min(7).max(24),whatsAppNumber:z.string().trim().min(7).max(24).optional(),email:z.string().trim().email().max(254).optional(),vehicleType:z.string().trim().max(80).optional(),vehiclePlateNumber:z.string().trim().max(40).optional(),profileImage:z.string().url().max(1000).optional()}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("DeliveryAgent").insert({id:crypto.randomUUID(),logisticsCompanyId:company.id,...b,phone:b.phone.replace(/[\\s()-]/g,""),status:"active"}).select("*").single();
     if(error)throw error;return reply(data,201,origin);
   }
@@ -1144,7 +1144,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/admin/payout-settings" && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);
-    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\\d{10}$/)}).strict().parse(await bodyJson(req));
+    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\d{10}$/)}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("MarketplacePayoutSettings").upsert({id:"default",...b,updatedAt:new Date().toISOString()}).select("*").single();
     if(error)throw error;return reply(data,200,origin);
   }
@@ -1199,7 +1199,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/seller/payout-account" && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);
-    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\\d{10}$/)}).strict().parse(await bodyJson(req));
+    const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\d{10}$/)}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("User").update({payoutBankName:b.bankName,payoutAccountName:b.accountName,payoutAccountNumber:b.accountNumber,updatedAt:new Date().toISOString()}).eq("id",auth.user.id).select("payoutBankName,payoutAccountName,payoutAccountNumber").single();
     if(error)throw error;return reply(data,200,origin);
   }
