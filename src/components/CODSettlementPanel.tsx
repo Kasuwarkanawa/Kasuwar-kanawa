@@ -23,10 +23,11 @@ export const CODSettlementPanel:React.FC<{role:Role}> = ({role}) => {
    catch(e){setAccount({bankName:'',accountName:'',accountNumber:''});setError(e instanceof Error?e.message:'Marketplace payout settings are not configured.');}
   }
   if(role==='seller'){
-   try{setRows(await marketplaceApi.codSettlement.sellerList());}
-   catch(e){setError(e instanceof Error?e.message:'Could not load seller COD payments.');return;}
-   try{setBank(await marketplaceApi.codSettlement.sellerBankAccount());}
-   catch(e){setError(e instanceof Error?e.message:'Could not load seller payout bank details.');}
+   try{
+    const sellerRows=await marketplaceApi.codSettlement.sellerList();setRows(sellerRows);
+    const sellerAccount=sellerRows.find(row=>row.seller)?.seller;
+    if(sellerAccount)setBank({bankName:sellerAccount.payoutBankName??'',accountName:sellerAccount.payoutAccountName??'',accountNumber:sellerAccount.payoutAccountNumber??''});
+   }catch(e){setError(e instanceof Error?e.message:'Could not load seller COD payments.');return;}
   }
  };
  useEffect(()=>{void refresh();},[role]);
