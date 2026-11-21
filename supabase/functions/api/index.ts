@@ -170,6 +170,15 @@ async function withProductDetails(products: any[]) {
   ]);
   return products.map(p => serializeProduct(p, sellers?.find(s => s.id === p.sellerId), (reviews ?? []).filter(r => r.productId === p.id)));
 }
+async function ensureOpayTransferPayout(orderId:string) {
+  const {data:order,error:orderError}=await db.from("Order").select("id,sellerId,subtotal,paymentMethod,status,paymentConfirmation").eq("id",orderId).maybeSingle();
+  if(orderError)throw orderError;
+  if(!order || order.paymentMethod!=="opay" || order.status!=="delivered" || order.paymentConfirmation?.verifiedByAdmin!==true || !order.sellerId)return null;
+  const subtotal=Number(order.subtotal),commission=Number((subtotal*0.05).toFixed(2)),payout=Number((subtotal-commission).toFixed(2)),now=new Date().toISOString();
+  const {data,error}=await db.from("TransferPayout").upsert({id:crypto.randomUUID(),orderId:order.id,sellerId:order.sellerId,grossOrderAmount:subtotal,commissionRate:5,commissionAmount:commission,sellerPayoutAmount:payout,status:"awaiting_admin_payout",createdAt:now,updatedAt:now},{onConflict:"orderId",ignoreDuplicates:true}).select("*").maybeSingle();
+  if(error)throw error;return data;
+}
+
 async function dispatch(req: Request, origin: string | null) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/functions\/v1\/api/, "").replace(/^\/api/, "") || "/";
@@ -887,7 +896,7 @@ async function dispatch(req: Request, origin: string | null) {
   const logisticsMatch=path.match(/^\/orders\/admin\/([^/]+)\/logistics-update$/);
   if(logisticsMatch && method==="PATCH") {
     const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().min(2).max(1000)}).strict().parse(await bodyJson(req));
-    const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);return reply(serializeOrder(order),200,origin);
+    const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);if(b.status==="delivered")await ensureOpayTransferPayout(order.id);return reply(serializeOrder(order),200,origin);
   }
   const cancelMatch=path.match(/^\/orders\/([^/]+)\/cancel$/);
   if(cancelMatch && method==="POST") {
@@ -1067,7 +1076,7 @@ async function dispatch(req: Request, origin: string | null) {
           status:"awaiting_logistics_transfer",createdAt:now,updatedAt:now
         },{onConflict:"orderId",ignoreDuplicates:true});
         if(settlementError)throw settlementError;
-      }
+      } else if(orderForSettlement.paymentMethod==="opay") { await ensureOpayTransferPayout(orderForSettlement.id); }
     }
     return reply(updated,200,origin);
   }
@@ -1212,6 +1221,58 @@ async function dispatch(req: Request, origin: string | null) {
     const now=new Date().toISOString();
     const {data:updated,error:updateError}=await db.from("CODSettlement").update({status:"completed",sellerAcceptedAt:now,updatedAt:now}).eq("id",id).select("*").single();
     if(updateError)throw updateError;return reply(await settlementDetails(updated),200,origin);
+  }
+
+  const transferPayoutDetails=async(row:any)=>{
+    const [{data:order,error:orderError},{data:seller,error:sellerError}]=await Promise.all([
+      db.from("Order").select("id,orderNumber,subtotal,totalAmount,paymentMethod,items:OrderItem(productSnapshot,quantity,unitPrice)").eq("id",row.orderId).single(),
+      db.from("User").select("id,fullName,businessName,phone,payoutBankName,payoutAccountName,payoutAccountNumber").eq("id",row.sellerId).single()
+    ]);
+    if(orderError)throw orderError;if(sellerError)throw sellerError;return {...row,order,seller};
+  };
+  if(path==="/admin/transfer-payouts" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("TransferPayout").select("*").order("createdAt",{ascending:false}).limit(200);
+    if(error)throw error;return reply(await Promise.all((data??[]).map(transferPayoutDetails)),200,origin);
+  }
+  if(path==="/seller/transfer-payouts" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);const {data,error}=await db.from("TransferPayout").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(100);
+    if(error)throw error;return reply(await Promise.all((data??[]).map(transferPayoutDetails)),200,origin);
+  }
+  const adminTransferReceipt=path.match(/^\/admin\/transfer-payouts\/([^/]+)\/receipt$/);
+  if(adminTransferReceipt && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminTransferReceipt[1]);
+    const {data:row,error}=await db.from("TransferPayout").select("*").eq("id",id).maybeSingle();
+    if(error)throw error;if(!row)fail("Transfer payout not found.",404);
+    if(!["awaiting_admin_payout","seller_receipt_rejected"].includes(row.status))fail("This seller payout is not awaiting an Admin transfer receipt.",409);
+    const {bytes,contentType,ext}=await receiptContent(req),now=new Date().toISOString(),objectPath="transfer-payouts/"+id+"/seller/"+crypto.randomUUID().replaceAll("-","")+"."+ext;
+    const {error:uploadError}=await db.storage.from("payment-receipts").upload(objectPath,bytes,{contentType,upsert:false});if(uploadError)throw uploadError;
+    const {data:updated,error:updateError}=await db.from("TransferPayout").update({sellerTransferReceiptPath:objectPath,status:"awaiting_seller_confirmation",sellerTransferredAt:now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
+    if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}return reply(await transferPayoutDetails(updated),200,origin);
+  }
+  const adminTransferReceiptView=path.match(/^\/admin\/transfer-payouts\/([^/]+)\/receipt$/);
+  if(adminTransferReceiptView && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminTransferReceiptView[1]);
+    const {data:row,error}=await db.from("TransferPayout").select("sellerTransferReceiptPath").eq("id",id).maybeSingle();
+    if(error)throw error;if(!row?.sellerTransferReceiptPath)fail("Seller transfer receipt not found.",404);
+    const {data,error:signedError}=await db.storage.from("payment-receipts").createSignedUrl(row.sellerTransferReceiptPath,300);
+    if(signedError||!data?.signedUrl)throw signedError??new Error("Could not create receipt link.");return reply({url:data.signedUrl,expiresIn:300},200,origin);
+  }
+  const sellerTransferReceiptView=path.match(/^\/seller\/transfer-payouts\/([^/]+)\/receipt$/);
+  if(sellerTransferReceiptView && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);const id=decodeURIComponent(sellerTransferReceiptView[1]);
+    const {data:row,error}=await db.from("TransferPayout").select("sellerTransferReceiptPath").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!row?.sellerTransferReceiptPath)fail("Seller transfer receipt not found.",404);
+    const {data,error:signedError}=await db.storage.from("payment-receipts").createSignedUrl(row.sellerTransferReceiptPath,300);
+    if(signedError||!data?.signedUrl)throw signedError??new Error("Could not create receipt link.");return reply({url:data.signedUrl,expiresIn:300},200,origin);
+  }
+  const sellerTransferAccept=path.match(/^\/seller\/transfer-payouts\/([^/]+)\/accept$/);
+  if(sellerTransferAccept && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);const id=decodeURIComponent(sellerTransferAccept[1]);
+    const {data:row,error}=await db.from("TransferPayout").select("*").eq("id",id).eq("sellerId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!row)fail("Transfer payout not found.",404);
+    if(row.status!=="awaiting_seller_confirmation")fail("There is no Bank Transfer payout awaiting your confirmation.",409);
+    const now=new Date().toISOString(),{data:updated,error:updateError}=await db.from("TransferPayout").update({status:"completed",sellerAcceptedAt:now,updatedAt:now}).eq("id",id).select("*").single();
+    if(updateError)throw updateError;return reply(await transferPayoutDetails(updated),200,origin);
   }
 
   // Order read endpoints. Sensitive fields are filtered per role.
