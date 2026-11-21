@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { CODSettlementPanel } from './CODSettlementPanel';
 import { ProfileImageUploader } from './ProfileImageUploader';
-import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order } from '../types';
+import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, LogisticsServiceArea, LogisticsPricing } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -20,7 +20,9 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [shipments, setShipments] = useState<LogisticsShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'cod'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'areas' | 'cod'>('overview');
+  const [serviceAreasJson, setServiceAreasJson] = useState('[]');
+  const [pricingJson, setPricingJson] = useState('[]');
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [agentPhone, setAgentPhone] = useState('');
@@ -40,7 +42,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
         marketplaceApi.logistics.company(), marketplaceApi.logistics.agents(),
         marketplaceApi.logistics.orders(), marketplaceApi.logistics.shipments(),
       ]);
-      setCompany(companyData); setAgents(agentData); setOrders(orderData); setShipments(shipmentData);
+      setCompany(companyData); setServiceAreasJson(JSON.stringify(companyData.serviceAreas || [], null, 2)); setPricingJson(JSON.stringify(companyData.pricing || [], null, 2)); setAgents(agentData); setOrders(orderData); setShipments(shipmentData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load logistics data from the secure server.');
     } finally { setLoading(false); }
@@ -131,7 +133,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}<button onClick={() => setNotice('')} className="float-right font-bold">×</button></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex gap-2"><AlertCircle size={18} className="shrink-0"/><span>{error}</span><button onClick={() => setError('')} className="ml-auto font-bold">×</button></div>}
           <nav className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {(['overview', 'orders', 'agents', 'shipments', 'cod'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : item === 'cod' ? 'COD Remittance' : 'Overview'}</button>)}
+            {(['overview', 'orders', 'agents', 'shipments', 'areas', 'cod'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : item === 'areas' ? 'Service Areas & Fees' : item === 'cod' ? 'COD Remittance' : 'Overview'}</button>)}
           </nav>
 
           {tab === 'overview' && <>
@@ -157,6 +159,23 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           </section>}
 
           {tab === 'shipments' && <section className="space-y-3"><h2 className="font-black text-xl">Tracking & Shipments</h2>{shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <ShipmentManagementCard key={shipment.id} shipment={shipment} agents={agents} saving={saving} onAssign={agentId => void runAction(() => marketplaceApi.logistics.assignAgent(shipment.id, agentId || null), 'Delivery agent assignment saved.')} onUpdateStatus={status => void changeShipmentStatus(shipment, status)} />)}</section>}
+          {tab === 'areas' && <section className="space-y-4">
+            <div><h2 className="font-black text-xl">Service Areas & Delivery Pricing</h2><p className="text-sm text-slate-600 mt-1">Set the states and cities your company serves, then define the delivery fee for each city. Fees are in Nigerian Naira (₦).</p></div>
+            <form className="space-y-4" onSubmit={async event => {
+              event.preventDefault();
+              try {
+                const serviceAreas = JSON.parse(serviceAreasJson) as LogisticsServiceArea[];
+                const pricing = JSON.parse(pricingJson) as LogisticsPricing[];
+                if (!Array.isArray(serviceAreas) || !Array.isArray(pricing)) throw new Error('Both fields must contain JSON arrays.');
+                await runAction(() => marketplaceApi.logistics.updateCompany({ serviceAreas, pricing }), 'Service areas and delivery fees saved successfully.');
+              } catch (err) { setError(err instanceof Error ? err.message : 'Invalid service area or pricing data.'); }
+            }}>
+              <div className="bg-white border rounded-2xl p-4 space-y-2"><label className="block font-bold text-slate-800">Service areas (JSON)</label><p className="text-xs text-slate-500">Example: [{"state":"Kano","cities":["Kano Municipal","Nassarawa"],"areas":["Yakasai","Sabon Gari"]}]</p><textarea value={serviceAreasJson} onChange={e => setServiceAreasJson(e.target.value)} rows={8} spellCheck={false} className="w-full border rounded-xl p-3 font-mono text-xs" placeholder='[{"state":"Kano","cities":["Kano Municipal"],"areas":["Yakasai"]}]' /></div>
+              <div className="bg-white border rounded-2xl p-4 space-y-2"><label className="block font-bold text-slate-800">Delivery pricing (JSON)</label><p className="text-xs text-slate-500">Add one fee per state and city. Example: [{"state":"Kano","city":"Kano Municipal","fee":1500,"currency":"NGN"}]</p><textarea value={pricingJson} onChange={e => setPricingJson(e.target.value)} rows={8} spellCheck={false} className="w-full border rounded-xl p-3 font-mono text-xs" placeholder='[{"state":"Kano","city":"Kano Municipal","fee":1500,"currency":"NGN"}]' /></div>
+              <button type="submit" disabled={saving} className="w-full rounded-xl bg-pink-600 text-white p-3 font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save Service Areas & Delivery Fees'}</button>
+            </form>
+            <p className="text-xs text-slate-500">Only your authenticated logistics company can edit these settings. Do not add a delivery fee until your company has confirmed the amount.</p>
+          </section>}
           {tab === 'cod' && <CODSettlementPanel role="logistics" />}
         </main>
       </div>
