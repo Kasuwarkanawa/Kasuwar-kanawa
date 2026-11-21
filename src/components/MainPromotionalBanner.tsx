@@ -32,15 +32,13 @@ export const MainPromotionalBanner: React.FC = () => {
       <a
         href="#all-products-section"
         aria-label="Shop products on Kasuwar Kanawa"
-        className="group block overflow-hidden rounded-2xl border border-pink-100 bg-pink-50 shadow-lg transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-400"
+        className="group block w-full rounded-2xl border border-pink-100 bg-pink-50 shadow-lg transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-400"
       >
         {imageSrc ? (
           <img
             src={imageSrc}
             alt="Kasuwar Kanawa promotion: Redmi Note 12 — powerful, stylish and affordable"
-            className="block h-auto w-full object-cover transition-transform duration-300 group-hover:scale-[1.01]"
-            width="520"
-            height="218"
+            className="block h-auto max-h-none w-full object-contain"
             fetchPriority="high"
           />
         ) : (
