@@ -894,6 +894,50 @@ async function dispatch(req: Request, origin: string | null) {
     if(b.decision==="reject"&&!b.adminNotes)fail("A rejection reason is required.",400);
     const order=await runOrderAction(decodeURIComponent(codApprovalMatch[1]),auth,"cod_approval",b);return reply(serializeOrder(order),200,origin);
   }
+  if(path==="/seller/fulfillments" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);
+    const {data,error}=await db.from("SellerFulfillment").select("*,order:Order!SellerFulfillment_orderId_fkey(id,orderNumber,status,createdAt)").eq("sellerId",auth.user.id).order("updatedAt",{ascending:false}).limit(100);
+    if(error)throw error;
+    return reply(data??[],200,origin);
+  }
+  if(path==="/seller/fulfillment-centres" && method==="GET") {
+    await requireRole(req,["SELLER"]);
+    const {data,error}=await db.from("LogisticsPickupCentre").select("id,logisticsCompanyId,centreName,centreType,address,state,city,area,openingHours,company:LogisticsCompany!LogisticsPickupCentre_logisticsCompanyId_fkey(companyName)").eq("isActive",true).in("centreType",["dropoff","both"]).order("state").limit(300);
+    if(error)throw error;
+    return reply(data??[],200,origin);
+  }
+  const sellerFulfillmentMatch=path.match(/^\/seller\/orders\/([^/]+)\/fulfillment$/);
+  if(sellerFulfillmentMatch && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);
+    const b=z.object({
+      packageWeightKg:z.number().positive().max(1000),
+      lengthCm:z.number().positive().max(1000).nullable().optional(),
+      widthCm:z.number().positive().max(1000).nullable().optional(),
+      heightCm:z.number().positive().max(1000).nullable().optional(),
+      parcelCount:z.number().int().min(1).max(100),
+      fulfillmentMethod:z.enum(["logistics_pickup","centre_dropoff","seller_delivery"]),
+      pickupCentreId:z.string().min(1).optional(),
+      sellerNotes:z.string().trim().max(1000).optional()
+    }).strict().parse(await bodyJson(req));
+    const orderId=decodeURIComponent(sellerFulfillmentMatch[1]);
+    const {data:order,error:orderError}=await db.from("Order").select("id,sellerId,status,paymentMethod,paymentConfirmation").eq("id",orderId).eq("sellerId",auth.user.id).maybeSingle();
+    if(orderError)throw orderError;
+    if(!order)fail("Order not found.",404);
+    if(order.status!=="processing")fail("Accept the order and complete payment checks before saving package details.",409);
+    const payment=order.paymentConfirmation??{};
+    if((order.paymentMethod==="cod" && payment.adminApproved!==true) || (order.paymentMethod==="opay" && payment.verifiedByAdmin!==true)) fail("Admin payment approval is required before fulfillment.",403);
+    if(b.fulfillmentMethod==="centre_dropoff") {
+      if(!b.pickupCentreId)fail("Select an active drop-off centre.",400);
+      const {data:centre,error}=await db.from("LogisticsPickupCentre").select("id,logisticsCompanyId,LogisticsCompany!inner(approvalStatus)").eq("id",b.pickupCentreId).eq("isActive",true).in("centreType",["dropoff","both"]).eq("LogisticsCompany.approvalStatus","approved").maybeSingle();
+      if(error)throw error;
+      if(!centre)fail("Selected drop-off centre is unavailable.",404);
+    } else if(b.pickupCentreId) fail("A drop-off centre can only be selected for centre drop-off.",400);
+    const now=new Date().toISOString();
+    const payload={id:crypto.randomUUID(),orderId,sellerId:auth.user.id,packageWeightKg:b.packageWeightKg,lengthCm:b.lengthCm??null,widthCm:b.widthCm??null,heightCm:b.heightCm??null,parcelCount:b.parcelCount,fulfillmentMethod:b.fulfillmentMethod,pickupCentreId:b.pickupCentreId??null,sellerNotes:b.sellerNotes??"",status:b.fulfillmentMethod==="seller_delivery"?"seller_delivery":"prepared",updatedAt:now};
+    const {data,error}=await db.from("SellerFulfillment").upsert(payload,{onConflict:"orderId"}).select("*").single();
+    if(error)throw error;
+    return reply(data,201,origin);
+  }
   const sellerStatusMatch=path.match(/^\/orders\/([^/]+)\/status$/);
   if(sellerStatusMatch && method==="PATCH") {
     const auth=await requireRole(req,["SELLER"]);const b=z.object({status:z.enum(["processing","rejected"]),reason:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
