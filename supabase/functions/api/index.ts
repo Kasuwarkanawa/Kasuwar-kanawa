@@ -1015,6 +1015,52 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;
     return reply(data,200,origin);
   }
+  if(path==="/logistics/centres" && method==="GET") {
+    const {company}=await approvedLogisticsCompany(req);
+    const {data,error}=await db.from("LogisticsPickupCentre").select("*").eq("logisticsCompanyId",company.id).order("createdAt",{ascending:false}).limit(200);
+    if(error)throw error;
+    return reply(data??[],200,origin);
+  }
+  if(path==="/logistics/centres" && method==="POST") {
+    const {company}=await approvedLogisticsCompany(req);
+    const b=z.object({
+      centreName:z.string().trim().min(2).max(160),
+      centreType:z.enum(["pickup","dropoff","both"]),
+      contactName:z.string().trim().min(2).max(120),
+      phone:z.string().trim().min(7).max(24),
+      address:z.string().trim().min(5).max(500),
+      state:z.string().trim().min(2).max(100),
+      city:z.string().trim().min(2).max(100),
+      area:z.string().trim().max(120).optional(),
+      openingHours:z.string().trim().min(3).max(160).optional()
+    }).strict().parse(await bodyJson(req));
+    const now=new Date().toISOString();
+    const {data,error}=await db.from("LogisticsPickupCentre").insert({
+      id:crypto.randomUUID(),logisticsCompanyId:company.id,...b,
+      phone:b.phone.replace(/[\\s()-]/g,""),area:b.area??"",
+      openingHours:b.openingHours??"Monday-Saturday, 8:00 AM-6:00 PM",
+      isActive:true,createdAt:now,updatedAt:now
+    }).select("*").single();
+    if(error)throw error;
+    return reply(data,201,origin);
+  }
+  const logisticsCentreMatch=path.match(/^\\/logistics\\/centres\\/([^/]+)$/);
+  if(logisticsCentreMatch && (method==="PATCH" || method==="DELETE")) {
+    const {company}=await approvedLogisticsCompany(req);
+    const id=decodeURIComponent(logisticsCentreMatch[1]);
+    const {data:centre,error:centreError}=await db.from("LogisticsPickupCentre").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
+    if(centreError)throw centreError;
+    if(!centre)fail("Pickup centre not found.",404);
+    if(method==="DELETE") {
+      const {error}=await db.from("LogisticsPickupCentre").delete().eq("id",id).eq("logisticsCompanyId",company.id);
+      if(error)throw error;
+      return reply({success:true},200,origin);
+    }
+    const b=z.object({isActive:z.boolean()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("LogisticsPickupCentre").update({isActive:b.isActive,updatedAt:new Date().toISOString()}).eq("id",id).eq("logisticsCompanyId",company.id).select("*").single();
+    if(error)throw error;
+    return reply(data,200,origin);
+  }
   if(path==="/logistics/orders" && method==="GET") {
     const {company}=await approvedLogisticsCompany(req);
     const {data,error}=await db.from("Order").select("*,items:OrderItem(*),trackingTimeline:OrderTrackingStep(*)")
