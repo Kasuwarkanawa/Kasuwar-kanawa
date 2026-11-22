@@ -74,6 +74,8 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [failureActionBusy, setFailureActionBusy] = useState<string | null>(null);
+  const [failureActionError, setFailureActionError] = useState<string | null>(null);
 
   const refreshOrders = async () => {
     setOrdersLoading(true);
@@ -158,6 +160,26 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     } finally {
       setPaymentSubmitting(false);
       window.setTimeout(() => setConfirmSuccess(false), 3000);
+    }
+  };
+
+  const handleDeliveryFailureRequest = async (order: Order, action: 'retry' | 'refund' | 'cancel') => {
+    setFailureActionError(null);
+    const promptText = action === 'retry'
+      ? 'Optional note for the delivery team:'
+      : action === 'refund'
+        ? 'Reason for requesting a refund:'
+        : 'Reason for requesting order cancellation:';
+    const notes = window.prompt(promptText, action === 'retry' ? 'Please arrange another delivery attempt.' : '');
+    if (notes === null) return;
+    setFailureActionBusy(order.id);
+    try {
+      await marketplaceApi.orders.requestDeliveryFailureAction(order.id, action, notes.trim());
+      await refreshOrders();
+    } catch (error) {
+      setFailureActionError(error instanceof Error ? error.message : 'Your request could not be submitted.');
+    } finally {
+      setFailureActionBusy(null);
     }
   };
 
@@ -533,6 +555,21 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                   <span>Order Cancelled / Rejected by Seller</span>
                                 </div>
                                 <p className="text-[11px] text-red-700">{order.sellerRejectionReason}</p>
+                              </div>
+                            )}
+
+                            {order.logisticsStatus === 'failed' && (
+                              <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
+                                <div className="font-black text-sm text-red-800 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Delivery Failed - Action Required</div>
+                                <p className="text-xs text-red-800">{order.deliveryFailureReason || 'The delivery attempt was unsuccessful.'}</p>
+                                <p className="text-[11px] text-red-700">Attempts: {order.deliveryAttemptCount || 1} · Case: {(order.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</p>
+                                {failureActionError && <p className="text-xs text-red-700">{failureActionError}</p>}
+                                {['action_required','refund_rejected'].includes(order.deliveryFailureStatus || 'action_required') ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'retry')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">{failureActionBusy===order.id?'Submitting…':'Request Another Delivery'}</button>
+                                    {order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin === true && <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Request Refund</button>}
+                                  </div>
+                                ) : <p className="text-xs font-bold text-red-800">Your request: {(order.deliveryFailureRequestedAction || order.deliveryFailureStatus).replaceAll('_',' ')} · Waiting for Admin action.</p>}
                               </div>
                             )}
 
