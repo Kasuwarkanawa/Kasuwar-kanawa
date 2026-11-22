@@ -2353,6 +2353,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <option value="rejected">Rejected</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
+                    <button type="button" onClick={() => setRefreshKey((value) => value + 1)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100">
+                      Refresh Orders
+                    </button>
                   </div>
 
                   <div className="space-y-3">
@@ -2412,9 +2415,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </div>
                               {ord.trackingNumber ? (
                                 <>
-                                  {ord.logisticsStatus === 'failed' && (
+                                  {ord.deliveryFailureStatus && ord.deliveryFailureStatus !== 'none' && (
                                     <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
-                                      <div className="font-black text-sm text-red-800">Delivery Failed - Admin Resolution Required</div>
+                                      <div className="font-black text-sm text-red-800">Delivery Failure Case · {(ord.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</div>
                                       <p className="text-xs text-red-800">{ord.deliveryFailureReason || 'The delivery attempt failed.'}</p>
                                       <p className="text-[11px] text-red-700">Buyer request: {(ord.deliveryFailureRequestedAction || 'none').replaceAll('_',' ')} · Case: {(ord.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</p>
                                       {ord.deliveryFailureRequestNotes && <p className="text-xs text-red-700">Notes: {ord.deliveryFailureRequestNotes}</p>}
