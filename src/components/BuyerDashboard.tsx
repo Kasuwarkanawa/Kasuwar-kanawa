@@ -442,7 +442,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                               )}
                             </>
                           )}
-                          {failureActionError && failureActionBusy===order.id && <span role="alert" className="text-xs text-red-700">{failureActionError}</span>}
+                          {failureActionError && <span role="alert" className="w-full text-xs text-red-700">{failureActionError}</span>}
                         </div>
 
                         {/* Expanded Details & Tracking Timeline */}
