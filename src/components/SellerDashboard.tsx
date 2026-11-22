@@ -1268,9 +1268,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               </div>
                             </div>
 
-                            {ord.logisticsStatus === 'failed' && (
+                            {ord.deliveryFailureStatus && ord.deliveryFailureStatus !== 'none' && (
                               <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-1">
-                                <div className="flex items-center gap-2 text-sm font-black text-red-800"><AlertTriangle className="h-4 w-4" /> Delivery Failed - Seller Attention Required</div>
+                                <div className="flex items-center gap-2 text-sm font-black text-red-800"><AlertTriangle className="h-4 w-4" /> Delivery Case Update - Seller Attention Required</div>
                                 <p className="text-xs text-red-800">{ord.deliveryFailureReason || 'The logistics provider could not complete delivery.'}</p>
                                 <p className="text-[11px] text-red-700">Buyer request: {(ord.deliveryFailureRequestedAction || 'awaiting buyer decision').replaceAll('_',' ')} · Case: {(ord.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</p>
                                 {ord.deliveryFailureRequestNotes && <p className="text-xs text-red-700">Buyer/Admin note: {ord.deliveryFailureRequestNotes}</p>}
