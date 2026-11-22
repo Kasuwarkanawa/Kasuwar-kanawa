@@ -959,7 +959,70 @@ async function dispatch(req: Request, origin: string | null) {
   const logisticsMatch=path.match(/^\/orders\/admin\/([^/]+)\/logistics-update$/);
   if(logisticsMatch && method==="PATCH") {
     const auth=await requireRole(req,["SUPER_ADMIN"]);const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().min(2).max(1000)}).strict().parse(await bodyJson(req));
-    const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);if(b.status==="delivered")await ensureOpayTransferPayout(order.id);return reply(serializeOrder(order),200,origin);
+    const order=await runOrderAction(decodeURIComponent(logisticsMatch[1]),auth,"logistics_update",b);
+    if(b.status==="failed") {
+      const now=new Date().toISOString();
+      const {error}=await db.from("Order").update({deliveryFailureStatus:"action_required",deliveryFailureReason:b.notes,deliveryFailureRequestedAction:null,deliveryFailureRequestNotes:null,deliveryFailureRequestedAt:null,deliveryFailureResolvedAt:null,deliveryAttemptCount: (Number(order.deliveryAttemptCount)||0)+1,updatedAt:now}).eq("id",order.id);
+      if(error)throw error;
+      if(order.shipmentId){const {error:shipmentError}=await db.from("LogisticsShipment").update({status:"failed",deliveryNotes:b.notes,updatedAt:now}).eq("id",order.shipmentId);if(shipmentError)throw shipmentError;}
+    }
+    if(b.status==="delivered") {
+      if(order.shipmentId){const {error:shipmentError}=await db.from("LogisticsShipment").update({status:"delivered",deliveredAt:new Date().toISOString(),deliveryNotes:b.notes,updatedAt:new Date().toISOString()}).eq("id",order.shipmentId);if(shipmentError)throw shipmentError;}
+      await ensureOpayTransferPayout(order.id);
+    }
+    const {data:latest,error:latestError}=await db.from("Order").select("*,items:OrderItem(*,product:Product(*))").eq("id",order.id).single();
+    if(latestError)throw latestError;
+    return reply(serializeOrder(await getOrder(order.id)??latest),200,origin);
+  }
+  const deliveryFailureRequestMatch=path.match(/^\/orders\/([^/]+)\/delivery-failure-request$/);
+  if(deliveryFailureRequestMatch && method==="POST") {
+    const auth=await requireRole(req,["BUYER"]);
+    const b=z.object({action:z.enum(["retry","refund","cancel"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    const orderId=decodeURIComponent(deliveryFailureRequestMatch[1]);
+    const {data:order,error}=await db.from("Order").select("*").eq("id",orderId).eq("buyerId",auth.user.id).maybeSingle();
+    if(error)throw error;if(!order)fail("Order not found.",404);
+    if(order.logisticsStatus!=="failed" || !["action_required","refund_rejected"].includes(order.deliveryFailureStatus))fail("This delivery failure is not awaiting a new buyer request.",409);
+    if(b.action==="refund" && (order.paymentMethod!=="opay" || order.paymentConfirmation?.verifiedByAdmin!==true))fail("Refund requests are available only for OPay orders with payment verified by Admin. COD orders can request cancellation or another delivery.",409);
+    const status=b.action==="retry"?"retry_requested":b.action==="refund"?"refund_requested":"action_required";
+    const now=new Date().toISOString();
+    const {error:updateError}=await db.from("Order").update({deliveryFailureStatus:status,deliveryFailureRequestedAction:b.action,deliveryFailureRequestNotes:b.notes??null,deliveryFailureRequestedAt:now,updatedAt:now}).eq("id",orderId).eq("buyerId",auth.user.id);
+    if(updateError)throw updateError;
+    await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title:b.action==="retry"?"Another Delivery Requested":b.action==="refund"?"Refund Requested":"Cancellation Requested",dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:false,description:b.notes??"Buyer submitted a request after failed delivery.",sortOrder:Math.floor(Date.now()/1000),createdAt:now});
+    const latest=await getOrder(orderId);return reply(orderForBuyer(latest),200,origin);
+  }
+  const deliveryFailureAdminMatch=path.match(/^\/orders\/admin\/([^/]+)\/delivery-failure-resolution$/);
+  if(deliveryFailureAdminMatch && method==="PATCH") {
+    const auth=await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({decision:z.enum(["retry","refund","reject_refund","cancel"]),notes:z.string().trim().min(2).max(1000)}).strict().parse(await bodyJson(req));
+    const orderId=decodeURIComponent(deliveryFailureAdminMatch[1]);
+    const {data:order,error}=await db.from("Order").select("*").eq("id",orderId).maybeSingle();
+    if(error)throw error;if(!order)fail("Order not found.",404);
+    if(!["action_required","retry_requested","refund_requested","refund_rejected"].includes(order.deliveryFailureStatus))fail("This failed delivery case is not awaiting Admin action.",409);
+    if(b.decision==="refund" && (order.paymentMethod!=="opay" || order.paymentConfirmation?.verifiedByAdmin!==true))fail("Only verified OPay payments can be approved for refund. COD cannot be refunded because no buyer payment was collected.",409);
+    const now=new Date().toISOString();let patch:any={deliveryFailureResolvedAt:now,deliveryFailureRequestNotes:b.notes,updatedAt:now};
+    let title="",description=b.notes;
+    if(b.decision==="retry") {
+      patch={...patch,deliveryFailureStatus:"retry_in_progress",deliveryFailureRequestedAction:"retry",logisticsStatus:"in_transit"};
+      if(order.shipmentId){const {error:e}=await db.from("LogisticsShipment").update({status:"in_transit",deliveryNotes:b.notes,updatedAt:now}).eq("id",order.shipmentId);if(e)throw e;}
+      title="Repeat Delivery Approved";
+    } else if(b.decision==="refund") {
+      patch={...patch,deliveryFailureStatus:"refund_approved",deliveryFailureRequestedAction:"refund"};
+      title="Refund Approved - Manual Processing Required";
+      description="Admin approved the refund request. Finance/Admin must complete the actual payment reversal and upload/record proof. "+b.notes;
+    } else if(b.decision==="reject_refund") {
+      patch={...patch,deliveryFailureStatus:"refund_rejected",deliveryFailureRequestedAction:null};
+      title="Refund Request Declined";
+    } else {
+      patch={...patch,deliveryFailureStatus:"resolved",status:"cancelled",deliveryFailureRequestedAction:"cancel"};
+      title="Order Cancelled After Failed Delivery";
+      for(const item of (await db.from("OrderItem").select("productId,quantity").eq("orderId",orderId)).data??[]) {
+        const {data:product}=await db.from("Product").select("stockQuantity").eq("id",item.productId).maybeSingle();
+        if(product){const {error:e}=await db.from("Product").update({stockQuantity:Number(product.stockQuantity)+Number(item.quantity),updatedAt:now}).eq("id",item.productId);if(e)throw e;}
+      }
+    }
+    const {error:updateError}=await db.from("Order").update(patch).eq("id",orderId);if(updateError)throw updateError;
+    const {error:stepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title,dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:true,description,sortOrder:Math.floor(Date.now()/1000),createdAt:now});if(stepError)throw stepError;
+    return reply(serializeOrder(await getOrder(orderId)),200,origin);
   }
   const cancelMatch=path.match(/^\/orders\/([^/]+)\/cancel$/);
   if(cancelMatch && method==="POST") {
