@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Image as ImageIcon,
 } from 'lucide-react';
-import { User, Product, Order, OrderStatus, BuyerReport } from '../types';
+import { User, Product, Order, OrderStatus, BuyerReport, SellerFulfillment } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import { UserAvatar } from './UserAvatar';
@@ -135,6 +135,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
+  const [sellerFulfillments, setSellerFulfillments] = useState<SellerFulfillment[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
@@ -161,6 +162,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       .finally(() => { if (active) setOrdersLoading(false); });
     return () => { active = false; };
   }, [isOpen, seller.id, refreshKey]);
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    marketplaceApi.sellerFulfillment.list()
+      .then((items) => { if (active) setSellerFulfillments(items as SellerFulfillment[]); })
+      .catch(() => { if (active) setSellerFulfillments([]); });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
@@ -1154,6 +1164,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                                     {ord.status === 'processing' && (
                                       <div className="space-y-1.5">
+                                        {sellerFulfillments.find(item => item.orderId === ord.id) && (() => {
+                                          const saved = sellerFulfillments.find(item => item.orderId === ord.id)!;
+                                          return (
+                                            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-[11px]">
+                                              <strong>Package details saved</strong>
+                                              <div>Weight: {Number(saved.packageWeightKg).toLocaleString()} kg • Parcels: {saved.parcelCount}</div>
+                                              <div>Method: {saved.fulfillmentMethod.replace('_', ' ')}</div>
+                                              {saved.lengthCm && saved.widthCm && saved.heightCm && <div>Size: {saved.lengthCm} × {saved.widthCm} × {saved.heightCm} cm</div>}
+                                            </div>
+                                          );
+                                        })()}
                                         <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-purple-800 text-[11px]">
                                           <strong>Processing:</strong> Ka shirya kayan buyer. Bayan ka gama, danna maɓallin da ke ƙasa domin a miƙa order ɗin ga Super Admin don Logistics.
                                         </div>
