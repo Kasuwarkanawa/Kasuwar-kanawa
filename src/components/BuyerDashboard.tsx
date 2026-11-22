@@ -569,7 +569,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                     <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'retry')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">{failureActionBusy===order.id?'Submitting…':'Request Another Delivery'}</button>
                                     {order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin === true && <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Request Refund</button>}
                                   </div>
-                                ) : <p className="text-xs font-bold text-red-800">Your request: {(order.deliveryFailureRequestedAction || order.deliveryFailureStatus).replaceAll('_',' ')} · Waiting for Admin action.</p>}
+                                ) : <p className="text-xs font-bold text-red-800">{order.deliveryFailureStatus === 'refund_approved' ? 'Refund approved by Admin. The actual refund is still awaiting manual payment processing.' : order.deliveryFailureStatus === 'retry_in_progress' ? 'Another delivery attempt has been approved and is being arranged.' : order.deliveryFailureStatus === 'resolved' ? 'This failed-delivery case has been closed.' : `Your request: ${(order.deliveryFailureRequestedAction || order.deliveryFailureStatus).replaceAll('_',' ')} · Waiting for Admin action.`}</p>}
                               </div>
                             )}
 
