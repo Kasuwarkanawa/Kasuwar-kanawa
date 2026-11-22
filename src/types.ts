@@ -272,6 +272,13 @@ export interface Order {
   logisticsCompanyName?: string;
   trackingNumber?: string;
   logisticsStatus?: 'handed_to_logistics' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed';
+  deliveryFailureStatus?: 'none' | 'action_required' | 'retry_requested' | 'retry_approved' | 'refund_requested' | 'refund_approved' | 'refund_rejected' | 'retry_in_progress' | 'resolved';
+  deliveryFailureReason?: string | null;
+  deliveryFailureRequestedAction?: 'retry' | 'refund' | 'cancel' | null;
+  deliveryFailureRequestNotes?: string | null;
+  deliveryFailureRequestedAt?: string | null;
+  deliveryFailureResolvedAt?: string | null;
+  deliveryAttemptCount?: number;
   createdAt: string;
   updatedAt: string;
 }
