@@ -1426,7 +1426,9 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if(path==="/seller/cod-settlements" && method==="GET") {
     const auth=await requireRole(req,["SELLER"]);
-    const {data,error}=await db.from("CODSettlement").select("*").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(100);
+    // Seller sees only the payout stages that require or confirm seller action.
+    // Logistics-to-marketplace remittance is an internal Logistics/Admin workflow.
+    const {data,error}=await db.from("CODSettlement").select("*").eq("sellerId",auth.user.id).in("status",["awaiting_seller_payout","seller_receipt_rejected","awaiting_seller_confirmation","completed"]).order("createdAt",{ascending:false}).limit(100);
     if(error)throw error;return reply(await Promise.all((data??[]).map(settlementDetails)),200,origin);
   }
   if(path==="/seller/payout-account" && method==="PATCH") {
