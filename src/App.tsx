@@ -403,7 +403,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-[#E6007E] selection:text-white">
+    <div className="min-h-screen bg-transparent flex flex-col selection:bg-[#E6007E] selection:text-white">
       {/* System Phase 4 Portal Bar: Connect Buyer, Seller & Super Admin */}
       <div className="bg-[#081225] text-slate-300 py-1.5 px-3 sm:px-6 text-[11px] border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
