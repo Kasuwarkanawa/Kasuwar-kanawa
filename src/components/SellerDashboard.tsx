@@ -321,6 +321,81 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     }
   };
 
+  const handleSaveFulfillment = async (orderId: string) => {
+    const weight = window.prompt('Package weight in KG (e.g. 2.5):');
+    if (weight === null) return;
+    const packageWeightKg = Number(weight);
+    if (!Number.isFinite(packageWeightKg) || packageWeightKg <= 0) {
+      alert('Enter a valid package weight greater than zero.');
+      return;
+    }
+    const parcelInput = window.prompt('Number of parcels:', '1');
+    if (parcelInput === null) return;
+    const parcelCount = Number(parcelInput);
+    if (!Number.isInteger(parcelCount) || parcelCount < 1 || parcelCount > 100) {
+      alert('Enter a valid parcel count from 1 to 100.');
+      return;
+    }
+    const methodInput = window.prompt('Fulfillment method: type 1 for Logistics Pickup, 2 for Drop-off Centre, or 3 for Seller Delivery:', '1');
+    if (methodInput === null) return;
+    const methodMap: Record<string, 'logistics_pickup' | 'centre_dropoff' | 'seller_delivery'> = {
+      '1': 'logistics_pickup', '2': 'centre_dropoff', '3': 'seller_delivery'
+    };
+    const fulfillmentMethod = methodMap[methodInput.trim()];
+    if (!fulfillmentMethod) {
+      alert('Choose 1, 2 or 3 for the fulfillment method.');
+      return;
+    }
+    let pickupCentreId: string | undefined;
+    if (fulfillmentMethod === 'centre_dropoff') {
+      try {
+        const centres = await marketplaceApi.sellerFulfillment.centres();
+        if (!centres.length) {
+          alert('There are no approved active drop-off centres yet. Ask a logistics company to register one.');
+          return;
+        }
+        const choice = window.prompt(
+          'Enter the centre number to use:\n' + centres.map((centre, index) => `${index + 1}. ${centre.centreName} — ${centre.city}, ${centre.state} (${centre.company?.companyName || 'Logistics'})`).join('\n'),
+          '1'
+        );
+        if (choice === null) return;
+        const selected = centres[Number(choice) - 1];
+        if (!selected) {
+          alert('Invalid drop-off centre selection.');
+          return;
+        }
+        pickupCentreId = selected.id;
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Unable to load drop-off centres.');
+        return;
+      }
+    }
+    const length = window.prompt('Package length in cm (optional):');
+    if (length === null) return;
+    const width = window.prompt('Package width in cm (optional):');
+    if (width === null) return;
+    const height = window.prompt('Package height in cm (optional):');
+    if (height === null) return;
+    const dimension = (value: string) => value.trim() ? Number(value) : null;
+    const dimensions = [dimension(length), dimension(width), dimension(height)];
+    if (dimensions.some(value => value !== null && (!Number.isFinite(value) || value <= 0))) {
+      alert('Package dimensions must be positive numbers.');
+      return;
+    }
+    const sellerNotes = window.prompt('Seller notes (optional):', '') || '';
+    try {
+      await marketplaceApi.sellerFulfillment.save(orderId, {
+        packageWeightKg, parcelCount, fulfillmentMethod,
+        lengthCm: dimensions[0], widthCm: dimensions[1], heightCm: dimensions[2],
+        ...(pickupCentreId ? { pickupCentreId } : {}), sellerNotes
+      });
+      alert('Package details saved. The order is now recorded in Seller Fulfillment.');
+      triggerRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to save package details.');
+    }
+  };
+
   const handleDeliverOrder = (_orderId: string) => {
     alert('Delivery completion is confirmed by the Admin after the logistics provider reports delivery.');
   };
@@ -1082,6 +1157,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                         <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-purple-800 text-[11px]">
                                           <strong>Processing:</strong> Ka shirya kayan buyer. Bayan ka gama, danna maɓallin da ke ƙasa domin a miƙa order ɗin ga Super Admin don Logistics.
                                         </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSaveFulfillment(ord.id)}
+                                          className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                                        >
+                                          <Package className="w-4 h-4" />
+                                          <span>Save Package & Fulfillment Details</span>
+                                        </button>
                                         <button
                                           type="button"
                                           onClick={() => handleDispatchOrder(ord.id)}
