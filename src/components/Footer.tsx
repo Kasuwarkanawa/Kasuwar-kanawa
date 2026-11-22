@@ -14,9 +14,15 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory }) => {
           {/* Curved pink accent underlines */}
           <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
             <span className="text-yellow-400 text-lg sm:text-xl">★</span>
-            <h2 className="text-base sm:text-2xl font-black italic tracking-wide text-white drop-shadow-sm">
-              Kasuwar Kano – Arewa Sai Dan Arewa
-            </h2>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-center gap-2">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-amber-300 bg-emerald-700 text-amber-200 text-lg font-black shadow-lg">A</span>
+                <span className="text-2xl sm:text-4xl font-black tracking-[0.18em] text-amber-200 drop-shadow-lg">AREWA</span>
+              </div>
+              <h2 className="text-sm sm:text-xl font-black tracking-wide text-white drop-shadow-sm">
+                KASUWAR KANAWA — AREWA SAI DAN AREWA
+              </h2>
+            </div>
             <span className="text-yellow-400 text-lg sm:text-xl">★</span>
           </div>
           <div className="w-48 sm:w-80 h-1 bg-gradient-to-r from-transparent via-[#E6007E] to-transparent mx-auto mt-2 rounded-full" />
