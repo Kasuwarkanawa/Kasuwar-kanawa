@@ -72,6 +72,7 @@ export const marketplaceApi = {
   },
   orders: {
     mine: () => request<any[]>('/orders/mine?take=100'),
+    cancel: (id: string) => request<any>(`/orders/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
     adminAll: () => request<any[]>('/orders/admin/all?take=100'),
     sellerMine: () => request<any[]>('/orders/seller/mine?take=100'),
     sellerStatus: (id: string, status: 'processing' | 'rejected', reason?: string) =>
