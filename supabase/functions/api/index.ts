@@ -1268,7 +1268,18 @@ async function dispatch(req: Request, origin: string | null) {
     const {data:orderSteps,error:orderStepsError}=await db.from("OrderTrackingStep").select("sortOrder").eq("orderId",shipment.orderId).order("sortOrder",{ascending:false}).limit(1);
     if(orderStepsError)throw orderStepsError;
     const orderUpdate:any={logisticsStatus:orderStatusMap[b.status],updatedAt:now};
-    if(b.status==="delivered"){orderUpdate.status="delivered";orderUpdate.deliveredAt=now;}
+    if(b.status==="failed") {
+      const {data:currentOrder,error:currentOrderError}=await db.from("Order").select("deliveryAttemptCount").eq("id",shipment.orderId).single();
+      if(currentOrderError)throw currentOrderError;
+      orderUpdate.deliveryFailureStatus="action_required";
+      orderUpdate.deliveryFailureReason=description;
+      orderUpdate.deliveryFailureRequestedAction=null;
+      orderUpdate.deliveryFailureRequestNotes=null;
+      orderUpdate.deliveryFailureRequestedAt=null;
+      orderUpdate.deliveryFailureResolvedAt=null;
+      orderUpdate.deliveryAttemptCount=(Number(currentOrder.deliveryAttemptCount)||0)+1;
+    }
+    if(b.status==="delivered"){orderUpdate.status="delivered";orderUpdate.deliveredAt=now;if(orderUpdate.deliveryFailureStatus===undefined){orderUpdate.deliveryFailureStatus="resolved";orderUpdate.deliveryFailureResolvedAt=now;}}
     const {error:orderError}=await db.from("Order").update(orderUpdate).eq("id",shipment.orderId);if(orderError)throw orderError;
     const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:shipment.orderId,title:label,dateLabel:new Date(now).toLocaleString(),completed:true,description,sortOrder:(orderSteps?.[0]?.sortOrder??0)+1,createdAt:now});
     if(buyerStepError)throw buyerStepError;
