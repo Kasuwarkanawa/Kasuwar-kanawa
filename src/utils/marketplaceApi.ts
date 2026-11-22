@@ -89,6 +89,10 @@ export const marketplaceApi = {
         method: 'PATCH',
         body: JSON.stringify({ status, notes }),
       }),
+    requestDeliveryFailureAction: (id: string, action: 'retry' | 'refund' | 'cancel', notes?: string) =>
+      request<any>(`/orders/${encodeURIComponent(id)}/delivery-failure-request`, { method: 'POST', body: JSON.stringify({ action, notes }) }),
+    resolveDeliveryFailure: (id: string, decision: 'retry' | 'refund' | 'reject_refund' | 'cancel', notes: string) =>
+      request<any>(`/orders/admin/${encodeURIComponent(id)}/delivery-failure-resolution`, { method: 'PATCH', body: JSON.stringify({ decision, notes }) }),
     assignLogistics: (id: string, logisticsCompanyId: string | null) =>
       request<{ success: boolean; order: Order }>(`/admin/orders/${encodeURIComponent(id)}/logistics-assignment`, {
         method: 'PATCH',
