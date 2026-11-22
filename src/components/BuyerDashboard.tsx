@@ -50,7 +50,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   onClose,
   onContinueShopping,
 }) => {
-  const [activeTab, setActiveTab] = useState<'orders' | 'profile'>('orders');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'profile'>('overview');
   const [selectedStatusTab, setSelectedStatusTab] = useState<OrderStatus | 'all'>('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -234,11 +234,11 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
 
-      <div className="relative bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 my-4 max-h-[94vh] flex flex-col">
+      <div className="relative bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 h-[100dvh] sm:h-[92vh] flex flex-col">
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -274,17 +274,17 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
         </div>
 
         {/* Dashboard Navigation Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-bold shrink-0">
+        <nav className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-b border-slate-200 bg-white p-3 sm:px-5 shrink-0 text-xs font-bold">
           <button
-            onClick={() => setActiveTab('orders')}
+            onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-5 py-3.5 transition-colors cursor-pointer ${
-              activeTab === 'orders'
-                ? 'bg-white text-[#E6007E] border-b-2 border-[#E6007E]'
+              activeTab === 'overview'
+                ? 'bg-pink-50 text-[#E6007E] border border-pink-200 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Order Management ({orders.length})</span>
+            <span>Dashboard Overview</span>
           </button>
 
           <button
@@ -298,10 +298,43 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
             <UserIcon className="w-4 h-4" />
             <span>Buyer Profile & Address</span>
           </button>
-        </div>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 transition-colors cursor-pointer border ${activeTab === 'orders' ? 'bg-pink-50 text-[#E6007E] border-pink-200 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white'}`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Order Management ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 transition-colors cursor-pointer border ${activeTab === 'profile' ? 'bg-pink-50 text-[#E6007E] border-pink-200 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white'}`}
+          >
+            <UserIcon className="w-4 h-4" />
+            <span>Buyer Profile & Address</span>
+          </button>
+        </nav>
 
         {/* Content Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-slate-50">
+          {activeTab === 'overview' && (
+            <div className="space-y-5">
+              <section className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#182b50] text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div><p className="text-xs font-bold uppercase tracking-wider text-pink-300">Buyer Workspace</p><h2 className="text-xl sm:text-2xl font-black mt-1">Welcome back, {user.fullName}</h2><p className="text-sm text-slate-300 mt-1">Manage your purchases, delivery updates and account details.</p></div>
+                <button type="button" onClick={onContinueShopping} className="rounded-xl bg-pink-600 hover:bg-pink-700 px-4 py-3 text-sm font-bold">Continue Shopping</button>
+              </section>
+              <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  {label:'Total Orders',value:orders.length,detail:'All purchases'},
+                  {label:'In Progress',value:orders.filter(o=>!['delivered','cancelled','rejected'].includes(o.status)).length,detail:'Awaiting completion'},
+                  {label:'Delivered',value:orders.filter(o=>o.status==='delivered').length,detail:'Completed orders'},
+                  {label:'Cancelled',value:orders.filter(o=>o.status==='cancelled'||o.status==='rejected').length,detail:'Cancelled or rejected'},
+                ].map((item,index)=><div key={item.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p className="text-xs font-semibold text-slate-500">{item.label}</p><p className="text-2xl sm:text-3xl font-black text-[#0B172E] mt-1">{item.value}</p><p className="text-[11px] text-slate-400 mt-1">{item.detail}</p></div>)}
+              </section>
+              <section className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h3 className="font-black text-[#0B172E]">Your order management</h3><p className="text-sm text-slate-500 mt-1">Track shipments, request another delivery, request eligible refunds and manage cancellations.</p></div><button type="button" onClick={()=>setActiveTab('orders')} className="rounded-xl bg-[#0B172E] text-white px-4 py-3 text-sm font-bold">Open My Orders</button></section>
+            </div>
+          )}
+
           {/* TAB 1: BUYER ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
