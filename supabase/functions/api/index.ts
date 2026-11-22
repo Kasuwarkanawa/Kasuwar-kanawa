@@ -1044,7 +1044,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;
     return reply(data,201,origin);
   }
-  const logisticsCentreMatch=path.match(/^\\/logistics\\/centres\\/([^/]+)$/);
+  const logisticsCentreMatch=path.match(/^\/logistics\/centres\/([^/]+)$/);
   if(logisticsCentreMatch && (method==="PATCH" || method==="DELETE")) {
     const {company}=await approvedLogisticsCompany(req);
     const id=decodeURIComponent(logisticsCentreMatch[1]);
