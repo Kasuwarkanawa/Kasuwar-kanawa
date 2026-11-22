@@ -235,6 +235,12 @@ export const marketplaceApi = {
     reportBuyer: (data: { buyerId: string; orderId: string; reason: string; details: string }) =>
       request<BuyerReport>('/seller/reports/buyers', { method: 'POST', body: JSON.stringify(data) }),
   },
+  sellerFulfillment: {
+    list: () => request<any[]>('/seller/fulfillments'),
+    centres: () => request<Array<{ id: string; centreName: string; address: string; state: string; city: string; area?: string; company?: { companyName: string } }>>('/seller/fulfillment-centres'),
+    save: (orderId: string, data: { packageWeightKg: number; lengthCm?: number | null; widthCm?: number | null; heightCm?: number | null; parcelCount: number; fulfillmentMethod: 'logistics_pickup' | 'centre_dropoff' | 'seller_delivery'; pickupCentreId?: string; sellerNotes?: string }) =>
+      request<any>(`/seller/orders/${encodeURIComponent(orderId)}/fulfillment`, { method: 'POST', body: JSON.stringify(data) }),
+  },
   sellerProducts: {
     list: () => request<Product[]>('/seller/products'),
     create: (product: SellerProductInput) => request<Product>('/seller/products', {
