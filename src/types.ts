@@ -68,6 +68,23 @@ export interface LogisticsCompany {
   updatedAt: string;
 }
 
+export interface SellerFulfillment {
+  id: string;
+  orderId: string;
+  sellerId: string;
+  packageWeightKg: number;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
+  parcelCount: number;
+  fulfillmentMethod: 'logistics_pickup' | 'centre_dropoff' | 'seller_delivery';
+  pickupCentreId?: string | null;
+  sellerNotes?: string;
+  status: 'prepared' | 'awaiting_pickup' | 'received_at_centre' | 'handed_to_logistics' | 'seller_delivery';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LogisticsPickupCentre {
   id: string;
   logisticsCompanyId: string;
