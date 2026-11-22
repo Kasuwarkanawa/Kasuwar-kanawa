@@ -3,6 +3,7 @@ name: Supabase Edge API checks
 on:
   push:
     branches:
+      - main
       - chatgpt-access-test-2026-11-17
     paths:
       - "supabase/functions/**"
