@@ -903,6 +903,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  const handleDeliveryFailureResolution = async (order: Order, decision: 'retry' | 'refund' | 'reject_refund' | 'cancel') => {
+    const promptLabel = decision === 'retry' ? 'Confirm instruction for repeat delivery:' : decision === 'refund' ? 'Admin refund approval note (actual refund must still be processed and recorded):' : decision === 'cancel' ? 'Reason for cancelling this failed-delivery order:' : 'Reason for declining the refund request:';
+    const notes = window.prompt(promptLabel, decision === 'retry' ? 'Approved for another delivery attempt.' : '');
+    if (!notes?.trim()) return;
+    setLogisticsUpdateBusy(order.id);
+    try {
+      const updated = await marketplaceApi.orders.resolveDeliveryFailure(order.id, decision, notes.trim()) as Order;
+      setBackendOrders((items) => items.map((item) => item.id === order.id ? updated : item));
+      showNotification(decision === 'refund' ? 'Refund approved for manual processing. No automatic transfer has been made.' : 'Failed-delivery case updated.');
+      triggerRefresh();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Could not update failed-delivery case.');
+    } finally {
+      setLogisticsUpdateBusy(null);
+    }
+  };
+
   // Category Handlers (Kano Markets)
   const handleOpenAddCategory = () => {
     setEditingCategory(null);
@@ -2395,6 +2412,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </div>
                               {ord.trackingNumber ? (
                                 <>
+                                  {ord.logisticsStatus === 'failed' && (
+                                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
+                                      <div className="font-black text-sm text-red-800">Delivery Failed - Admin Resolution Required</div>
+                                      <p className="text-xs text-red-800">{ord.deliveryFailureReason || 'The delivery attempt failed.'}</p>
+                                      <p className="text-[11px] text-red-700">Buyer request: {(ord.deliveryFailureRequestedAction || 'none').replaceAll('_',' ')} · Case: {(ord.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</p>
+                                      {ord.deliveryFailureRequestNotes && <p className="text-xs text-red-700">Notes: {ord.deliveryFailureRequestNotes}</p>}
+                                      {['action_required','retry_requested','refund_requested','refund_rejected'].includes(ord.deliveryFailureStatus || 'action_required') ? (
+                                        <div className="flex flex-wrap gap-2">
+                                          <button type="button" disabled={logisticsUpdateBusy===ord.id} onClick={() => void handleDeliveryFailureResolution(ord,'retry')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Approve Another Delivery</button>
+                                          {ord.paymentMethod === 'opay' && ord.paymentConfirmation?.verifiedByAdmin === true && ord.deliveryFailureRequestedAction === 'refund' && <><button type="button" disabled={logisticsUpdateBusy===ord.id} onClick={() => void handleDeliveryFailureResolution(ord,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Approve Refund</button><button type="button" disabled={logisticsUpdateBusy===ord.id} onClick={() => void handleDeliveryFailureResolution(ord,'reject_refund')} className="rounded-lg border border-red-300 px-3 py-2 text-xs font-black text-red-800 disabled:opacity-50">Decline Refund</button></>}
+                                          <button type="button" disabled={logisticsUpdateBusy===ord.id} onClick={() => void handleDeliveryFailureResolution(ord,'cancel')} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50">Cancel Order</button>
+                                        </div>
+                                      ) : <p className="text-xs font-bold text-red-800">{ord.deliveryFailureStatus === 'refund_approved' ? 'Refund approved — manual payment reversal and proof are still required.' : 'Case is being processed.'}</p>}
+                                    </div>
+                                  )}
                                   <div className="text-xs text-slate-700">
                                     Tracking number: <strong>{ord.trackingNumber}</strong>
                                     <span className="ml-2 text-sky-800">Status: <strong>{(ord.logisticsStatus || 'handed_to_logistics').replaceAll('_', ' ')}</strong></span>
