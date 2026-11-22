@@ -1257,6 +1257,10 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;if(!shipment)fail("Shipment not found.",404);
     if(["delivered","cancelled"].includes(shipment.status))fail("This shipment is already closed.",409);
     if(shipment.status==="failed")fail("This failed delivery must be reviewed by Admin before another attempt. Ask Admin to approve a retry.",409);
+    const {data:linkedOrder,error:linkedOrderError}=await db.from("Order").select("id,status").eq("id",shipment.orderId).maybeSingle();
+    if(linkedOrderError)throw linkedOrderError;
+    if(!linkedOrder)fail("Linked order not found.",404);
+    if(["cancelled","rejected"].includes(linkedOrder.status))fail("Cancelled or rejected orders cannot be delivered or paid out.",409);
     const orderStatusMap:Record<string,string>={picked_up:"picked_up",in_transit:"in_transit",out_for_delivery:"out_for_delivery",delivered:"delivered",failed:"failed"};
     const now=new Date().toISOString(),label=shipmentStatusLabels[b.status];
     const {data:updated,error:updateError}=await db.from("LogisticsShipment").update({status:b.status,pickupAt:b.status==="picked_up"?(shipment.pickupAt??now):shipment.pickupAt,deliveredAt:b.status==="delivered"?now:shipment.deliveredAt,deliveryNotes:b.notes??shipment.deliveryNotes,updatedAt:now}).eq("id",id).select("*").single();
