@@ -50,7 +50,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   onClose,
   onContinueShopping,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'orders' | 'profile'>('menu');
   const [selectedStatusTab, setSelectedStatusTab] = useState<OrderStatus | 'all'>('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -234,11 +234,11 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 bg-slate-950 overflow-hidden">
       {/* Backdrop */}
       <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
 
-      <div className="relative bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 h-[100dvh] sm:h-[92vh] flex flex-col">
+      <div className="relative bg-slate-50 w-full h-[100dvh] overflow-hidden z-10 flex flex-col animate-in fade-in duration-200">
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -257,6 +257,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {activeTab !== 'menu' && <button type="button" onClick={() => setActiveTab('menu')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">← Back to Menu</button>}
             <button
               onClick={refreshOrders}
               className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -273,50 +274,17 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           </div>
         </div>
 
-        {/* Dashboard Navigation Tabs */}
-        <nav className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-b border-slate-200 bg-white p-3 sm:px-5 shrink-0 text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-5 py-3.5 transition-colors cursor-pointer ${
-              activeTab === 'overview'
-                ? 'bg-pink-50 text-[#E6007E] border border-pink-200 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Dashboard Overview</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-5 py-3.5 transition-colors cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-white text-[#E6007E] border-b-2 border-[#E6007E]'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <UserIcon className="w-4 h-4" />
-            <span>Buyer Profile & Address</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 transition-colors cursor-pointer border ${activeTab === 'orders' ? 'bg-pink-50 text-[#E6007E] border-pink-200 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white'}`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Order Management ({orders.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 transition-colors cursor-pointer border ${activeTab === 'profile' ? 'bg-pink-50 text-[#E6007E] border-pink-200 shadow-sm' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white'}`}
-          >
-            <UserIcon className="w-4 h-4" />
-            <span>Buyer Profile & Address</span>
-          </button>
-        </nav>
+        {/* Main menu: only buttons are shown until a section is opened. */}
+        {activeTab === 'menu' && (
+          <nav className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto grid content-start grid-cols-1 sm:grid-cols-3 gap-3">
+            <button type="button" onClick={() => setActiveTab('overview')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><Package className="w-5 h-5 text-[#E6007E]" />Dashboard Overview</button>
+            <button type="button" onClick={() => setActiveTab('orders')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><Package className="w-5 h-5 text-[#E6007E]" />Order Management ({orders.length})</button>
+            <button type="button" onClick={() => setActiveTab('profile')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><UserIcon className="w-5 h-5 text-[#E6007E]" />Buyer Profile & Address</button>
+          </nav>
+        )}
 
         {/* Content Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-slate-50">
+        <div className={`p-4 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-slate-50 ${activeTab === 'menu' ? 'hidden' : ''}`}>
           {activeTab === 'overview' && (
             <div className="space-y-5">
               <section className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#182b50] text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
