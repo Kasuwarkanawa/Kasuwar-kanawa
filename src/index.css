@@ -198,18 +198,11 @@ svg {
   }
 }
 
-/* Actual AREWA emblem watermark, kept subtle behind all pages and dashboards. */
+/* AREWA emblem watermark pattern. */
 body { background-color: #f8fafc; }
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.075;
-  background-image: url("/assets/arewa-logo.jpg");
-  background-repeat: repeat;
-  background-size: 150px 150px;
-  background-position: 20px 20px;
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .065;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23078b25' stroke-width='5' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M50 5L62 36 92 15 85 47 98 50 85 53 92 85 62 64 50 95 38 64 8 85 15 53 2 50 15 47 8 15 38 36Z M38 36L62 64 M62 36L38 64 M15 47L85 53 M50 5L50 95'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat; background-size: 150px 150px; background-position: 20px 20px;
 }
 #root { position: relative; z-index: 1; }

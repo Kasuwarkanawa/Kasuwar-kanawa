@@ -16,7 +16,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory }) => {
             <span className="text-yellow-400 text-lg sm:text-xl">★</span>
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center justify-center gap-2">
-                <img src="/assets/arewa-logo.jpg" alt="AREWA emblem" className="h-16 w-16 sm:h-24 sm:w-24 rounded-xl object-contain bg-white shadow-lg" />
+                <svg viewBox="0 0 100 100" role="img" aria-label="AREWA emblem" className="h-16 w-16 sm:h-24 sm:w-24 rounded-xl bg-white p-1 shadow-lg"><g fill="none" stroke="#078b25" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round"><path d="M50 5 L62 36 L92 15 L85 47 L98 50 L85 53 L92 85 L62 64 L50 95 L38 64 L8 85 L15 53 L2 50 L15 47 L8 15 L38 36 Z"/><path d="M38 36 L62 64 M62 36 L38 64 M15 47 L85 53 M50 5 L50 95"/></g></svg>
                 <span className="text-2xl sm:text-4xl font-black tracking-[0.18em] text-amber-200 drop-shadow-lg">AREWA</span>
               </div>
               <h2 className="text-sm sm:text-xl font-black tracking-wide text-white drop-shadow-sm">

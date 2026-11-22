@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Logo Brand Lockup */}
           <a
             href="/"
-            className="flex min-w-0 items-center gap-1.5 sm:gap-3 shrink group focus:outline-hidden"
+            className="flex min-w-0 max-w-[48%] sm:max-w-none items-center gap-1.5 sm:gap-3 shrink group focus:outline-hidden"
           >
             <div className="relative flex shrink-0 items-center justify-center">
               <svg
@@ -134,14 +134,14 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            <img src="/assets/arewa-logo.jpg" alt="AREWA emblem" className="h-9 w-9 sm:h-12 sm:w-12 object-contain rounded-lg shrink-0" />
+            <svg viewBox="0 0 100 100" role="img" aria-label="AREWA emblem" className="h-8 w-8 sm:h-11 sm:w-11 shrink-0"><g fill="none" stroke="#078b25" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round"><path d="M50 5 L62 36 L92 15 L85 47 L98 50 L85 53 L92 85 L62 64 L50 95 L38 64 L8 85 L15 53 L2 50 L15 47 L8 15 L38 36 Z"/><path d="M38 36 L62 64 M62 36 L38 64 M15 47 L85 53 M50 5 L50 95"/></g></svg>
             {/* Typography */}
-            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-col overflow-hidden">
               <div className="flex items-center whitespace-nowrap tracking-tight leading-none">
-                <span className="text-[clamp(0.75rem,4vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
+                <span className="text-[clamp(0.62rem,3.2vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
                   KASUWAR&nbsp;
                 </span>
-                <span className="text-[clamp(0.75rem,4vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#E6007E]">
+                <span className="text-[clamp(0.62rem,3.2vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#E6007E]">
                   KANAWA
                 </span>
               </div>
