@@ -34,6 +34,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'bootstrap'>(initialMode);
   const [accountType, setAccountType] = useState<AccountType>('buyer');
+  const [registrationLanguage, setRegistrationLanguage] = useState<'ha' | 'en' | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<User | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -97,13 +100,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         productCategory: accountType === 'seller' ? productCategory : undefined,
         accountType, profileImage: profileImage.trim() || undefined,
       });
-      if (accountType === 'seller' || accountType === 'logistics') {
-        setSuccessMessage(result.message || (accountType === 'logistics' ? 'Logistics company registration received. Super Admin approval is required before sign-in.' : 'Seller registration received. Administrator approval is required before sign-in.'));
+      if (accountType === 'logistics') {
+        setSuccessMessage(result.message || 'Logistics company registration received. Super Admin approval is required before sign-in.');
         return;
       }
-      if (!result.user) { setSuccessMessage('Registration completed. Please sign in to continue.'); setMode('login'); return; }
-      setSuccessMessage('Account registered successfully! Welcome, ' + result.user.fullName + '.');
-      onLoginSuccess(result.user); onClose();
+      setRegisteredUser(result.user || null);
+      setRegistrationComplete(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Registration failed. Please try again.');
     } finally { setIsSubmitting(false); }
@@ -335,17 +337,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           {/* 2. REGISTRATION MODE */}
-          {mode === 'register' && (
+          {mode === 'register' && registrationComplete && (
+            <div className="space-y-5 py-4 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-11 w-11" /></div>
+              {registrationLanguage === 'ha' ? (
+                <>
+                  <h2 className="text-2xl font-black text-slate-900">An yi nasarar buɗe asusunka!</h2>
+                  <p className="text-sm leading-7 text-slate-700">Barka da zuwa <strong>Kasuwar Kanawa</strong>! Mun yi farin cikin kasancewarka cikin al'ummar kasuwarmu. Muna fatan za ka more amfani da shafin cikin sauƙi da aminci.</p>
+                  {accountType === 'seller' && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">An karɓi rajistar shagonka. Za a duba ta, kuma sai an amince kafin ka fara shiga shafin Seller.</p>}
+                  <p className="text-lg font-black text-[#E6007E]">A yi cin kasuwa lafiya!</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-black text-slate-900">Registration Successful!</h2>
+                  <p className="text-sm leading-7 text-slate-700">Welcome to <strong>Kasuwar Kanawa</strong>! We are delighted to have you as part of our marketplace community. We hope you enjoy a smooth, safe and rewarding experience.</p>
+                  {accountType === 'seller' && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Your seller registration has been received. It will be reviewed, and approval is required before you can sign in to the Seller account.</p>}
+                  <p className="text-lg font-black text-[#E6007E]">Happy and safe shopping!</p>
+                </>
+              )}
+              <button type="button" onClick={() => { if (registeredUser) onLoginSuccess(registeredUser); setRegistrationComplete(false); setRegisteredUser(null); onClose(); }} className="w-full rounded-xl bg-[#E6007E] px-5 py-3 text-sm font-black text-white shadow-md hover:bg-[#D00071]">{registrationLanguage === 'ha' ? 'Ci gaba zuwa Kasuwar Kanawa' : 'Continue to Kasuwar Kanawa'}</button>
+            </div>
+          )}
+
+          {mode === 'register' && !registrationComplete && !registrationLanguage && (accountType === 'buyer' || accountType === 'seller') && (
+            <div className="space-y-5 py-5 text-center">
+              <div className="text-4xl">🌐</div>
+              <h2 className="text-xl font-black text-slate-900">Which language do you prefer?</h2>
+              <p className="text-sm text-slate-600">Wane yare ka fi so mu yi amfani da shi wajen yi maka maraba?</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button type="button" onClick={() => setRegistrationLanguage('ha')} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 text-left transition hover:border-emerald-500 hover:bg-emerald-100"><span className="block text-2xl font-black text-emerald-800">HAUSA</span><span className="mt-1 block text-sm text-emerald-900">Ina son Hausa</span></button>
+                <button type="button" onClick={() => setRegistrationLanguage('en')} className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 text-left transition hover:border-blue-500 hover:bg-blue-100"><span className="block text-2xl font-black text-blue-800">ENGLISH</span><span className="mt-1 block text-sm text-blue-900">I prefer English</span></button>
+              </div>
+              <button type="button" onClick={() => setMode('login')} className="text-xs font-bold text-slate-500 underline">Back to Sign In</button>
+            </div>
+          )}
+
+          {mode === 'register' && !registrationComplete && (registrationLanguage || accountType === 'logistics') && (
             <form onSubmit={handleRegister} className="space-y-3">
               {/* Account Type Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select Account Type (Nau'in Asusun)
                 </label>
+                {registrationLanguage && <button type="button" onClick={() => setRegistrationLanguage(null)} className="mb-2 text-[11px] font-bold text-[#E6007E] underline">{registrationLanguage === 'ha' ? 'Canza yare' : 'Change language'}</button>}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setAccountType('buyer')}
+                    onClick={() => { setAccountType('buyer'); if (!registrationLanguage) setRegistrationComplete(false); }}
                     className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
                       accountType === 'buyer'
                         ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
@@ -361,7 +399,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setAccountType('seller')}
+                    onClick={() => { setAccountType('seller'); if (!registrationLanguage) setRegistrationComplete(false); }}
                     className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
                       accountType === 'seller'
                         ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
@@ -377,7 +415,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setAccountType('logistics')}
+                    onClick={() => { setAccountType('logistics'); setRegistrationLanguage(null); }}
                     className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
                       accountType === 'logistics'
                         ? 'border-[#E6007E] bg-pink-50 text-[#E6007E] ring-1 ring-[#E6007E]'
