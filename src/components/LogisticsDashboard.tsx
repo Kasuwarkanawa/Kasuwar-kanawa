@@ -221,7 +221,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
                 setServiceAreas(existing?serviceAreas.map(x=>x===existing?{...x,cities:merged,areas:[...(x.areas||[]),...areas].filter((value,index,all)=>all.findIndex(item=>item.toLowerCase()===value.toLowerCase())===index)}):[...serviceAreas,{state,cities,areas}]);
                 setAreaCities('');setAreaNames('');setError('');setNotice('Service area added to the unsaved changes list.');
               }} className="w-full rounded-xl bg-slate-900 text-white p-3 font-bold">Add Service Area</button>
-              <div className="space-y-2">{serviceAreas.map((area,index)=><div key={area.state} className="rounded-xl border p-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-bold">{area.state}</p><p className="text-sm text-slate-600">{area.cities.join(', ')}</p>{!!area.areas?.length&&<p className="text-xs text-slate-500 mt-1">Areas: {area.areas.join(', ')}</p>}</div><button type="button" onClick={()=>setServiceAreas(items=>items.filter((_,i)=>i!==index))} className="text-sm font-bold text-red-600">Remove</button></div>)}</div>
+              <div className="space-y-2">{serviceAreas.map((area,index)=><div key={area.state} className="rounded-xl border p-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-bold">{area.state}</p><p className="text-sm text-slate-600">{area.cities.join(', ')}</p>{!!area.areas?.length&&<p className="text-xs text-slate-500 mt-1">Areas: {area.areas.join(', ')}</p>}</div><button type="button" onClick={()=>{setServiceAreas(items=>items.filter((_,i)=>i!==index));setPricing(items=>items.filter(p=>p.state.toLowerCase()!==area.state.toLowerCase()||!area.cities.some(city=>city.toLowerCase()===p.city.toLowerCase())));}} className="text-sm font-bold text-red-600">Remove</button></div>)}</div>
             </div>
             <div className="bg-white border rounded-2xl p-4 space-y-3">
               <h3 className="font-black text-slate-900">Add delivery fee</h3>
@@ -240,6 +240,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
               setError('');setNotice('');
               if(!serviceAreas.length){setError('Add at least one service area before saving.');return;}
               if(!pricing.length){setError('Add at least one delivery fee before saving.');return;}
+              if(JSON.stringify(serviceAreas)===JSON.stringify(company?.serviceAreas||[])&&JSON.stringify(pricing)===JSON.stringify(company?.pricing||[])){setNotice('No changes to save. Your existing service areas and fees are already up to date.');return;}
               setSaving(true);
               try{
                 const saved=await marketplaceApi.logistics.updateCompany({serviceAreas,pricing});
