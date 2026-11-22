@@ -61,7 +61,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 }) => {
   const [currentSeller, setCurrentSeller] = useState<User>(seller);
   const [showLogoModal, setShowLogoModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod'>('overview');
+  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod' | 'transfer'>('menu');
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [searchProductQuery, setSearchProductQuery] = useState('');
@@ -448,8 +448,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-0 sm:p-4">
-      <div className="relative bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] border border-slate-200">
+    <div className="fixed inset-0 z-50 bg-slate-950 overflow-hidden">
+      <div className="relative bg-slate-50 w-full h-[100dvh] overflow-hidden flex flex-col">
         
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2b4e]">
@@ -469,6 +469,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {activeTab !== 'menu' && <button type="button" onClick={() => setActiveTab('menu')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">← Back to Menu</button>}
             {onOpenSuperAdmin && (
               <button
                 type="button"
@@ -501,7 +502,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         {/* Profile Card / Quick Info Bar */}
-        <div className="bg-white px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
+        {activeTab !== 'menu' && <div className="bg-white px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
           <div className="flex flex-wrap items-center gap-4 text-slate-600">
             <span className="flex items-center gap-1.5 font-medium">
               <UserIcon className="w-3.5 h-3.5 text-[#E6007E]" />
@@ -544,8 +545,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 shrink-0">
+        {/* Menu buttons are the landing screen; selected sections use the full workspace. */}
+        {activeTab === 'menu' && <div className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto grid content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
@@ -632,10 +633,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             <Flag className="w-4 h-4" />
             <span>Buyer Reports ({buyerReports.length})</span>
           </button>
-        </div>
+        </div>}
 
         {/* Dashboard Main Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50">
+        <div className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50 ${activeTab === 'menu' ? 'hidden' : ''}`}>
           
           {activeTab === 'cod' && <CODSettlementPanel role="seller" />}
           {activeTab === 'transfer' && <TransferPayoutPanel role="seller" />}
