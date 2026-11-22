@@ -22,8 +22,14 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'centres' | 'areas' | 'cod'>('overview');
-  const [serviceAreasJson, setServiceAreasJson] = useState('[]');
-  const [pricingJson, setPricingJson] = useState('[]');
+  const [serviceAreas, setServiceAreas] = useState<LogisticsServiceArea[]>([]);
+  const [pricing, setPricing] = useState<LogisticsPricing[]>([]);
+  const [areaState, setAreaState] = useState('Kano State');
+  const [areaCities, setAreaCities] = useState('');
+  const [areaNames, setAreaNames] = useState('');
+  const [feeState, setFeeState] = useState('Kano State');
+  const [feeCity, setFeeCity] = useState('');
+  const [feeAmount, setFeeAmount] = useState('');
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [agentPhone, setAgentPhone] = useState('');
@@ -52,7 +58,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
         marketplaceApi.logistics.company(), marketplaceApi.logistics.agents(),
         marketplaceApi.logistics.orders(), marketplaceApi.logistics.shipments(), marketplaceApi.logistics.centres(),
       ]);
-      setCompany(companyData); setServiceAreasJson(JSON.stringify(companyData.serviceAreas || [], null, 2)); setPricingJson(JSON.stringify(companyData.pricing || [], null, 2)); setAgents(agentData); setOrders(orderData); setShipments(shipmentData); setCentres(centresData);
+      setCompany(companyData); setServiceAreas(companyData.serviceAreas || []); setPricing(companyData.pricing || []); setAgents(agentData); setOrders(orderData); setShipments(shipmentData); setCentres(centresData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load logistics data from the secure server.');
     } finally { setLoading(false); }
@@ -201,21 +207,49 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
             </article>)}</div>
           </section>}
           {tab === 'areas' && <section className="space-y-4">
-            <div><h2 className="font-black text-xl">Service Areas & Delivery Pricing</h2><p className="text-sm text-slate-600 mt-1">Set the states and cities your company serves, then define the delivery fee for each city. Fees are in Nigerian Naira (₦).</p></div>
-            <form className="space-y-4" onSubmit={async event => {
-              event.preventDefault();
-              try {
-                const serviceAreas = JSON.parse(serviceAreasJson) as LogisticsServiceArea[];
-                const pricing = JSON.parse(pricingJson) as LogisticsPricing[];
-                if (!Array.isArray(serviceAreas) || !Array.isArray(pricing)) throw new Error('Both fields must contain JSON arrays.');
-                await runAction(() => marketplaceApi.logistics.updateCompany({ serviceAreas, pricing }), 'Service areas and delivery fees saved successfully.');
-              } catch (err) { setError(err instanceof Error ? err.message : 'Invalid service area or pricing data.'); }
-            }}>
-              <div className="bg-white border rounded-2xl p-4 space-y-2"><label className="block font-bold text-slate-800">Service areas (JSON)</label><p className="text-xs text-slate-500">Example: <code>{'[{"state":"Kano","cities":["Kano Municipal","Nassarawa"],"areas":["Yakasai","Sabon Gari"]}]'}</code></p><textarea value={serviceAreasJson} onChange={e => setServiceAreasJson(e.target.value)} rows={8} spellCheck={false} className="w-full border rounded-xl p-3 font-mono text-xs" placeholder='[{"state":"Kano","cities":["Kano Municipal"],"areas":["Yakasai"]}]' /></div>
-              <div className="bg-white border rounded-2xl p-4 space-y-2"><label className="block font-bold text-slate-800">Delivery pricing (JSON)</label><p className="text-xs text-slate-500">Add one fee per state and city. Example: <code>{'[{"state":"Kano","city":"Kano Municipal","fee":1500,"currency":"NGN"}]'}</code></p><textarea value={pricingJson} onChange={e => setPricingJson(e.target.value)} rows={8} spellCheck={false} className="w-full border rounded-xl p-3 font-mono text-xs" placeholder='[{"state":"Kano","city":"Kano Municipal","fee":1500,"currency":"NGN"}]' /></div>
-              <button type="submit" disabled={saving} className="w-full rounded-xl bg-pink-600 text-white p-3 font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save Service Areas & Delivery Fees'}</button>
-            </form>
-            <p className="text-xs text-slate-500">Only your authenticated logistics company can edit these settings. Do not add a delivery fee until your company has confirmed the amount.</p>
+            <div><h2 className="font-black text-xl">Service Areas & Delivery Pricing</h2><p className="text-sm text-slate-600 mt-1">Choose the states and cities your company serves, then set a delivery fee for each city. All fees are in Nigerian Naira (₦).</p></div>
+            <div className="bg-white border rounded-2xl p-4 space-y-3">
+              <h3 className="font-black text-slate-900">Add service area</h3>
+              <label className="block text-sm font-semibold">State<input value={areaState} onChange={e=>setAreaState(e.target.value)} className="mt-1 w-full border rounded-xl p-3" placeholder="e.g. Kano State" /></label>
+              <label className="block text-sm font-semibold">Cities / LGAs<input value={areaCities} onChange={e=>setAreaCities(e.target.value)} className="mt-1 w-full border rounded-xl p-3" placeholder="Separate multiple cities with commas" /></label>
+              <label className="block text-sm font-semibold">Areas / districts (optional)<input value={areaNames} onChange={e=>setAreaNames(e.target.value)} className="mt-1 w-full border rounded-xl p-3" placeholder="e.g. Yakasai, Sabon Gari, Gwale" /></label>
+              <button type="button" onClick={()=>{
+                const state=areaState.trim(), cities=areaCities.split(',').map(x=>x.trim()).filter(Boolean), areas=areaNames.split(',').map(x=>x.trim()).filter(Boolean);
+                if(!state || !cities.length){setError('Enter a state and at least one city.');return;}
+                const existing=serviceAreas.find(x=>x.state.toLowerCase()===state.toLowerCase());
+                const merged=[...new Map([...(existing?.cities||[]),...cities].map(x=>[x.toLowerCase(),x])).values()];
+                setServiceAreas(existing?serviceAreas.map(x=>x===existing?{...x,cities:merged,areas:[...new Map([...(x.areas||[]),...areas].map(x=>[x.toLowerCase(),x])).values()]}):[...serviceAreas,{state,cities,areas}]);
+                setAreaCities('');setAreaNames('');setError('');setNotice('Service area added to the unsaved changes list.');
+              }} className="w-full rounded-xl bg-slate-900 text-white p-3 font-bold">Add Service Area</button>
+              <div className="space-y-2">{serviceAreas.map((area,index)=><div key={area.state} className="rounded-xl border p-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-bold">{area.state}</p><p className="text-sm text-slate-600">{area.cities.join(', ')}</p>{!!area.areas?.length&&<p className="text-xs text-slate-500 mt-1">Areas: {area.areas.join(', ')}</p>}</div><button type="button" onClick={()=>setServiceAreas(items=>items.filter((_,i)=>i!==index))} className="text-sm font-bold text-red-600">Remove</button></div>)}</div>
+            </div>
+            <div className="bg-white border rounded-2xl p-4 space-y-3">
+              <h3 className="font-black text-slate-900">Add delivery fee</h3>
+              <label className="block text-sm font-semibold">State<select value={feeState} onChange={e=>{setFeeState(e.target.value);setFeeCity('');}} className="mt-1 w-full border rounded-xl p-3 bg-white"><option value="">Select state</option>{serviceAreas.map(a=><option key={a.state} value={a.state}>{a.state}</option>)}</select></label>
+              <label className="block text-sm font-semibold">City / LGA<select value={feeCity} onChange={e=>setFeeCity(e.target.value)} className="mt-1 w-full border rounded-xl p-3 bg-white"><option value="">Select city</option>{(serviceAreas.find(a=>a.state===feeState)?.cities||[]).map(city=><option key={city} value={city}>{city}</option>)}</select></label>
+              <label className="block text-sm font-semibold">Delivery fee (₦)<input type="number" min="0" step="1" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)} className="mt-1 w-full border rounded-xl p-3" placeholder="e.g. 1500" /></label>
+              <button type="button" onClick={()=>{
+                const fee=Number(feeAmount);
+                if(!feeState||!feeCity||feeAmount.trim()===''||!Number.isFinite(fee)||fee<0){setError('Select a state and city, then enter a valid delivery fee.');return;}
+                if(pricing.some(p=>p.state.toLowerCase()===feeState.toLowerCase()&&p.city.toLowerCase()===feeCity.toLowerCase())){setError('A delivery fee already exists for this city. Remove it first if you want to change it.');return;}
+                setPricing(items=>[...items,{state:feeState,city:feeCity,fee,currency:'NGN'}]);setFeeAmount('');setError('');setNotice('Delivery fee added to the unsaved changes list.');
+              }} className="w-full rounded-xl bg-slate-900 text-white p-3 font-bold">Add Delivery Fee</button>
+              <div className="space-y-2">{pricing.map((item,index)=><div key={item.state+'-'+item.city} className="rounded-xl border p-3 flex items-center justify-between gap-3"><div><p className="font-bold">{item.city}, {item.state}</p><p className="text-sm text-slate-600">₦{Number(item.fee).toLocaleString('en-NG')}</p></div><button type="button" onClick={()=>setPricing(items=>items.filter((_,i)=>i!==index))} className="text-sm font-bold text-red-600">Remove</button></div>)}</div>
+            </div>
+            <button type="button" disabled={saving} onClick={async()=>{
+              setError('');setNotice('');
+              if(!serviceAreas.length){setError('Add at least one service area before saving.');return;}
+              if(!pricing.length){setError('Add at least one delivery fee before saving.');return;}
+              setSaving(true);
+              try{
+                const saved=await marketplaceApi.logistics.updateCompany({serviceAreas,pricing});
+                const savedAreas=JSON.stringify(saved.serviceAreas||[]),savedPricing=JSON.stringify(saved.pricing||[]);
+                if(savedAreas!==JSON.stringify(serviceAreas)||savedPricing!==JSON.stringify(pricing))throw new Error('The server response does not match the settings you submitted. Please refresh and check again.');
+                await refresh();onDataChanged?.();setNotice('Service areas and delivery fees saved and verified successfully.');
+              }catch(err){setError(err instanceof Error?err.message:'Unable to save service areas and delivery fees.');}
+              finally{setSaving(false);}
+            }} className="w-full rounded-xl bg-pink-600 text-white p-3 font-bold disabled:opacity-50">{saving?'Saving and verifying…':'Save Service Areas & Delivery Fees'}</button>
+            <p className="text-xs text-slate-500">Changes remain in this form until you save. The system verifies the saved values returned by the database before showing success.</p>
           </section>}
           {tab === 'cod' && <CODSettlementPanel role="logistics" />}
         </main>
