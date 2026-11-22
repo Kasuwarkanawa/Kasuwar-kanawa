@@ -357,7 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <p className="text-lg font-black text-[#E6007E]">Happy and safe shopping!</p>
                 </>
               )}
-              <button type="button" onClick={() => { if (registeredUser) onLoginSuccess(registeredUser); setRegistrationComplete(false); setRegisteredUser(null); onClose(); }} className="w-full rounded-xl bg-[#E6007E] px-5 py-3 text-sm font-black text-white shadow-md hover:bg-[#D00071]">{registrationLanguage === 'ha' ? 'Ci gaba zuwa Kasuwar Kanawa' : 'Continue to Kasuwar Kanawa'}</button>
+              <button type="button" onClick={() => { if (registeredUser && accountType === 'buyer') onLoginSuccess(registeredUser); setRegistrationComplete(false); setRegisteredUser(null); onClose(); }} className="w-full rounded-xl bg-[#E6007E] px-5 py-3 text-sm font-black text-white shadow-md hover:bg-[#D00071]">{registrationLanguage === 'ha' ? 'Ci gaba zuwa Kasuwar Kanawa' : 'Continue to Kasuwar Kanawa'}</button>
             </div>
           )}
 
