@@ -68,6 +68,23 @@ export interface LogisticsCompany {
   updatedAt: string;
 }
 
+export interface LogisticsPickupCentre {
+  id: string;
+  logisticsCompanyId: string;
+  centreName: string;
+  centreType: 'pickup' | 'dropoff' | 'both';
+  contactName: string;
+  phone: string;
+  address: string;
+  state: string;
+  city: string;
+  area?: string;
+  openingHours: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DeliveryAgent {
   id: string;
   logisticsCompanyId: string;
