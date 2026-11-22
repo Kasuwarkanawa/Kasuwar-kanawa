@@ -217,8 +217,8 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
                 const state=areaState.trim(), cities=areaCities.split(',').map(x=>x.trim()).filter(Boolean), areas=areaNames.split(',').map(x=>x.trim()).filter(Boolean);
                 if(!state || !cities.length){setError('Enter a state and at least one city.');return;}
                 const existing=serviceAreas.find(x=>x.state.toLowerCase()===state.toLowerCase());
-                const merged=[...new Map([...(existing?.cities||[]),...cities].map(x=>[x.toLowerCase(),x])).values()];
-                setServiceAreas(existing?serviceAreas.map(x=>x===existing?{...x,cities:merged,areas:[...new Map([...(x.areas||[]),...areas].map(x=>[x.toLowerCase(),x])).values()]}):[...serviceAreas,{state,cities,areas}]);
+                const merged=[...(existing?.cities||[]),...cities].filter((value,index,all)=>all.findIndex(item=>item.toLowerCase()===value.toLowerCase())===index);
+                setServiceAreas(existing?serviceAreas.map(x=>x===existing?{...x,cities:merged,areas:[...(x.areas||[]),...areas].filter((value,index,all)=>all.findIndex(item=>item.toLowerCase()===value.toLowerCase())===index)}):[...serviceAreas,{state,cities,areas}]);
                 setAreaCities('');setAreaNames('');setError('');setNotice('Service area added to the unsaved changes list.');
               }} className="w-full rounded-xl bg-slate-900 text-white p-3 font-bold">Add Service Area</button>
               <div className="space-y-2">{serviceAreas.map((area,index)=><div key={area.state} className="rounded-xl border p-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-bold">{area.state}</p><p className="text-sm text-slate-600">{area.cities.join(', ')}</p>{!!area.areas?.length&&<p className="text-xs text-slate-500 mt-1">Areas: {area.areas.join(', ')}</p>}</div><button type="button" onClick={()=>setServiceAreas(items=>items.filter((_,i)=>i!==index))} className="text-sm font-bold text-red-600">Remove</button></div>)}</div>
