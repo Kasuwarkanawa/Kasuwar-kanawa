@@ -209,6 +209,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               type="button"
               onClick={() => {
                 setMode('register');
+                setRegistrationLanguage(null);
+                setRegistrationComplete(false);
                 setError(null);
               }}
               className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
@@ -296,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 Don't have an account yet?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('register')}
+                  onClick={() => { setMode('register'); setRegistrationLanguage(null); setRegistrationComplete(false); }}
                   className="font-bold text-[#E6007E] hover:underline cursor-pointer"
                 >
                   Create Buyer Account
