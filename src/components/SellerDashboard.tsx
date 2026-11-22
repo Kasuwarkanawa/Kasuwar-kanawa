@@ -543,7 +543,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
               <span>Update Logo / Picture</span>
             </button>
           </div>
-        </div>
+        </div>}
 
         {/* Menu buttons are the landing screen; selected sections use the full workspace. */}
         {activeTab === 'menu' && <div className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto grid content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
