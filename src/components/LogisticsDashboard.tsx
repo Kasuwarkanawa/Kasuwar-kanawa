@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { CODSettlementPanel } from './CODSettlementPanel';
 import { ProfileImageUploader } from './ProfileImageUploader';
-import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, LogisticsServiceArea, LogisticsPricing } from '../types';
+import { User, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, LogisticsServiceArea, LogisticsPricing, LogisticsPickupCentre } from '../types';
 import { marketplaceApi } from '../utils/marketplaceApi';
 import { ArrowLeft, Package, Truck, Users, MapPin, Plus, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -18,9 +18,10 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [agents, setAgents] = useState<DeliveryAgent[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [shipments, setShipments] = useState<LogisticsShipment[]>([]);
+  const [centres, setCentres] = useState<LogisticsPickupCentre[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'areas' | 'cod'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'agents' | 'shipments' | 'centres' | 'areas' | 'cod'>('overview');
   const [serviceAreasJson, setServiceAreasJson] = useState('[]');
   const [pricingJson, setPricingJson] = useState('[]');
   const [showAgentForm, setShowAgentForm] = useState(false);
@@ -34,15 +35,24 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [companyImagePreviewOpen, setCompanyImagePreviewOpen] = useState(false);
+  const [centreName, setCentreName] = useState('');
+  const [centreType, setCentreType] = useState<'pickup' | 'dropoff' | 'both'>('both');
+  const [centreContact, setCentreContact] = useState('');
+  const [centrePhone, setCentrePhone] = useState('');
+  const [centreAddress, setCentreAddress] = useState('');
+  const [centreState, setCentreState] = useState('');
+  const [centreCity, setCentreCity] = useState('');
+  const [centreArea, setCentreArea] = useState('');
+  const [centreHours, setCentreHours] = useState('Monday-Saturday, 8:00 AM-6:00 PM');
 
   const refresh = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [companyData, agentData, orderData, shipmentData] = await Promise.all([
+      const [companyData, agentData, orderData, shipmentData, centresData] = await Promise.all([
         marketplaceApi.logistics.company(), marketplaceApi.logistics.agents(),
-        marketplaceApi.logistics.orders(), marketplaceApi.logistics.shipments(),
+        marketplaceApi.logistics.orders(), marketplaceApi.logistics.shipments(), marketplaceApi.logistics.centres(),
       ]);
-      setCompany(companyData); setServiceAreasJson(JSON.stringify(companyData.serviceAreas || [], null, 2)); setPricingJson(JSON.stringify(companyData.pricing || [], null, 2)); setAgents(agentData); setOrders(orderData); setShipments(shipmentData);
+      setCompany(companyData); setServiceAreasJson(JSON.stringify(companyData.serviceAreas || [], null, 2)); setPricingJson(JSON.stringify(companyData.pricing || [], null, 2)); setAgents(agentData); setOrders(orderData); setShipments(shipmentData); setCentres(centresData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load logistics data from the secure server.');
     } finally { setLoading(false); }
@@ -74,6 +84,17 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
     }), 'Delivery agent added successfully.');
     setAgentName(''); setAgentPhone(''); setAgentWhatsApp(''); setAgentEmail(''); setAgentProfileImage('');
     setVehicleType(''); setVehiclePlateNumber(''); setShowAgentForm(false);
+  };
+
+  const addCentre = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await runAction(() => marketplaceApi.logistics.addCentre({
+      centreName: centreName.trim(), centreType, contactName: centreContact.trim(),
+      phone: centrePhone.trim(), address: centreAddress.trim(), state: centreState.trim(),
+      city: centreCity.trim(), area: centreArea.trim(), openingHours: centreHours.trim(),
+    }), 'Pickup/drop-off centre added successfully.');
+    setCentreName(''); setCentreContact(''); setCentrePhone(''); setCentreAddress('');
+    setCentreState(''); setCentreCity(''); setCentreArea('');
   };
 
   const createShipment = (order: Order, agentId: string) =>
@@ -133,7 +154,7 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}<button onClick={() => setNotice('')} className="float-right font-bold">×</button></div>}
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex gap-2"><AlertCircle size={18} className="shrink-0"/><span>{error}</span><button onClick={() => setError('')} className="ml-auto font-bold">×</button></div>}
           <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {(['overview', 'orders', 'agents', 'shipments', 'areas', 'cod'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : item === 'areas' ? 'Service Areas & Fees' : item === 'cod' ? 'COD Remittance' : 'Overview'}</button>)}
+            {(['overview', 'orders', 'agents', 'shipments', 'centres', 'areas', 'cod'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={`rounded-xl p-3 font-bold capitalize border ${tab === item ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'}`}>{item === 'agents' ? 'Delivery Agents' : item === 'shipments' ? 'Tracking & Shipments' : item === 'orders' ? 'Available Orders' : item === 'centres' ? 'Pickup Centres' : item === 'areas' ? 'Service Areas & Fees' : item === 'cod' ? 'COD Remittance' : 'Overview'}</button>)}
           </nav>
 
           {tab === 'overview' && <>
@@ -159,6 +180,26 @@ export const LogisticsDashboard: React.FC<Props> = ({ user, onClose, onLogout, o
           </section>}
 
           {tab === 'shipments' && <section className="space-y-3"><h2 className="font-black text-xl">Tracking & Shipments</h2>{shipments.length === 0 ? <div className="bg-white rounded-2xl border p-6 text-center text-slate-500">No shipments created yet.</div> : shipments.map(shipment => <ShipmentManagementCard key={shipment.id} shipment={shipment} agents={agents} saving={saving} onAssign={agentId => void runAction(() => marketplaceApi.logistics.assignAgent(shipment.id, agentId || null), 'Delivery agent assignment saved.')} onUpdateStatus={status => void changeShipmentStatus(shipment, status)} />)}</section>}
+          {tab === 'centres' && <section className="space-y-4">
+            <div><h2 className="font-black text-xl">Pickup & Drop-off Centres</h2><p className="text-sm text-slate-600 mt-1">Register your verified customer collection and parcel handover locations. Only active centres should be offered to buyers.</p></div>
+            <form onSubmit={addCentre} className="bg-white border rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="text-sm font-bold">Centre name<input required value={centreName} onChange={e=>setCentreName(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" placeholder="e.g. Kano City Pickup Hub" /></label>
+              <label className="text-sm font-bold">Centre type<select value={centreType} onChange={e=>setCentreType(e.target.value as 'pickup'|'dropoff'|'both')} className="mt-1 w-full border rounded-xl p-3 bg-white font-normal"><option value="both">Pickup & Drop-off</option><option value="pickup">Customer Pickup</option><option value="dropoff">Seller Drop-off</option></select></label>
+              <label className="text-sm font-bold">Contact person<input required value={centreContact} onChange={e=>setCentreContact(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" /></label>
+              <label className="text-sm font-bold">Phone number<input required value={centrePhone} onChange={e=>setCentrePhone(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" /></label>
+              <label className="text-sm font-bold sm:col-span-2">Full address<input required value={centreAddress} onChange={e=>setCentreAddress(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" /></label>
+              <label className="text-sm font-bold">State<input required value={centreState} onChange={e=>setCentreState(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" placeholder="Kano State" /></label>
+              <label className="text-sm font-bold">City / LGA<input required value={centreCity} onChange={e=>setCentreCity(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" placeholder="Kano Municipal" /></label>
+              <label className="text-sm font-bold">Area / District<input value={centreArea} onChange={e=>setCentreArea(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" /></label>
+              <label className="text-sm font-bold">Opening hours<input required value={centreHours} onChange={e=>setCentreHours(e.target.value)} className="mt-1 w-full border rounded-xl p-3 font-normal" /></label>
+              <button type="submit" disabled={saving} className="sm:col-span-2 rounded-xl bg-pink-600 text-white p-3 font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Add Pickup / Drop-off Centre'}</button>
+            </form>
+            <div className="space-y-3">{centres.length===0 ? <div className="bg-white border rounded-2xl p-6 text-center text-slate-500">No pickup or drop-off centres have been registered yet.</div> : centres.map(centre=><article key={centre.id} className="bg-white border rounded-2xl p-4 space-y-2">
+              <div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-black">{centre.centreName}</h3><p className="text-xs text-slate-500">{centre.centreType==='both'?'Pickup & Drop-off':centre.centreType==='pickup'?'Customer Pickup':'Seller Drop-off'} · {centre.isActive?'Active':'Inactive'}</p></div><div className="flex gap-2"><button type="button" disabled={saving} onClick={()=>void runAction(()=>marketplaceApi.logistics.updateCentre(centre.id,!centre.isActive),centre.isActive?'Centre deactivated.':'Centre activated.')} className="rounded-lg border px-3 py-2 text-xs font-bold">{centre.isActive?'Deactivate':'Activate'}</button><button type="button" disabled={saving} onClick={()=>{if(window.confirm('Remove this pickup/drop-off centre?'))void runAction(()=>marketplaceApi.logistics.removeCentre(centre.id),'Centre removed.');}} className="rounded-lg border border-red-200 text-red-600 px-3 py-2 text-xs font-bold">Remove</button></div></div>
+              <p className="text-sm text-slate-600"><MapPin size={14} className="inline mr-1"/>{centre.address}, {centre.area ? centre.area+', ' : ''}{centre.city}, {centre.state}</p>
+              <p className="text-sm text-slate-600">{centre.contactName} · {centre.phone}</p><p className="text-xs text-slate-500">{centre.openingHours}</p>
+            </article>)}</div>
+          </section>}
           {tab === 'areas' && <section className="space-y-4">
             <div><h2 className="font-black text-xl">Service Areas & Delivery Pricing</h2><p className="text-sm text-slate-600 mt-1">Set the states and cities your company serves, then define the delivery fee for each city. Fees are in Nigerian Naira (₦).</p></div>
             <form className="space-y-4" onSubmit={async event => {
