@@ -134,6 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
+            <img src="/assets/arewa-logo.jpg" alt="AREWA emblem" className="h-9 w-9 sm:h-12 sm:w-12 object-contain rounded-lg shrink-0" />
             {/* Typography */}
             <div className="flex min-w-0 flex-col">
               <div className="flex items-center whitespace-nowrap tracking-tight leading-none">
