@@ -87,6 +87,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 }) => {
   // State 1: Active Tab
   const [activeTab, setActiveTab] = useState<
+    | 'menu'
     | 'dashboard'
     | 'users'
     | 'buyers'
@@ -102,7 +103,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     | 'deliveries'
     | 'logistics'
     | 'cod_settlements'
-  >('dashboard');
+  >('menu');
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingBackendProducts, setPendingBackendProducts] = useState<Product[]>([]);
@@ -1136,8 +1137,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-      <div className="bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col min-h-0 h-[100dvh] sm:h-[92vh] animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-60 bg-slate-950 overflow-hidden">
+      <div className="bg-slate-50 w-full h-[100dvh] overflow-hidden flex flex-col min-h-0 animate-in fade-in duration-200">
         
         {/* ============================================================ */}
         {/* 1. SUPER ADMIN LOGIN GATE (If not authenticated as admin) */}
@@ -1299,7 +1300,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {activeTab !== 'menu' && (
+                  <button type="button" onClick={() => setActiveTab('menu')} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">← Back to Menu</button>
+                )}
                 <span className="hidden sm:inline-block text-xs font-semibold text-emerald-400">
                   ● Admin Active: {currentUser?.fullName}
                 </span>
@@ -1338,8 +1342,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             )}
 
-            {/* Admin Menu Grid (All 13 Comprehensive Tabs) */}
-            <div className="bg-white border-b border-slate-200 p-3 sm:p-4 shrink-0 max-h-[30dvh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
+            {/* Main menu: show only navigation buttons until a section is selected. */}
+            {activeTab === 'menu' && (
+            <div className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto overscroll-contain [touch-action:pan-y] flex items-start">
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs font-bold">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
@@ -1390,6 +1395,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               })}
               </div>
             </div>
+            )}
 
             {/* Notification Toast */}
             {toastMessage && (
@@ -1409,7 +1415,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* Main Content Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5 bg-slate-50 [touch-action:pan-y]">
+            <div className={`p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5 bg-slate-50 [touch-action:pan-y] ${activeTab === 'menu' ? 'hidden' : ''}`}>
               
               {/* ============================================================ */}
               {/* TAB 1: ADMIN DASHBOARD (2. ADMIN DASHBOARD - 8 Stat Cards) */}
