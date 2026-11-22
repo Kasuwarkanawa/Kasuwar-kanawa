@@ -1137,7 +1137,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-      <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col min-h-0 max-h-[94vh] max-h-[94dvh] animate-in zoom-in-95 duration-200">
+      <div className="bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col min-h-0 h-[100dvh] sm:h-[92vh] animate-in zoom-in-95 duration-200">
         
         {/* ============================================================ */}
         {/* 1. SUPER ADMIN LOGIN GATE (If not authenticated as admin) */}
@@ -1339,8 +1339,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* Admin Menu Grid (All 13 Comprehensive Tabs) */}
-            <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 shrink-0 max-h-[34dvh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 text-xs font-bold">
+            <div className="bg-white border-b border-slate-200 p-3 sm:p-4 shrink-0 max-h-[30dvh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs font-bold">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
                 { id: 'users', label: 'Users', icon: Users, badge: allUsers.length },
@@ -1366,10 +1366,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`relative min-h-[88px] rounded-xl border p-3 flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${
+                    className={`relative min-h-14 rounded-xl border px-3 py-2 flex flex-row items-center justify-center gap-2 text-center transition-all cursor-pointer ${
                       isActive
-                        ? 'border-[#E6007E] text-[#E6007E] bg-white shadow-md ring-1 ring-[#E6007E]/20'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-[#E6007E]/50 hover:text-[#E6007E] hover:shadow-sm'
+                        ? 'border-pink-300 text-[#E6007E] bg-pink-50 shadow-sm ring-1 ring-pink-200'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-pink-300 hover:bg-white hover:text-[#E6007E]'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -1409,7 +1409,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {/* Main Content Body */}
-            <div className="p-4 sm:p-5 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4 [touch-action:pan-y]">
+            <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5 bg-slate-50 [touch-action:pan-y]">
               
               {/* ============================================================ */}
               {/* TAB 1: ADMIN DASHBOARD (2. ADMIN DASHBOARD - 8 Stat Cards) */}
