@@ -448,8 +448,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-      <div className="relative bg-slate-50 w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] border border-slate-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-0 sm:p-4">
+      <div className="relative bg-slate-50 w-full max-w-5xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] border border-slate-200">
         
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2b4e]">
@@ -545,14 +545,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+        <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
+            className={`py-3 px-3 font-bold text-xs flex items-center justify-center gap-2 border rounded-xl transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'overview'
-                ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
+                ? 'border-pink-200 text-[#E6007E] bg-pink-50 shadow-sm'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-900'
             }`}
           >
             <TrendingUp className="w-4 h-4" />
@@ -635,7 +635,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         {/* Dashboard Main Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50">
           
           {activeTab === 'cod' && <CODSettlementPanel role="seller" />}
           {activeTab === 'transfer' && <TransferPayoutPanel role="seller" />}
