@@ -1,4 +1,4 @@
-import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, TransferPayout, LogisticsServiceArea, LogisticsPricing } from '../types';
+import { Product, FlashSale, PromotionalAdvertisement, Announcement, BuyerReport, CartItem, Category, ProductReview, LogisticsCompany, DeliveryAgent, LogisticsShipment, Order, TransferPayout, LogisticsServiceArea, LogisticsPricing, LogisticsPickupCentre } from '../types';
 import { API_BASE_URL, SUPABASE_PUBLIC_KEY } from './apiConfig';
 
 
@@ -200,6 +200,13 @@ export const marketplaceApi = {
       request<{ companyId: string; companyName: string; deliveryFee: number; freeDelivery: boolean; state: string; city: string; subtotal: number }>(`/shipping/quote?state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}&subtotal=${encodeURIComponent(String(subtotal))}`),
   },
   logistics: {
+    centres: () => request<LogisticsPickupCentre[]>('/logistics/centres'),
+    addCentre: (data: Omit<LogisticsPickupCentre, 'id' | 'logisticsCompanyId' | 'isActive' | 'createdAt' | 'updatedAt'>) =>
+      request<LogisticsPickupCentre>('/logistics/centres', { method: 'POST', body: JSON.stringify(data) }),
+    updateCentre: (id: string, isActive: boolean) =>
+      request<LogisticsPickupCentre>(`/logistics/centres/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+    removeCentre: (id: string) =>
+      request<{ success: boolean }>(`/logistics/centres/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     company: () => request<LogisticsCompany>('/logistics/company'),
     updateCompany: (data: { serviceAreas: LogisticsServiceArea[]; pricing: LogisticsPricing[] }) => request<LogisticsCompany>('/logistics/company', { method: 'PATCH', body: JSON.stringify(data) }),
     orders: () => request<Order[]>('/logistics/orders'),
