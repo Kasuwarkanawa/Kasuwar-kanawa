@@ -151,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </svg>
 
                 <div className="bg-[#0B172E] text-white text-[8px] sm:text-[11px] font-extrabold tracking-wide sm:tracking-wider px-1.5 sm:px-3 py-0.5 rounded-full uppercase shadow-xs whitespace-nowrap">
-                  AREWA SAI DAN AREWA
+                  AREWA • AREWA SAI DAN AREWA
                 </div>
 
                 <svg className="w-3 h-2 sm:w-3.5 text-[#E6007E] scale-x-[-1] shrink-0" viewBox="0 0 20 10" fill="currentColor">
