@@ -423,6 +423,28 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                           ))}
                         </div>
 
+                        {/* Buyer quick order actions - visible without opening details */}
+                        <div className="px-4 pb-4 flex flex-wrap items-center gap-2">
+                          {['pending','pending_order','pending_payment','pending_verification','payment_confirmed','processing'].includes(order.status) && (
+                            <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleCancelOrder(order)} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                              {failureActionBusy===order.id ? 'Processing…' : 'Cancel Order'}
+                            </button>
+                          )}
+                          {order.deliveryFailureStatus && ['action_required','refund_rejected'].includes(order.deliveryFailureStatus) && (
+                            <>
+                              <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'retry')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">
+                                {failureActionBusy===order.id ? 'Submitting…' : 'Request Another Delivery'}
+                              </button>
+                              {order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin === true && (
+                                <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">
+                                  Request Refund
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {failureActionError && failureActionBusy===order.id && <span role="alert" className="text-xs text-red-700">{failureActionError}</span>}
+                        </div>
+
                         {/* Expanded Details & Tracking Timeline */}
                         {isExpanded && (
                           <div className="p-4 bg-slate-50/80 border-t border-slate-200 text-xs space-y-4 animate-in fade-in duration-200">
@@ -580,19 +602,8 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                 <p className="text-[11px] text-red-700">Attempts: {order.deliveryAttemptCount || 1} · Case: {(order.deliveryFailureStatus || 'action_required').replaceAll('_',' ')}</p>
                                 {failureActionError && <p className="text-xs text-red-700">{failureActionError}</p>}
                                 {['action_required','refund_rejected'].includes(order.deliveryFailureStatus || 'action_required') ? (
-                                  <div className="flex flex-wrap gap-2">
-                                    <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'retry')} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">{failureActionBusy===order.id?'Submitting…':'Request Another Delivery'}</button>
-                                    {order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin === true && <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Request Refund</button>}
-                                  </div>
+                                  <p className="text-xs font-bold text-red-800">Choose an action using the buttons shown on this order card.</p>
                                 ) : <p className="text-xs font-bold text-red-800">{order.deliveryFailureStatus === 'refund_approved' ? 'Refund approved by Admin. The actual refund is still awaiting manual payment processing.' : order.deliveryFailureStatus === 'retry_in_progress' ? 'Another delivery attempt has been approved and is being arranged.' : order.deliveryFailureStatus === 'resolved' ? 'This failed-delivery case has been closed.' : `Your request: ${(order.deliveryFailureRequestedAction || order.deliveryFailureStatus).replaceAll('_',' ')} · Waiting for Admin action.`}</p>}
-                              </div>
-                            )}
-
-                            {['pending','pending_order','pending_payment','pending_verification','payment_confirmed','processing'].includes(order.status) && (
-                              <div className="flex justify-end">
-                                <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleCancelOrder(order)} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                                  {failureActionBusy===order.id ? 'Processing…' : 'Cancel Order'}
-                                </button>
                               </div>
                             )}
 
