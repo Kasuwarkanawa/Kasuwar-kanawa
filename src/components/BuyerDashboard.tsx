@@ -163,6 +163,21 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     }
   };
 
+  const handleCancelOrder = async (order: Order) => {
+    if (!window.confirm(`Cancel order #${order.orderNumber}? This cannot be undone.`)) return;
+    setFailureActionError(null);
+    setFailureActionBusy(order.id);
+    try {
+      await marketplaceApi.orders.cancel(order.id);
+      await refreshOrders();
+      setSelectedOrder(null);
+    } catch (error) {
+      setFailureActionError(error instanceof Error ? error.message : 'This order could not be cancelled.');
+    } finally {
+      setFailureActionBusy(null);
+    }
+  };
+
   const handleDeliveryFailureRequest = async (order: Order, action: 'retry' | 'refund' | 'cancel') => {
     setFailureActionError(null);
     const promptText = action === 'retry'
@@ -269,7 +284,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>My Orders ({orders.length})</span>
+            <span>Order Management ({orders.length})</span>
           </button>
 
           <button
@@ -558,7 +573,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                               </div>
                             )}
 
-                            {order.logisticsStatus === 'failed' && (
+                            {order.deliveryFailureStatus && order.deliveryFailureStatus !== 'none' && (
                               <div className="rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
                                 <div className="font-black text-sm text-red-800 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Delivery Failed - Action Required</div>
                                 <p className="text-xs text-red-800">{order.deliveryFailureReason || 'The delivery attempt was unsuccessful.'}</p>
@@ -570,6 +585,14 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                     {order.paymentMethod === 'opay' && order.paymentConfirmation?.verifiedByAdmin === true && <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleDeliveryFailureRequest(order,'refund')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Request Refund</button>}
                                   </div>
                                 ) : <p className="text-xs font-bold text-red-800">{order.deliveryFailureStatus === 'refund_approved' ? 'Refund approved by Admin. The actual refund is still awaiting manual payment processing.' : order.deliveryFailureStatus === 'retry_in_progress' ? 'Another delivery attempt has been approved and is being arranged.' : order.deliveryFailureStatus === 'resolved' ? 'This failed-delivery case has been closed.' : `Your request: ${(order.deliveryFailureRequestedAction || order.deliveryFailureStatus).replaceAll('_',' ')} · Waiting for Admin action.`}</p>}
+                              </div>
+                            )}
+
+                            {['pending','pending_order','pending_payment','pending_verification','payment_confirmed','processing'].includes(order.status) && (
+                              <div className="flex justify-end">
+                                <button type="button" disabled={failureActionBusy===order.id} onClick={() => void handleCancelOrder(order)} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                                  {failureActionBusy===order.id ? 'Processing…' : 'Cancel Order'}
+                                </button>
                               </div>
                             )}
 
