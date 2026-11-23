@@ -39,9 +39,8 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
 }) => {
   const liveCategories = db.getCategories();
   const allCategories = liveCategories.length > 0 ? liveCategories : CATEGORIES;
-  const displayCategories = allCategories.filter((cat) => products.some((product) =>
-    product.categoryId === cat.id || product.category === cat.id || product.category === cat.name
-  ));
+  // Keep the full department navigation visible even when a category currently has no approved products.
+  const displayCategories = allCategories;
   return (
     <section id="categories-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
       {/* Section Header */}
