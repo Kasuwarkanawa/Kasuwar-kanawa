@@ -1056,6 +1056,7 @@ async function dispatch(req: Request, origin: string | null) {
       throw error;
     }
     const order=await getOrder(data);if(!order)throw new Error("Updated order could not be loaded.");
+    await recordUserActivity(auth.user.id,"ORDER_ACTION",`Order ${order.orderNumber??order.id}: ${action}`,{orderId:order.id,orderNumber:order.orderNumber,action,status:order.status,totalAmount:order.totalAmount});
     return order;
   }
   const paymentConfirmMatch=path.match(/^\/orders\/([^/]+)\/payment-confirmation$/);
@@ -1199,6 +1200,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {error:updateError}=await db.from("Order").update({deliveryFailureStatus:status,deliveryFailureRequestedAction:b.action,deliveryFailureRequestNotes:b.notes??null,deliveryFailureRequestedAt:now,updatedAt:now}).eq("id",orderId).eq("buyerId",auth.user.id);
     if(updateError)throw updateError;
     await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title:b.action==="retry"?"Another Delivery Requested":b.action==="refund"?"Refund Requested":"Cancellation Requested",dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:false,description:b.notes??"Buyer submitted a request after failed delivery.",sortOrder:Math.floor(Date.now()/1000),createdAt:now});
+    await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_REQUESTED",`Requested ${b.action} for failed delivery`,{orderId,action:b.action,notes:b.notes??""});
     const latest=await getOrder(orderId);return reply(orderForBuyer(latest),200,origin);
   }
   const deliveryFailureAdminMatch=path.match(/^\/orders\/admin\/([^/]+)\/delivery-failure-resolution$/);
@@ -1233,6 +1235,7 @@ async function dispatch(req: Request, origin: string | null) {
     }
     const {error:updateError}=await db.from("Order").update(patch).eq("id",orderId);if(updateError)throw updateError;
     const {error:stepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title,dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:true,description,sortOrder:Math.floor(Date.now()/1000),createdAt:now});if(stepError)throw stepError;
+    await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_RESOLVED",`Admin resolved failed delivery: ${b.decision}`,{orderId,decision:b.decision,notes:b.notes,totalAmount:order.totalAmount});
     return reply(serializeOrder(await getOrder(orderId)),200,origin);
   }
   const cancelMatch=path.match(/^\/orders\/([^/]+)\/cancel$/);
@@ -1564,7 +1567,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   const logisticsSettlementReceipt=path.match(/^\/logistics\/cod-settlements\/([^/]+)\/receipt$/);
   if(logisticsSettlementReceipt && method==="POST") {
-    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(logisticsSettlementReceipt[1]);
+    const {auth,company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(logisticsSettlementReceipt[1]);
     const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
     if(error)throw error;if(!row)fail("COD settlement not found.",404);
     if(!["awaiting_logistics_transfer","logistics_receipt_rejected"].includes(row.status))fail("This COD transfer is not awaiting a receipt.",409);
@@ -1574,6 +1577,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(uploadError)throw uploadError;
     const {data:updated,error:updateError}=await db.from("CODSettlement").update({logisticsTransferReceiptPath:objectPath,status:"awaiting_admin_logistics_confirmation","logisticsTransferredAt":now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
     if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}
+    await recordUserActivity(auth.user.id,"COD_LOGISTICS_REMITTANCE_RECEIPT_UPLOADED","Uploaded COD remittance receipt",{settlementId:id,amount:row.logisticsAmount??null});
     return reply(updated,200,origin);
   }
   if(path==="/admin/cod-settlements" && method==="GET") {
@@ -1604,7 +1608,7 @@ async function dispatch(req: Request, origin: string | null) {
   }
   const adminSettlementDecision=path.match(/^\/admin\/cod-settlements\/([^/]+)\/logistics-confirmation$/);
   if(adminSettlementDecision && method==="PATCH") {
-    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSettlementDecision[1]);
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSettlementDecision[1]);
     const b=z.object({decision:z.enum(["confirm","reject"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
     const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).maybeSingle();
     if(error)throw error;if(!row)fail("COD settlement not found.",404);
@@ -1612,11 +1616,11 @@ async function dispatch(req: Request, origin: string | null) {
     if(b.decision==="reject"&&!b.notes)fail("Add a reason before rejecting the receipt.",400);
     const now=new Date().toISOString();
     const {data:updated,error:updateError}=await db.from("CODSettlement").update({status:b.decision==="confirm"?"awaiting_seller_payout":"logistics_receipt_rejected",logisticsConfirmedAt:b.decision==="confirm"?now:null,adminNotes:b.notes??null,updatedAt:now}).eq("id",id).select("*").single();
-    if(updateError)throw updateError;return reply(await settlementDetails(updated),200,origin);
+    if(updateError)throw updateError;await recordUserActivity(auth.user.id,"COD_LOGISTICS_REMITTANCE_REVIEWED",`Reviewed COD logistics remittance: ${b.decision}`,{settlementId:id,decision:b.decision,notes:b.notes??"",amount:row.logisticsAmount??null});return reply(await settlementDetails(updated),200,origin);
   }
   const adminSellerReceipt=path.match(/^\/admin\/cod-settlements\/([^/]+)\/seller-receipt$/);
   if(adminSellerReceipt && method==="POST") {
-    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSellerReceipt[1]);
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminSellerReceipt[1]);
     const {data:row,error}=await db.from("CODSettlement").select("*").eq("id",id).maybeSingle();
     if(error)throw error;if(!row)fail("COD settlement not found.",404);
     if(row.status!=="awaiting_seller_payout" && row.status!=="seller_receipt_rejected")fail("Seller payout cannot be uploaded at this stage.",409);
@@ -1626,6 +1630,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(uploadError)throw uploadError;
     const {data:updated,error:updateError}=await db.from("CODSettlement").update({sellerTransferReceiptPath:objectPath,status:"awaiting_seller_confirmation",sellerTransferredAt:now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
     if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}
+    await recordUserActivity(auth.user.id,"COD_SELLER_PAYOUT_RECEIPT_UPLOADED","Uploaded seller payout receipt",{settlementId:id,sellerId:row.sellerId,amount:row.sellerPayoutAmount??null});
     return reply(await settlementDetails(updated),200,origin);
   }
   const sellerSettlementReceipt=path.match(/^\/seller\/cod-settlements\/([^/]+)\/receipt$/);
@@ -1648,7 +1653,7 @@ async function dispatch(req: Request, origin: string | null) {
     const auth=await requireRole(req,["SELLER"]);
     const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\d{10}$/)}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("User").update({payoutBankName:b.bankName,payoutAccountName:b.accountName,payoutAccountNumber:b.accountNumber,updatedAt:new Date().toISOString()}).eq("id",auth.user.id).select("payoutBankName,payoutAccountName,payoutAccountNumber").single();
-    if(error)throw error;return reply(data,200,origin);
+    if(error)throw error;await recordUserActivity(auth.user.id,"SELLER_PAYOUT_ACCOUNT_UPDATED","Updated seller payout bank details",{bankName:b.bankName,accountName:b.accountName,accountNumberLast4:b.accountNumber.slice(-4)});return reply(data,200,origin);
   }
   const sellerSettlementAccept=path.match(/^\/seller\/cod-settlements\/([^/]+)\/accept$/);
   if(sellerSettlementAccept && method==="POST") {
@@ -1658,7 +1663,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(row.status!=="awaiting_seller_confirmation")fail("There is no seller transfer awaiting your acceptance.",409);
     const now=new Date().toISOString();
     const {data:updated,error:updateError}=await db.from("CODSettlement").update({status:"completed",sellerAcceptedAt:now,updatedAt:now}).eq("id",id).select("*").single();
-    if(updateError)throw updateError;return reply(await settlementDetails(updated),200,origin);
+    if(updateError)throw updateError;await recordUserActivity(auth.user.id,"COD_SELLER_PAYOUT_ACCEPTED","Accepted COD seller payout",{settlementId:id,amount:row.sellerPayoutAmount??null});return reply(await settlementDetails(updated),200,origin);
   }
 
   const transferPayoutDetails=async(row:any)=>{
@@ -1678,14 +1683,14 @@ async function dispatch(req: Request, origin: string | null) {
   }
   const adminTransferReceipt=path.match(/^\/admin\/transfer-payouts\/([^/]+)\/receipt$/);
   if(adminTransferReceipt && method==="POST") {
-    await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminTransferReceipt[1]);
+    const auth=await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminTransferReceipt[1]);
     const {data:row,error}=await db.from("TransferPayout").select("*").eq("id",id).maybeSingle();
     if(error)throw error;if(!row)fail("Transfer payout not found.",404);
     if(!["awaiting_admin_payout","seller_receipt_rejected"].includes(row.status))fail("This seller payout is not awaiting an Admin transfer receipt.",409);
     const {bytes,contentType,ext}=await receiptContent(req),now=new Date().toISOString(),objectPath="transfer-payouts/"+id+"/seller/"+crypto.randomUUID().replaceAll("-","")+"."+ext;
     const {error:uploadError}=await db.storage.from("payment-receipts").upload(objectPath,bytes,{contentType,upsert:false});if(uploadError)throw uploadError;
     const {data:updated,error:updateError}=await db.from("TransferPayout").update({sellerTransferReceiptPath:objectPath,status:"awaiting_seller_confirmation",sellerTransferredAt:now,updatedAt:now,adminNotes:null}).eq("id",id).select("*").single();
-    if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}return reply(await transferPayoutDetails(updated),200,origin);
+    if(updateError){await db.storage.from("payment-receipts").remove([objectPath]);throw updateError;}await recordUserActivity(auth.user.id,"TRANSFER_PAYOUT_RECEIPT_UPLOADED","Uploaded bank transfer seller payout receipt",{payoutId:id,sellerId:row.sellerId,amount:row.sellerPayoutAmount??null});return reply(await transferPayoutDetails(updated),200,origin);
   }
   const adminTransferReceiptView=path.match(/^\/admin\/transfer-payouts\/([^/]+)\/receipt$/);
   if(adminTransferReceiptView && method==="GET") {
@@ -1710,7 +1715,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;if(!row)fail("Transfer payout not found.",404);
     if(row.status!=="awaiting_seller_confirmation")fail("There is no Bank Transfer payout awaiting your confirmation.",409);
     const now=new Date().toISOString(),{data:updated,error:updateError}=await db.from("TransferPayout").update({status:"completed",sellerAcceptedAt:now,updatedAt:now}).eq("id",id).select("*").single();
-    if(updateError)throw updateError;return reply(await transferPayoutDetails(updated),200,origin);
+    if(updateError)throw updateError;await recordUserActivity(auth.user.id,"TRANSFER_PAYOUT_ACCEPTED","Accepted bank transfer seller payout",{payoutId:id,amount:row.sellerPayoutAmount??null});return reply(await transferPayoutDetails(updated),200,origin);
   }
 
   // Order read endpoints. Sensitive fields are filtered per role.
