@@ -1061,6 +1061,9 @@ async function dispatch(req: Request, origin: string | null) {
     }
     const order=await getOrder(data);if(!order)throw new Error("Updated order could not be loaded.");
     await recordUserActivity(auth.user.id,"ORDER_ACTION",`Order ${order.orderNumber??order.id}: ${action}`,{orderId:order.id,orderNumber:order.orderNumber,action,status:order.status,totalAmount:order.totalAmount});
+    const counterpartDescription=`Order ${order.orderNumber??order.id} was updated: ${action} (${order.status})`;
+    if(order.buyerId && order.buyerId!==auth.user.id) await recordUserActivity(order.buyerId,"ORDER_UPDATED",counterpartDescription,{orderId:order.id,action,status:order.status});
+    if(order.sellerId && order.sellerId!==auth.user.id) await recordUserActivity(order.sellerId,"ORDER_UPDATED",counterpartDescription,{orderId:order.id,action,status:order.status});
     return order;
   }
   const paymentConfirmMatch=path.match(/^\/orders\/([^/]+)\/payment-confirmation$/);
@@ -1152,6 +1155,7 @@ async function dispatch(req: Request, origin: string | null) {
     const payload={id:crypto.randomUUID(),orderId,sellerId:auth.user.id,packageWeightKg:b.packageWeightKg,lengthCm:b.lengthCm??null,widthCm:b.widthCm??null,heightCm:b.heightCm??null,parcelCount:b.parcelCount,fulfillmentMethod:b.fulfillmentMethod,pickupCentreId:b.pickupCentreId??null,sellerNotes:b.sellerNotes??"",status:b.fulfillmentMethod==="seller_delivery"?"seller_delivery":"prepared",updatedAt:now};
     const {data,error}=await db.from("SellerFulfillment").upsert(payload,{onConflict:"orderId"}).select("*").single();
     if(error)throw error;
+    await recordUserActivity(auth.user.id,"SELLER_FULFILLMENT_SAVED","Saved package and fulfillment details",{orderId,fulfillmentId:data.id,method:b.fulfillmentMethod,parcelCount:b.parcelCount,weightKg:b.packageWeightKg});
     return reply(data,201,origin);
   }
   const sellerStatusMatch=path.match(/^\/orders\/([^/]+)\/status$/);
