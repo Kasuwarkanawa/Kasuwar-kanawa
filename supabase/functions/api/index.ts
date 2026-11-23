@@ -203,7 +203,7 @@ async function runSubscriptionExpiry() {
   const {error}=await db.rpc("process_seller_subscription_expiry");
   if(error) throw error;
   for(const row of toGrace??[]) {
-    const graceDays=Number(row.plan?.graceDays??7);
+    const graceDays=Number(row.plan?.[0]?.graceDays??7);
     await notifySubscriptionSeller(row.sellerId,"subscription_grace","Subscription grace period started",`Your subscription has expired. You have a ${graceDays}-day grace period to renew before your products are hidden.`,`subscription:${row.id}:grace`,{subscriptionId:row.id,expiresAt:row.expiresAt,graceDays});
   }
   for(const row of toExpire??[]) await notifySubscriptionSeller(row.sellerId,"subscription_expired","Subscription expired","Your grace period has ended. Your products are hidden from the public marketplace until your subscription is renewed and approved.",`subscription:${row.id}:expired`,{subscriptionId:row.id,graceEndsAt:row.graceEndsAt});
