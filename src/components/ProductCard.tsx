@@ -60,6 +60,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
+        {product.sellerVerified && (
+          <div className="absolute top-2 left-2 z-10 mt-7 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[9px] font-black uppercase text-white shadow-md">
+            <Check className="h-3 w-3" /> Verified ID
+          </div>
+        )}
+
         {/* Special Badge if any */}
         {product.badge && (
           <div className="absolute top-2 right-2 z-10 bg-[#0B172E]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
