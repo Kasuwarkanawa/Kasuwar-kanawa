@@ -170,6 +170,7 @@ export interface Product {
   sellerId?: string;
   sellerName?: string;
   sellerBusinessName?: string;
+  sellerVerified?: boolean;
   isApproved?: boolean;
   approvalStatus?: 'approved' | 'pending_approval' | 'rejected';
 }
