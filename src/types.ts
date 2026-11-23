@@ -171,6 +171,7 @@ export interface Product {
   sellerName?: string;
   sellerBusinessName?: string;
   sellerVerified?: boolean;
+  sellerActive?: boolean;
   isApproved?: boolean;
   approvalStatus?: 'approved' | 'pending_approval' | 'rejected';
 }
