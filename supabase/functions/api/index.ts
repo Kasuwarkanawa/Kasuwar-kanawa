@@ -100,8 +100,12 @@ async function requireRole(req: Request, roles: string[]) {
   return auth;
 }
 async function recordUserActivity(userId:string,eventType:string,description:string,metadata:Record<string,unknown>={}) {
-  const {error}=await db.from("UserActivityLog").insert({id:crypto.randomUUID(),userId,eventType,description,metadata,createdAt:new Date().toISOString()});
-  if(error) throw error;
+  try {
+    const {error}=await db.from("UserActivityLog").insert({id:crypto.randomUUID(),userId,eventType,description,metadata,createdAt:new Date().toISOString()});
+    if(error) console.error("User activity audit write failed",eventType,error.message);
+  } catch(error) {
+    console.error("User activity audit write failed",eventType,error);
+  }
 }
 async function issueSession(userId: string) {
   const token = [...crypto.getRandomValues(new Uint8Array(48))].map(x => x.toString(16).padStart(2, "0")).join("");
@@ -1200,7 +1204,6 @@ async function dispatch(req: Request, origin: string | null) {
     const {error:updateError}=await db.from("Order").update({deliveryFailureStatus:status,deliveryFailureRequestedAction:b.action,deliveryFailureRequestNotes:b.notes??null,deliveryFailureRequestedAt:now,updatedAt:now}).eq("id",orderId).eq("buyerId",auth.user.id);
     if(updateError)throw updateError;
     await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title:b.action==="retry"?"Another Delivery Requested":b.action==="refund"?"Refund Requested":"Cancellation Requested",dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:false,description:b.notes??"Buyer submitted a request after failed delivery.",sortOrder:Math.floor(Date.now()/1000),createdAt:now});
-    await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_REQUESTED",`Requested ${b.action} for failed delivery`,{orderId,action:b.action,notes:b.notes??""});
     await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_REQUESTED",`Requested ${b.action} for failed delivery`,{orderId,action:b.action,notes:b.notes??""});
     const latest=await getOrder(orderId);return reply(orderForBuyer(latest),200,origin);
   }
