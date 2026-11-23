@@ -55,6 +55,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   // Reviews state
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -79,13 +80,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setSelectedVariation(product.variations && product.variations[0]?.options.length ? product.variations[0].options[0] : '');
     setQuantity(1);
     setReviews([]);
+    setReviewsLoading(true);
     setReviewError(null);
     setReviewSubmitted(false);
     setIsReporting(false);
     setReportSuccess(false);
     marketplaceApi.catalog.reviews(product.id)
-      .then((items) => { if (active) setReviews(items); })
-      .catch((error) => { if (active) setReviewError(error instanceof Error ? error.message : 'Unable to load product reviews.'); });
+      .then((items) => { if (active) { setReviews(items); setReviewsLoading(false); } })
+      .catch((error) => { if (active) { setReviewError(error instanceof Error ? error.message : 'Unable to load product reviews.'); setReviewsLoading(false); } });
     return () => { active = false; };
   }, [product]);
 
@@ -258,7 +260,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {averageReviewRating} / 5.0
                   </span>
                   <span className="text-xs text-slate-400">
-                    ({reviews.length || product.reviewsCount || 0} customer reviews)
+                    {reviewsLoading ? 'Loading reviews…' : reviewError ? 'Reviews unavailable' : `(${reviews.length} customer reviews)`}
                   </span>
                   <span className={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false ? "text-red-700 bg-red-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200" : "text-emerald-700 bg-emerald-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200"}>
                     {product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false ? "Out of stock" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "In stock" : "Availability: confirm with seller"}
@@ -636,7 +638,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             {/* Reviews List */}
             <div className="space-y-3">
-              {reviews.length === 0 ? (
+              {reviewsLoading ? (
+                <p className="text-xs text-slate-500 text-center py-4" role="status">Loading customer reviews…</p>
+              ) : reviewError ? (
+                <p className="text-xs text-red-600 text-center py-4" role="alert">Customer reviews could not be loaded. Please try again later.</p>
+              ) : reviews.length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-4">
                   No reviews yet. Be the first to share your thoughts on this product!
                 </p>
