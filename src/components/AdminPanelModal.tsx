@@ -4117,16 +4117,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               <div className="space-y-2">
                 <span className="font-bold text-[#0B172E] block">Items in Order:</span>
-                {selectedOrderDetails.items.map((it) => (
-                  <div key={it.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                    <div>
-                      <span className="font-bold text-slate-800 block">{it.product.name}</span>
-                      <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor ? `Selected design: ${it.selectedColor}` : ''} {it.selectedSize ? `• Size: ${it.selectedSize}` : ''} {it.selectedVariation ? `• Option: ${it.selectedVariation}` : ''}</span>
-                      {!!it.product.variations?.some((v) => v.name.startsWith('spec:')) && <span className="mt-1 block text-[10px] text-slate-500">{it.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => `${v.name.slice(5)}: ${v.options[0]}`).join(' • ')}</span>}
+                {selectedOrderDetails.items.map((it) => {
+                  const selectedIndex = it.selectedColor ? (it.product.colors || []).indexOf(it.selectedColor) : -1;
+                  const chosenImage = selectedIndex >= 0 ? (it.product.images?.[selectedIndex + 1] || (it.product.images?.length === it.product.colors?.length ? it.product.images[selectedIndex] : undefined) || it.product.image) : it.product.image;
+                  return (
+                    <div key={it.id} className="flex items-center justify-between gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <img src={chosenImage} alt={it.product.name} className="h-14 w-14 rounded-lg border border-slate-200 bg-white object-cover" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-800 block">{it.product.name}</span>
+                          <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor ? \`Selected design: \${it.selectedColor}\` : ''} {it.selectedSize ? \`• Size: \${it.selectedSize}\` : ''} {it.selectedVariation ? \`• Option: \${it.selectedVariation}\` : ''}</span>
+                          {!!it.product.variations?.some((v) => v.name.startsWith('spec:')) && <span className="mt-1 block text-[10px] text-slate-500">{it.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => \`\${v.name.slice(5)}: \${v.options[0]}\`).join(' • ')}</span>}
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-black text-[#0B172E]">₦{(it.product.price * it.quantity).toLocaleString()}</span>
                     </div>
-                    <span className="font-black text-[#0B172E]">₦{(it.product.price * it.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl space-y-1 border-t">
