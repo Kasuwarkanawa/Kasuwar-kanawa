@@ -740,7 +740,10 @@ async function dispatch(req: Request, origin: string | null) {
     ]);
     if(userError)throw userError;if(presenceError)throw presenceError;if(eventsError)throw eventsError;
     if(!user)fail("User not found.",404);
-    const activityRows=events??[];\n    const lastLoginAt=activityRows.find((event:any)=>event.eventType==="LOGIN")?.createdAt??null;\n    const lastLogoutAt=activityRows.find((event:any)=>event.eventType==="LOGOUT")?.createdAt??null;\n    return reply({user:safeUser(user),lastSeenAt:presence?.lastSeenAt??null,lastLoginAt,lastLogoutAt,activities:activityRows},200,origin);
+    const activityRows=events??[];
+    const lastLoginAt=activityRows.find((event:any)=>event.eventType==="LOGIN")?.createdAt??null;
+    const lastLogoutAt=activityRows.find((event:any)=>event.eventType==="LOGOUT")?.createdAt??null;
+    return reply({user:safeUser(user),lastSeenAt:presence?.lastSeenAt??null,lastLoginAt,lastLogoutAt,activities:activityRows},200,origin);
   }
   if(path==="/admin/users" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);
