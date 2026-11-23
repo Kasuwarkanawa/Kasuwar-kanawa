@@ -476,7 +476,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data:category}=await db.from("Category").select("id").eq("name",s.category).maybeSingle();
     const row={id:crypto.randomUUID(),...s,categoryId:category?.id??null,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:true,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
     const {data,error}=await db.from("Product").insert(row).select("*").single(); if(error) throw error;
-    await recordUserActivity((await currentUser(req))!.user.id,"ADMIN_PRODUCT_CREATED","Super Admin created a product",{productId:data.id,sellerId:b.sellerId,name:b.name});
+    await recordUserActivity(auth.user.id,"SELLER_PRODUCT_CREATED","Submitted a new product for Admin approval",{productId:data.id,name:data.name});
     return reply(serializeProduct(data),201,origin);
   }
   if(sellerProductMatch && method==="PATCH") {
@@ -850,6 +850,7 @@ async function dispatch(req: Request, origin: string | null) {
     };
     const {data,error}=await db.from("Product").insert(row).select("*").single();
     if(error)throw error;
+    await recordUserActivity((await currentUser(req))!.user.id,"ADMIN_PRODUCT_CREATED","Super Admin created a product",{productId:data.id,sellerId:b.sellerId,name:b.name});
     return reply(serializeProduct(data),201,origin);
   }
 
