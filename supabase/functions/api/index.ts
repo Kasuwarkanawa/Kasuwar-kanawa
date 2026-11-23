@@ -179,6 +179,25 @@ async function ensureOpayTransferPayout(orderId:string) {
   if(error)throw error;return data;
 }
 
+
+async function expiredSubscriptionSellerIds() {
+  const {data,error}=await db.from("SellerSubscription").select("sellerId,status,createdAt").order("createdAt",{ascending:false});
+  if(error) throw error;
+  const latest=new Map<string,string>();
+  for(const row of data??[]) if(!latest.has(row.sellerId)) latest.set(row.sellerId,row.status);
+  return [...latest.entries()].filter(([,status])=>status==="expired" || status==="cancelled" || status==="rejected").map(([sellerId])=>sellerId);
+}
+async function notifySubscriptionSeller(userId:string, type:string, title:string, message:string, dedupeKey:string, data:Record<string,unknown>={}) {
+  const {error}=await db.from("UserNotification").upsert({
+    id:crypto.randomUUID(),userId,type,title,message,data,dedupeKey,createdAt:new Date().toISOString()
+  },{onConflict:"userId,dedupeKey",ignoreDuplicates:true});
+  if(error) throw error;
+}
+async function runSubscriptionExpiry() {
+  const {error}=await db.rpc("process_seller_subscription_expiry");
+  if(error) throw error;
+}
+
 async function dispatch(req: Request, origin: string | null) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/functions\/v1\/api/, "").replace(/^\/api/, "") || "/";
@@ -288,7 +307,11 @@ async function dispatch(req: Request, origin: string | null) {
   if (method === "GET" && path === "/products") {
     const take = Math.min(100,Math.max(1,Number(url.searchParams.get("take") ?? 50)));
     const skip = Math.max(0,Number(url.searchParams.get("skip") ?? 0));
-    let query = db.from("Product").select("*").eq("approvalStatus","APPROVED").order("createdAt",{ascending:false}).range(skip,skip+take-1);
+    await runSubscriptionExpiry();
+    const blockedSellerIds=await expiredSubscriptionSellerIds();
+    let query = db.from("Product").select("*").eq("approvalStatus","APPROVED").order("createdAt",{ascending:false});
+    if(blockedSellerIds.length) query=query.not("sellerId","in",`(${blockedSellerIds.join(",")})`);
+    query=query.range(skip,skip+take-1);
     const category = url.searchParams.get("category"), search = url.searchParams.get("search"), sellerId = url.searchParams.get("sellerId");
     if (category) query = query.eq("category",category);
     if (sellerId) query = query.eq("sellerId",sellerId);
@@ -525,6 +548,117 @@ async function dispatch(req: Request, origin: string | null) {
   if(path==="/seller/reports/buyers" && method==="GET") {
     const auth=await requireRole(req,["SELLER"]); const {data,error}=await db.from("BuyerReport").select("*,buyer:User!BuyerReport_buyerId_fkey(id,fullName,phone)").eq("sellerId",auth.user.id).order("createdAt",{ascending:false});
     if(error) throw error; return reply(data??[],200,origin);
+  }
+
+
+  // Phase 10: seller subscriptions, admin approvals, and in-app notifications.
+  if(path==="/seller/subscription" && method==="GET") {
+    const auth=await requireRole(req,["SELLER"]);
+    await runSubscriptionExpiry();
+    const [{data:plans,error:planError},{data:rows,error:subError},{data:notifications,error:notificationError}]=await Promise.all([
+      db.from("SellerSubscriptionPlan").select("*").eq("isActive",true).order("price",{ascending:true}),
+      db.from("SellerSubscription").select("*,plan:SellerSubscriptionPlan(*)").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(10),
+      db.from("UserNotification").select("*").eq("userId",auth.user.id).order("createdAt",{ascending:false}).limit(30)
+    ]);
+    if(planError)throw planError;if(subError)throw subError;if(notificationError)throw notificationError;
+    const current=(rows??[]).find((row:any)=>["active","grace","pending_payment","pending_approval"].includes(row.status))??null;
+    if(current?.status==="active" && current.expiresAt) {
+      const days=Math.ceil((new Date(current.expiresAt).getTime()-Date.now())/86400000);
+      for(const threshold of [7,3,1]) if(days<=threshold && days>=0) await notifySubscriptionSeller(auth.user.id,"subscription_expiry","Subscription ending soon",`Your seller subscription expires in ${days} day(s). Renew before the grace period ends.`,`subscription:${current.id}:expiry:${threshold}`,{subscriptionId:current.id,expiresAt:current.expiresAt});
+    }
+    return reply({plans:plans??[],subscription:current,subscriptions:rows??[],notifications:notifications??[]},200,origin);
+  }
+  if(path==="/seller/subscription" && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);
+    const b=z.object({planId:z.string().min(1).max(120),paymentMethod:z.enum(["bank_transfer","paystack"]),paymentReference:z.string().trim().max(160).optional()}).strict().parse(await bodyJson(req));
+    const {data:plan,error:planError}=await db.from("SellerSubscriptionPlan").select("*").eq("id",b.planId).eq("isActive",true).maybeSingle();
+    if(planError)throw planError;if(!plan)fail("This subscription plan is not available.",404);
+    const {data:existing,error:existingError}=await db.from("SellerSubscription").select("id,status").eq("sellerId",auth.user.id).in("status",["pending_payment","pending_approval"]).limit(1).maybeSingle();
+    if(existingError)throw existingError;if(existing)fail("You already have a subscription request awaiting payment or approval.",409);
+    const now=new Date().toISOString();
+    const {data,error}=await db.from("SellerSubscription").insert({
+      id:crypto.randomUUID(),sellerId:auth.user.id,planId:plan.id,status:"pending_payment",amountPaid:plan.price,
+      paymentMethod:b.paymentMethod,paymentReference:b.paymentReference??null,createdAt:now,updatedAt:now
+    }).select("*,plan:SellerSubscriptionPlan(*)").single();
+    if(error)throw error;
+    await notifySubscriptionSeller(auth.user.id,"subscription_request","Subscription request created","Your subscription request was created. Submit payment proof and wait for Admin approval.",`subscription:${data.id}:created`,{subscriptionId:data.id});
+    return reply(data,201,origin);
+  }
+  const sellerSubReceiptMatch=path.match(/^\/seller\/subscription\/([^/]+)\/receipt$/);
+  if(sellerSubReceiptMatch && method==="POST") {
+    const auth=await requireRole(req,["SELLER"]);
+    const id=decodeURIComponent(sellerSubReceiptMatch[1]);
+    const {data:sub,error:subError}=await db.from("SellerSubscription").select("id,sellerId,status").eq("id",id).maybeSingle();
+    if(subError)throw subError;if(!sub || sub.sellerId!==auth.user.id)fail("Subscription request not found.",404);
+    if(!["pending_payment","pending_approval"].includes(sub.status))fail("This subscription request no longer accepts payment proof.",409);
+    const contentType=req.headers.get("content-type")??"";
+    const extension=contentType.includes("png")?"png":contentType.includes("webp")?"webp":contentType.includes("pdf")?"pdf":"jpg";
+    if(!["image/jpeg","image/png","image/webp","application/pdf"].includes(contentType))fail("Upload a JPG, PNG, WebP or PDF receipt.",415);
+    const bytes=new Uint8Array(await req.arrayBuffer());if(bytes.length===0 || bytes.length>5*1024*1024)fail("Receipt must be between 1 byte and 5MB.",413);
+    const objectPath=`subscriptions/${auth.user.id}/${id}-${crypto.randomUUID()}.${extension}`;
+    const {error:uploadError}=await db.storage.from("payment-receipts").upload(objectPath,bytes,{contentType,upsert:false});
+    if(uploadError)throw uploadError;
+    const {data,error}=await db.from("SellerSubscription").update({paymentReceiptPath:objectPath,status:"pending_approval",updatedAt:new Date().toISOString()}).eq("id",id).select("id,status,paymentReceiptPath,updatedAt").single();
+    if(error){await db.storage.from("payment-receipts").remove([objectPath]);throw error;}
+    return reply(data,200,origin);
+  }
+  if(path==="/admin/subscriptions/plans" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const {data,error}=await db.from("SellerSubscriptionPlan").select("*").order("createdAt",{ascending:false});
+    if(error)throw error;return reply(data??[],200,origin);
+  }
+  if(path==="/admin/subscriptions/plans" && method==="POST") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({name:z.string().trim().min(2).max(100),description:z.string().trim().max(1000).default(""),price:z.number().nonnegative(),durationDays:z.number().int().min(1).max(3660),graceDays:z.number().int().min(0).max(30).default(7),isActive:z.boolean().default(true)}).strict().parse(await bodyJson(req));
+    const now=new Date().toISOString();
+    const {data,error}=await db.from("SellerSubscriptionPlan").insert({id:crypto.randomUUID(),...b,createdAt:now,updatedAt:now}).select("*").single();
+    if(error)throw error;return reply(data,201,origin);
+  }
+  const adminPlanMatch=path.match(/^\/admin\/subscriptions\/plans\/([^/]+)$/);
+  if(adminPlanMatch && method==="PATCH") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({name:z.string().trim().min(2).max(100).optional(),description:z.string().trim().max(1000).optional(),price:z.number().nonnegative().optional(),durationDays:z.number().int().min(1).max(3660).optional(),graceDays:z.number().int().min(0).max(30).optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
+    const {data,error}=await db.from("SellerSubscriptionPlan").update({...b,updatedAt:new Date().toISOString()}).eq("id",decodeURIComponent(adminPlanMatch[1])).select("*").single();
+    if(error)throw error;return reply(data,200,origin);
+  }
+  if(path==="/admin/subscriptions" && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);await runSubscriptionExpiry();
+    const {data,error}=await db.from("SellerSubscription").select("*,plan:SellerSubscriptionPlan(*),seller:User!SellerSubscription_sellerId_fkey(id,fullName,businessName,email,phone)").order("createdAt",{ascending:false}).limit(300);
+    if(error)throw error;return reply(data??[],200,origin);
+  }
+  const adminSubDecisionMatch=path.match(/^\/admin\/subscriptions\/([^/]+)\/decision$/);
+  if(adminSubDecisionMatch && method==="PATCH") {
+    const admin=await requireRole(req,["SUPER_ADMIN"]);
+    const b=z.object({decision:z.enum(["approve","reject"]),adminNotes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
+    const id=decodeURIComponent(adminSubDecisionMatch[1]);
+    const {data:sub,error:subError}=await db.from("SellerSubscription").select("*,plan:SellerSubscriptionPlan(*)").eq("id",id).maybeSingle();
+    if(subError)throw subError;if(!sub)fail("Subscription request not found.",404);
+    if(!["pending_payment","pending_approval"].includes(sub.status))fail("Only pending subscription requests can be decided.",409);
+    const now=new Date(),nowIso=now.toISOString();
+    if(b.decision==="approve") {
+      const {error:cancelError}=await db.from("SellerSubscription").update({status:"cancelled",updatedAt:nowIso}).eq("sellerId",sub.sellerId).in("status",["active","grace"]);
+      if(cancelError)throw cancelError;
+      const expiresAt=new Date(now.getTime()+Number(sub.plan.durationDays)*86400000).toISOString();
+      const {data,error}=await db.from("SellerSubscription").update({status:"active",startsAt:nowIso,expiresAt,graceEndsAt:null,approvedBy:admin.user.id,approvedAt:nowIso,updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*)").single();
+      if(error)throw error;
+      await notifySubscriptionSeller(sub.sellerId,"subscription_approved","Subscription approved","Your seller subscription is active. You can continue selling on Kasuwar Kanawa.",`subscription:${id}:approved`,{subscriptionId:id,expiresAt});
+      return reply(data,200,origin);
+    }
+    const {data,error}=await db.from("SellerSubscription").update({status:"rejected",updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*)").single();
+    if(error)throw error;
+    await notifySubscriptionSeller(sub.sellerId,"subscription_rejected","Subscription request declined",b.adminNotes||"Your subscription request was declined. Contact Admin for details.",`subscription:${id}:rejected`,{subscriptionId:id});
+    return reply(data,200,origin);
+  }
+  if(path==="/notifications/mine" && method==="GET") {
+    const auth=await requireRole(req,["BUYER","SELLER","LOGISTICS","SUPER_ADMIN"]);
+    const {data,error}=await db.from("UserNotification").select("*").eq("userId",auth.user.id).order("createdAt",{ascending:false}).limit(50);
+    if(error)throw error;return reply(data??[],200,origin);
+  }
+  const notificationReadMatch=path.match(/^\/notifications\/([^/]+)\/read$/);
+  if(notificationReadMatch && method==="PATCH") {
+    const auth=await requireRole(req,["BUYER","SELLER","LOGISTICS","SUPER_ADMIN"]);
+    const {data,error}=await db.from("UserNotification").update({readAt:new Date().toISOString()}).eq("id",decodeURIComponent(notificationReadMatch[1])).eq("userId",auth.user.id).select("id,readAt").single();
+    if(error)throw error;return reply(data,200,origin);
   }
 
   // Super Admin dashboard, account moderation, product approvals, and reports.
