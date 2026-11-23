@@ -91,6 +91,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     | 'menu'
     | 'dashboard'
     | 'users'
+    | 'activity'
     | 'buyers'
     | 'sellers'
     | 'products'
@@ -1353,6 +1354,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
                 { id: 'users', label: 'Users', icon: Users, badge: allUsers.length },
+                { id: 'activity', label: 'User Activity Management', icon: Clock, badge: backendUsers.length },
                 { id: 'buyers', label: 'Buyers', icon: UserCheck, badge: totalBuyers },
                 { id: 'sellers', label: 'Sellers', icon: Store, badge: totalSellers },
                 { id: 'products', label: 'Products', icon: Package, badge: totalProducts },
@@ -1585,6 +1587,55 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
                 </div>
+              )}
+
+              {activeTab === 'activity' && (
+                <section className="space-y-4">
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                    <h2 className="text-base font-black text-[#0B172E]">User Activity Management</h2>
+                    <p className="mt-1 text-xs text-slate-600">Duba tarihin shiga da fita, last seen, da muhimman ayyukan kowane Buyer, Seller, Logistics da Admin.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search by name, email or phone..." className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs" />
+                    <select value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value as any)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold">
+                      <option value="all">All roles</option><option value="buyer">Buyers</option><option value="seller">Sellers</option><option value="logistics">Logistics</option><option value="admin">Admins</option>
+                    </select>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table className="w-full min-w-[680px] text-left text-xs">
+                      <thead className="bg-slate-100 text-[10px] uppercase text-slate-600"><tr><th className="p-3">User</th><th className="p-3">Role</th><th className="p-3">Status</th><th className="p-3">Contact</th><th className="p-3 text-right">Activity</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {backendUsers.filter((user) => {
+                          const role = String(user.accountType || '').toLowerCase();
+                          const query = searchQuery.trim().toLowerCase();
+                          const matchesRole = userRoleFilter === 'all' || role === userRoleFilter;
+                          const matchesQuery = !query || [user.fullName, user.email, user.phone].some((value) => String(value || '').toLowerCase().includes(query));
+                          return matchesRole && matchesQuery;
+                        }).map((user) => (
+                          <tr key={user.id}>
+                            <td className="p-3"><div className="font-black text-slate-900">{user.fullName || 'Unnamed user'}</div><div className="mt-0.5 text-[10px] text-slate-500">{user.id}</div></td>
+                            <td className="p-3 capitalize">{user.accountType || 'Unknown'}</td>
+                            <td className="p-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold">{user.status || 'active'}</span></td>
+                            <td className="p-3"><div>{user.email || '—'}</div><div className="text-slate-500">{user.phone || '—'}</div></td>
+                            <td className="p-3 text-right"><button type="button" disabled={isLoadingActivityReport} onClick={async () => {
+                              setIsLoadingActivityReport(true);
+                              try {
+                                const report = await marketplaceApi.adminUsers.activity(user.id, 500);
+                                setSelectedActivityReport(report);
+                              } catch (error) {
+                                showNotification(error instanceof Error ? error.message : 'Unable to load user activity history.');
+                              } finally {
+                                setIsLoadingActivityReport(false);
+                              }
+                            }} className="rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white hover:bg-indigo-700 disabled:opacity-50">View History</button></td>
+                          </tr>
+                        ))}
+                        {!backendUsers.length && <tr><td colSpan={5} className="p-6 text-center text-slate-500">No users loaded yet.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-slate-500">Total registered profiles loaded: {backendUsers.length}. Zaɓi View History domin ganin cikakken rahoto da Print Report.</p>
+                </section>
               )}
 
               {/* ============================================================ */}
