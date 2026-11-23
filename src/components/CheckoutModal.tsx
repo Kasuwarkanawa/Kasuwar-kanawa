@@ -369,15 +369,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         )}
 
                         {/* Variation Selector */}
-                        {item.product.variations && item.product.variations[0]?.options.length && (
+                        {item.product.variations?.find((variation) => !variation.name.startsWith('spec:'))?.options.length && (
                           <div className="flex items-center gap-1">
                             <span className="text-slate-500">Opt:</span>
                             <select
-                              value={item.selectedVariation || item.product.variations[0].options[0]}
+                              value={item.selectedVariation || item.product.variations.find((variation) => !variation.name.startsWith('spec:'))!.options[0]}
                               onChange={(e) => handleItemVariation(item.id, 'selectedVariation', e.target.value)}
                               className="px-2 py-0.5 bg-white border border-slate-300 rounded-md font-semibold text-slate-800 text-[11px]"
                             >
-                              {item.product.variations[0].options.map((opt) => (
+                              {item.product.variations.find((variation) => !variation.name.startsWith('spec:'))!.options.map((opt) => (
                                 <option key={opt} value={opt}>
                                   {opt}
                                 </option>
