@@ -780,6 +780,7 @@ async function dispatch(req: Request, origin: string | null) {
     };
     const {data,error}=await db.from("User").insert(row).select("*").single();
     if(error){if(error.code==="23505")fail("An account with this email or phone already exists.",409);throw error;}
+    await recordUserActivity(data.id,"ACCOUNT_CREATED","Account created by Super Admin",{role:data.role,createdBy:(await currentUser(req))?.user.id??null});
     return reply({user:safeUser(data)},201,origin);
   }
 
@@ -788,7 +789,7 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminUserProfileMatch[1]);
     const b=z.object({fullName:z.string().trim().min(2).max(120).optional(),email:z.string().trim().email().max(254).optional(),phone:z.string().trim().min(7).max(24).optional(),whatsAppNumber:z.string().trim().min(7).max(24).nullable().optional(),address:z.string().trim().max(300).optional(),businessAddress:z.string().trim().max(300).nullable().optional(),businessName:z.string().trim().max(120).nullable().optional(),city:z.string().trim().max(100).optional(),state:z.string().trim().max(100).optional(),area:z.string().trim().max(100).optional(),profileImage:z.string().url().max(1000).nullable().optional()}).strict().parse(await bodyJson(req));
     const update:any={...b,updatedAt:new Date().toISOString()};if(update.email)update.email=update.email.toLowerCase();if(update.phone)update.phone=update.phone.replace(/[\s()-]/g,"");if(update.whatsAppNumber)update.whatsAppNumber=update.whatsAppNumber.replace(/[\s()-]/g,"");
-    const {data,error}=await db.from("User").update(update).eq("id",id).neq("role","SUPER_ADMIN").select("*").single();if(error)throw error;return reply({user:safeUser(data)},200,origin);
+    const {data,error}=await db.from("User").update(update).eq("id",id).neq("role","SUPER_ADMIN").select("*").single();if(error)throw error;await recordUserActivity(id,"PROFILE_UPDATED","Super Admin updated the user profile",{fields:Object.keys(update)});return reply({user:safeUser(data)},200,origin);
   }
 
   const adminUserMatch=path.match(/^\/admin\/users\/([^/]+)\/status$/);
@@ -806,6 +807,7 @@ async function dispatch(req: Request, origin: string | null) {
       if(companyError)throw companyError;
     }
     if(status!=="ACTIVE")await db.from("Session").delete().eq("userId",id);
+    await recordUserActivity(id,"ACCOUNT_STATUS_CHANGED",`Account status changed to ${status}`,{status,changedBy:(await currentUser(req))?.user.id??null});
     return reply({user:safeUser(data)},200,origin);
   }
   if(path==="/admin/products/pending" && method==="GET") {
@@ -1413,7 +1415,7 @@ async function dispatch(req: Request, origin: string | null) {
     return reply((data??[]).map((shipment:any)=>({...shipment,trackingTimeline:[...(shipment.trackingTimeline??[])].sort((a:any,b:any)=>a.sortOrder-b.sortOrder).map((step:any)=>({title:step.title,date:step.dateLabel,completed:step.completed,description:step.description}))})),200,origin);
   }
   if(path==="/logistics/shipments" && method==="POST") {
-    const {company}=await approvedLogisticsCompany(req);
+    const {auth,company}=await approvedLogisticsCompany(req);
     const b=z.object({orderId:z.string().min(1).max(128),deliveryAgentId:z.string().min(1).max(128).optional()}).strict().parse(await bodyJson(req));
     const {data:order,error:orderError}=await db.from("Order").select("*").eq("id",b.orderId).eq("logisticsCompanyId",company.id).maybeSingle();
     if(orderError)throw orderError;if(!order || order.status!=="dispatched")fail("This dispatched order is not assigned to your company.",404);
@@ -1434,11 +1436,12 @@ async function dispatch(req: Request, origin: string | null) {
     if(updateError)throw updateError;
     const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:order.id,title:"Awaiting Pickup",dateLabel:new Date(now).toLocaleString(),completed:true,description:"Shipment created by "+company.companyName,sortOrder:900,createdAt:now});
     if(buyerStepError)throw buyerStepError;
+    await recordUserActivity(auth.user.id,"SHIPMENT_CREATED","Created shipment "+trackingNumber,{shipmentId,orderId:order.id,trackingNumber});
     return reply({...shipment,trackingTimeline:[{title:"Awaiting Pickup",date:new Date(now).toLocaleString(),completed:true,description:step.description}]},201,origin);
   }
   const shipmentAgentMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/agent$/);
   if(shipmentAgentMatch && method==="PATCH") {
-    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentAgentMatch[1]);
+    const {auth,company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentAgentMatch[1]);
     const b=z.object({deliveryAgentId:z.string().min(1).max(128).nullable()}).strict().parse(await bodyJson(req));
     const {data:shipment,error}=await db.from("LogisticsShipment").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
     if(error)throw error;if(!shipment)fail("Shipment not found.",404);
@@ -1450,11 +1453,11 @@ async function dispatch(req: Request, origin: string | null) {
     await db.from("Order").update({deliveryAgentId:b.deliveryAgentId,updatedAt:now}).eq("id",shipment.orderId);
     const {data:steps}=await db.from("LogisticsShipmentTrackingStep").select("sortOrder").eq("shipmentId",id).order("sortOrder",{ascending:false}).limit(1);
     const {error:stepError}=await db.from("LogisticsShipmentTrackingStep").insert({id:crypto.randomUUID(),shipmentId:id,title:b.deliveryAgentId?"Delivery Agent Assigned":"Delivery Agent Unassigned",dateLabel:new Date(now).toLocaleString(),completed:true,description:b.deliveryAgentId?"A delivery agent has been assigned.":"The delivery agent assignment was removed.",sortOrder:(steps?.[0]?.sortOrder??0)+1,createdAt:now});
-    if(stepError)throw stepError;return reply(data,200,origin);
+    if(stepError)throw stepError;await recordUserActivity(auth.user.id,"SHIPMENT_AGENT_CHANGED","Updated shipment delivery agent",{shipmentId:id,orderId:shipment.orderId,deliveryAgentId:b.deliveryAgentId});return reply(data,200,origin);
   }
   const shipmentStatusMatch=path.match(/^\/logistics\/shipments\/([^/]+)\/status$/);
   if(shipmentStatusMatch && method==="PATCH") {
-    const {company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentStatusMatch[1]);
+    const {auth,company}=await approvedLogisticsCompany(req);const id=decodeURIComponent(shipmentStatusMatch[1]);
     const b=z.object({status:z.enum(["picked_up","in_transit","out_for_delivery","delivered","failed"]),notes:z.string().trim().max(1000).optional()}).strict().parse(await bodyJson(req));
     const {data:shipment,error}=await db.from("LogisticsShipment").select("*").eq("id",id).eq("logisticsCompanyId",company.id).maybeSingle();
     if(error)throw error;if(!shipment)fail("Shipment not found.",404);
@@ -1491,6 +1494,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {error:orderError}=await db.from("Order").update(orderUpdate).eq("id",shipment.orderId);if(orderError)throw orderError;
     const {error:buyerStepError}=await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId:shipment.orderId,title:label,dateLabel:new Date(now).toLocaleString(),completed:true,description,sortOrder:(orderSteps?.[0]?.sortOrder??0)+1,createdAt:now});
     if(buyerStepError)throw buyerStepError;
+    await recordUserActivity(auth.user.id,"SHIPMENT_STATUS_CHANGED",`Shipment ${shipment.trackingNumber}: ${b.status}`,{shipmentId:id,orderId:shipment.orderId,status:b.status,notes:b.notes??""});
     if(b.status==="delivered") {
       const {data:orderForSettlement,error:settlementOrderError}=await db.from("Order").select("id,sellerId,subtotal,totalAmount,paymentMethod").eq("id",shipment.orderId).single();
       if(settlementOrderError)throw settlementOrderError;
