@@ -256,14 +256,29 @@ export default function App() {
   };
 
   const handleRemoveItem = (cartItemId: string) => {
+    // Remove immediately from the visible cart, then persist the deletion.
+    // Keep a snapshot so a failed server request can restore the item safely.
+    const previousItems = cartItems;
+    setCartItems((current) => current.filter((item) => item.id !== cartItemId));
+
     if (currentUser?.accountType === 'buyer') {
       void marketplaceApi.cart.remove(cartItemId)
-        .then(() => marketplaceApi.cart.list())
-        .then(({ items }) => setCartItems(items))
-        .catch((error) => showToast(error instanceof Error ? error.message : 'Unable to remove cart item.'));
+        .then(async () => {
+          const { items } = await marketplaceApi.cart.list();
+          setCartItems(items);
+          showToast('Product removed from your cart.');
+        })
+        .catch(async (error) => {
+          try {
+            const { items } = await marketplaceApi.cart.list();
+            setCartItems(items);
+          } catch {
+            setCartItems(previousItems);
+          }
+          showToast(error instanceof Error ? error.message : 'Unable to remove cart item. Please try again.');
+        });
       return;
     }
-    setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
   };
 
   const handleProceedCheckoutFromCart = () => {
