@@ -79,7 +79,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setDescriptionExpanded(false);
     setSelectedColor(firstSample || '');
     setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
-    setSelectedVariation(product.variations && product.variations[0]?.options.length ? product.variations[0].options[0] : '');
+    setSelectedVariation(product.variations?.find((variation) => !variation.name.startsWith('spec:'))?.options[0] || '');
     setQuantity(1);
     setReviews([]);
     setReviewsLoading(true);
