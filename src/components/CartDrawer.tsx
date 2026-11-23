@@ -163,7 +163,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         <div className="flex flex-wrap gap-1.5 mt-1.5 text-[10px]">
                           {item.selectedColor && (
                             <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700 font-semibold">
-                              Sample: <strong className="text-slate-900">{item.selectedColor}</strong>
+                              Selected design: <strong className="text-slate-900">{item.selectedColor}</strong>
                             </span>
                           )}
                           {item.selectedSize && (
