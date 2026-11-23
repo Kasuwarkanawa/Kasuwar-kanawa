@@ -36,6 +36,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dismissedSpotlightId, setDismissedSpotlightId] = useState<string | null>(null);
+  const [showAllProducts, setShowAllProducts] = useState(false);
 
   // Dynamic products list (only approved products appear on public marketplace)
   const [liveProducts, setLiveProducts] = useState<Product[]>([]);
@@ -681,13 +682,13 @@ export default function App() {
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
             <PopularProductsSection
-              products={allProducts.slice(0, 8)}
+              products={(popularProducts.length ? popularProducts : allProducts).slice(0, 8)}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
             <NewProductsSection
-              products={allProducts.slice(0, 8)}
+              products={(newProducts.length ? newProducts : allProducts).slice(0, 8)}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
@@ -781,25 +782,52 @@ export default function App() {
           </section>
         )}
 
-        {/* Homepage: show the complete product catalogue as the only product collection */}
+        {/* Full catalogue: compact recommendation row with an explicit expand action */}
         {!searchResults && !categoryFilteredProducts && (
-          <section id="all-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
-            <div className="flex items-center justify-between mb-5">
+          <section id="all-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-10">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-pink-100 bg-white p-4 shadow-sm sm:p-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-6 bg-[#E6007E] rounded-full inline-block" />
-                  <h2 className="text-xl sm:text-2xl font-black text-[#0B172E]">All Products</h2>
+                  <span className="h-6 w-1.5 rounded-full bg-[#E6007E]" />
+                  <h2 className="text-xl font-black tracking-tight text-[#0B172E] sm:text-2xl">Recommended for You</h2>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1 ml-4">Browse all approved products in Kasuwar Kanawa ({allProducts.length})</p>
+                <p className="ml-3 mt-1 text-xs font-medium text-slate-500 sm:text-sm">Explore approved products from trusted sellers on Kasuwar Kanawa ({allProducts.length})</p>
               </div>
+              {allProducts.length > 8 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllProducts((current) => !current)}
+                  className="rounded-full bg-[#E6007E] px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-200"
+                  aria-expanded={showAllProducts}
+                >
+                  {showAllProducts ? 'Show Less' : 'View All Products'}
+                </button>
+              )}
             </div>
             {allProducts.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No approved products are available yet.</div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No approved products are available yet.</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-                {allProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} onViewDetails={(p) => setSelectedProductForDetail(p)} />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+                {(showAllProducts ? allProducts : allProducts.slice(0, 8)).map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    onBuyNow={handleBuyNow}
+                    onViewDetails={(p) => setSelectedProductForDetail(p)}
+                  />
                 ))}
+              </div>
+            )}
+            {!showAllProducts && allProducts.length > 8 && (
+              <div className="mt-5 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllProducts(true)}
+                  className="rounded-lg border border-[#E6007E] bg-white px-6 py-2.5 text-sm font-bold text-[#E6007E] transition hover:bg-pink-50"
+                >
+                  See All {allProducts.length} Products
+                </button>
               </div>
             )}
           </section>
