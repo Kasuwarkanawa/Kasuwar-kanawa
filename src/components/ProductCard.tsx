@@ -24,6 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (product.colors?.length && onViewDetails) { onViewDetails(product); return; }
     onAddToCart(product);
     setAddedAnimation(true);
     setTimeout(() => setAddedAnimation(false), 1200);
@@ -31,6 +32,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleBuy = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (product.colors?.length && onViewDetails) { onViewDetails(product); return; }
     onBuyNow(product);
   };
 
