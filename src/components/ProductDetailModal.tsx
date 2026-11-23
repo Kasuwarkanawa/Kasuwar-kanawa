@@ -51,6 +51,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       : ''
   );
   const [quantity, setQuantity] = useState(1);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState<ProductReview[]>([]);
@@ -141,6 +142,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const allImages = [product.image, ...(product.images || [])];
   const uniqueImages = Array.from(new Set(allImages));
+  const selectProductColor = (color: string) => {
+    setSelectedColor(color);
+    const index = (product.colors || []).indexOf(color);
+    setSelectedImage(product.images?.[index] || product.image);
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4">
@@ -205,8 +211,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
 
               <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-bold">Verified Seller:</span>
-                <span className="font-extrabold text-[#0B172E]">{product.sellerName || 'Kasuwar Kanawa Merchant'}</span>
+                <span className="text-slate-500 font-bold">Seller details:</span>
+                <span className="font-extrabold text-[#0B172E] text-right">{product.sellerName || "Kasuwar Kanawa Merchant"}{product.sellerId && <span className="block text-[10px] text-slate-500 font-semibold">Seller ID: {product.sellerId}</span>}{product.sellerVerified && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED ID</span>}</span>
               </div>
             </div>
 
@@ -262,10 +268,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 {/* Description */}
                 {product.description && (
-                  <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    {product.description}
-                  </p>
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className={descriptionExpanded ? "text-xs sm:text-sm text-slate-600 leading-relaxed" : "text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3"}>{product.description}</p>
+                    {product.description.length > 120 && <button type="button" onClick={() => setDescriptionExpanded(value => !value)} className="mt-2 text-sm font-black text-red-600 underline underline-offset-2">{descriptionExpanded ? "See Less" : "See More 👉"}</button>}
+                  </div>
                 )}
+                <div className="mt-4 rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="bg-[#0B172E] px-3 py-2 text-xs font-black uppercase tracking-wide text-white">Full Product Specifications</div>
+                  <div className="divide-y divide-slate-100 text-xs">
+                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Category</span><span className="text-right font-bold text-slate-800">{product.category}</span></div>
+                    {!!product.colors?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Available colours</span><span className="text-right font-bold text-slate-800">{product.colors.join(", ")}</span></div>}
+                    {!!product.sizes?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Sizes / Storage</span><span className="text-right font-bold text-slate-800">{product.sizes.join(", ")}</span></div>}
+                    {(product.variations || []).map((variation, index) => <div key={index} className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">{variation.name}</span><span className="text-right font-bold text-slate-800">{variation.options.join(", ")}</span></div>)}
+                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Stock available</span><span className="text-right font-bold text-slate-800">{product.stockQuantity ?? product.stockLeft ?? (product.inStock ? "In stock" : "Check availability")}</span></div>
+                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Product ID</span><span className="text-right font-bold text-slate-800 break-all">{product.id}</span></div>
+                  </div>
+                </div>
 
                 {/* 1. SELECT PRODUCT COLORS */}
                 {product.colors && product.colors.length > 0 && (
@@ -279,7 +297,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         <button
                           key={color}
                           type="button"
-                          onClick={() => setSelectedColor(color)}
+                          onClick={() => selectProductColor(color)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             selectedColor === color
                               ? 'bg-[#0B172E] text-white shadow-xs ring-2 ring-[#E6007E]'
