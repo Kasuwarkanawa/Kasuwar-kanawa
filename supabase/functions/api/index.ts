@@ -1201,6 +1201,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(updateError)throw updateError;
     await db.from("OrderTrackingStep").insert({id:crypto.randomUUID(),orderId,title:b.action==="retry"?"Another Delivery Requested":b.action==="refund"?"Refund Requested":"Cancellation Requested",dateLabel:new Date().toLocaleString("en-NG",{timeZone:"Africa/Lagos"}),completed:false,description:b.notes??"Buyer submitted a request after failed delivery.",sortOrder:Math.floor(Date.now()/1000),createdAt:now});
     await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_REQUESTED",`Requested ${b.action} for failed delivery`,{orderId,action:b.action,notes:b.notes??""});
+    await recordUserActivity(auth.user.id,"DELIVERY_FAILURE_REQUESTED",`Requested ${b.action} for failed delivery`,{orderId,action:b.action,notes:b.notes??""});
     const latest=await getOrder(orderId);return reply(orderForBuyer(latest),200,origin);
   }
   const deliveryFailureAdminMatch=path.match(/^\/orders\/admin\/([^/]+)\/delivery-failure-resolution$/);
@@ -1592,10 +1593,10 @@ async function dispatch(req: Request, origin: string | null) {
     if(error)throw error;return reply(data,200,origin);
   }
   if(path==="/admin/payout-settings" && method==="PATCH") {
-    await requireRole(req,["SUPER_ADMIN"]);
+    const auth=await requireRole(req,["SUPER_ADMIN"]);
     const b=z.object({bankName:z.string().trim().min(2).max(100),accountName:z.string().trim().min(2).max(120),accountNumber:z.string().trim().regex(/^\d{10}$/)}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("MarketplacePayoutSettings").upsert({id:"default",...b,updatedAt:new Date().toISOString()}).select("*").single();
-    if(error)throw error;return reply(data,200,origin);
+    if(error)throw error;await recordUserActivity(auth.user.id,"PAYOUT_SETTINGS_UPDATED","Updated marketplace payout bank settings",{bankName:b.bankName,accountName:b.accountName,accountNumberLast4:b.accountNumber.slice(-4)});return reply(data,200,origin);
   }
   const adminSettlementReceipt=path.match(/^\/admin\/cod-settlements\/([^/]+)\/logistics-receipt$/);
   if(adminSettlementReceipt && method==="GET") {
