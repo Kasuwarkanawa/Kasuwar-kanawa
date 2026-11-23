@@ -131,6 +131,18 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [prodColors, setProdColors] = useState('White, Blue, Gold');
   const [prodSizes, setProdSizes] = useState('M, L, XL');
   const [prodVariations, setProdVariations] = useState('Standard, Premium Edition');
+  const [prodSpecs, setProdSpecs] = useState<Record<string, string>>({});
+
+  const categorySpecFields = (category: string) => {
+    const value = category.toLowerCase();
+    if (value.includes('shadda') || value.includes('atamfa') || value.includes('ankara') || value.includes('fabric')) return ['Fabric Type', 'Material', 'Length / Yards', 'Pattern / Design', 'Fabric Finish'];
+    if (value.includes('shoe') || value.includes('footwear') || value.includes('leather')) return ['Shoe Type', 'Upper Material', 'Sole Type', 'Fit', 'Gender'];
+    if (value.includes('phone') || value.includes('gadget')) return ['Brand', 'Model', 'Storage', 'RAM', 'Battery', 'Network', 'Condition'];
+    if (value.includes('electronic') || value.includes('appliance')) return ['Brand', 'Model', 'Power / Capacity', 'Key Features', 'Warranty', 'Condition'];
+    if (value.includes('abaya') || value.includes('veil') || value.includes('fashion') || value.includes('cap')) return ['Material', 'Style', 'Fit', 'Gender', 'Care Instructions'];
+    if (value.includes('grocery') || value.includes('provision')) return ['Brand', 'Pack Size / Weight', 'Expiry Date', 'Origin'];
+    return ['Brand', 'Model', 'Material', 'Size / Capacity', 'Condition', 'Warranty'];
+  };
 
   // Report Buyer Form State
   const [reportReason, setReportReason] = useState('Unreachable phone number after multiple dispatch attempts');
@@ -279,9 +291,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       description: prodDescription,
       colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
       sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
-      variations: prodVariations
-        ? [{ name: 'Option', options: prodVariations.split(',').map((value) => value.trim()).filter(Boolean) }]
-        : [],
+      variations: [
+        ...(prodVariations ? [{ name: 'Option', options: prodVariations.split(',').map((value) => value.trim()).filter(Boolean) }] : []),
+        ...Object.entries(prodSpecs).filter(([, value]) => value.trim()).map(([name, value]) => ({ name: `spec:${name}`, options: [value.trim()] })),
+      ],
     };
 
     try {
@@ -312,6 +325,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setProdColors('White, Navy Blue, Golden');
     setProdSizes('Medium, Large, XL');
     setProdVariations('Standard Retail, Premium Packaging');
+    setProdSpecs({});
     setShowAddProductModal(true);
   };
 
@@ -327,7 +341,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setProdDescription(prod.description || '');
     setProdColors((prod.colors || []).join(', '));
     setProdSizes((prod.sizes || []).join(', '));
-    setProdVariations(prod.variations?.[0]?.options.join(', ') || '');
+    setProdVariations(prod.variations?.find((v) => !v.name.startsWith('spec:'))?.options.join(', ') || '');
+    setProdSpecs(Object.fromEntries((prod.variations || []).filter((v) => v.name.startsWith('spec:')).map((v) => [v.name.slice(5), v.options[0] || ''])));
     setShowAddProductModal(true);
   };
 
@@ -1184,9 +1199,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                     <div className="text-[11px] text-slate-500">
                                       Qty: <strong>{item.quantity}</strong> • ₦{item.product.price.toLocaleString()} each
                                     </div>
-                                    {(item.selectedColor || item.selectedSize) && (
-                                      <div className="text-[10px] text-slate-400">
-                                        {[item.selectedColor, item.selectedSize].filter(Boolean).join(' / ')}
+                                    {(item.selectedColor || item.selectedSize || item.selectedVariation) && (
+                                      <div className="text-[10px] font-semibold text-[#E6007E]">
+                                        {[item.selectedColor ? `Sample: ${item.selectedColor}` : '', item.selectedSize ? `Size: ${item.selectedSize}` : '', item.selectedVariation ? `Option: ${item.selectedVariation}` : ''].filter(Boolean).join(' • ')}
                                       </div>
                                     )}
                                   </div>
@@ -1562,11 +1577,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-[#E6007E] bg-white"
                     >
                       <option value="Kano Shadda & Kaftan">Kano Shadda & Kaftan</option>
+                       <option value="Atamfa & Ankara Fabrics">Atamfa & Ankara Fabrics</option>
                       <option value="Phones & Gadgets">Phones & Gadgets</option>
                       <option value="Men's Fashion & Caps">Men's Fashion & Caps</option>
                       <option value="Women's Abayas & Veils">Women's Abayas & Veils</option>
                       <option value="Electronics & Appliances">Electronics & Appliances</option>
+                       <option value="Computers & Accessories">Computers & Accessories</option>
                       <option value="Shoes & Leather Bags">Shoes & Leather Bags</option>
+                       <option value="Footwear & Shoes">Footwear & Shoes</option>
                       <option value="Provisions & Groceries">Provisions & Groceries</option>
                     </select>
                   </div>
@@ -1611,7 +1629,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 {/* Upload product image from device gallery or choose sample */}
                 <div className="space-y-3">
-                  <label className="block font-bold text-slate-700 mb-1">Product Images & Colour Samples</label><p className="mb-2 text-xs text-slate-500">Upload extra photos in the same order as your colour list. Buyers can select a colour to switch the product image.</p>
+                  <label className="block font-bold text-slate-700 mb-1">Product Main Photo & Sample Designs</label><p className="mb-2 text-xs text-slate-500">Upload 3–4 sample/design photos. Enter matching names below in the same order (example: Royal Blue, Gold Pattern, White Design). Buyers must choose their preferred sample.</p>
                   <div className="flex flex-wrap items-center gap-3">
                     <img src={prodImage} alt="Product preview" className="h-24 w-24 rounded-xl border border-slate-200 object-cover bg-slate-50" />
                     <div className="flex flex-col gap-2">
@@ -1662,12 +1680,21 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   />
                 </div>
 
+                <div className="rounded-xl border border-pink-200 bg-pink-50/60 p-3 space-y-2">
+                  <div><p className="font-black text-slate-800">Category-specific specifications</p><p className="text-[10px] text-slate-500">These fields change automatically when you choose another category.</p></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {categorySpecFields(prodCategory).map((field) => (
+                      <label key={field} className="block"><span className="mb-1 block text-[10px] font-bold text-slate-700">{field}</span><input value={prodSpecs[field] || ''} onChange={(e) => setProdSpecs((current) => ({ ...current, [field]: e.target.value }))} placeholder={`Enter ${field.toLowerCase()}`} className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs" /></label>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Available Colors</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Sample / Design Names (same order as photos)</label>
                     <input
                       type="text"
-                      placeholder="White, Blue, Gold"
+                      placeholder="Design A, Design B, Design C"
                       value={prodColors}
                       onChange={(e) => setProdColors(e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
@@ -1675,7 +1702,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Available Sizes</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{prodCategory.toLowerCase().includes('shoe') || prodCategory.toLowerCase().includes('footwear') ? 'Shoe Sizes' : prodCategory.toLowerCase().includes('shadda') || prodCategory.toLowerCase().includes('atamfa') || prodCategory.toLowerCase().includes('ankara') ? 'Fabric Length / Yards' : prodCategory.toLowerCase().includes('phone') ? 'Storage Options' : 'Sizes / Capacity'}</label>
                     <input
                       type="text"
                       placeholder="5 Yards, L, XL"
