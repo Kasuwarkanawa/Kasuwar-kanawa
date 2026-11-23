@@ -335,7 +335,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {/* Color Selector */}
                         {item.product.colors && item.product.colors.length > 0 && (
                           <div className="flex items-center gap-1">
-                            <span className="text-slate-500">Sample:</span>
+                            <span className="text-slate-500">Selected design:</span>
                             <select
                               value={item.selectedColor || item.product.colors[0]}
                               onChange={(e) => handleItemVariation(item.id, 'selectedColor', e.target.value)}
