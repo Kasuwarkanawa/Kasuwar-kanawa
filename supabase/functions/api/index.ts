@@ -570,18 +570,19 @@ async function dispatch(req: Request, origin: string | null) {
   if(path==="/seller/subscription" && method==="GET") {
     const auth=await requireRole(req,["SELLER"]);
     await runSubscriptionExpiry();
-    const [{data:plans,error:planError},{data:rows,error:subError},{data:notifications,error:notificationError}]=await Promise.all([
+    const [{data:plans,error:planError},{data:rows,error:subError},{data:notifications,error:notificationError},{data:paymentAccount,error:paymentAccountError}]=await Promise.all([
       db.from("SellerSubscriptionPlan").select("*").eq("isActive",true).order("price",{ascending:true}),
       db.from("SellerSubscription").select("*,plan:SellerSubscriptionPlan(*)").eq("sellerId",auth.user.id).order("createdAt",{ascending:false}).limit(10),
-      db.from("UserNotification").select("*").eq("userId",auth.user.id).order("createdAt",{ascending:false}).limit(30)
+      db.from("UserNotification").select("*").eq("userId",auth.user.id).order("createdAt",{ascending:false}).limit(30),
+      db.from("MarketplacePayoutSettings").select("bankName,accountName,accountNumber").eq("id","default").maybeSingle()
     ]);
-    if(planError)throw planError;if(subError)throw subError;if(notificationError)throw notificationError;
+    if(planError)throw planError;if(subError)throw subError;if(notificationError)throw notificationError;if(paymentAccountError)throw paymentAccountError;
     const current=(rows??[]).find((row:any)=>["active","grace","pending_payment","pending_approval"].includes(row.status))??null;
     if(current?.status==="active" && current.expiresAt) {
       const days=Math.ceil((new Date(current.expiresAt).getTime()-Date.now())/86400000);
-      for(const threshold of [7,3,1]) if(days<=threshold && days>=0) await notifySubscriptionSeller(auth.user.id,"subscription_expiry","Subscription ending soon",`Your seller subscription expires in ${days} day(s). Renew before the grace period ends.`,`subscription:${current.id}:expiry:${threshold}`,{subscriptionId:current.id,expiresAt:current.expiresAt});
+      for(const threshold of [7,3,1]) if(days<=threshold && days>=0) await notifySubscriptionSeller(auth.user.id,"subscription_expiry","Subscription ending soon",`WARNING: Your seller subscription expires in ${days} day(s). If you do not renew, it will enter a 7-day grace period. If payment is not approved before that grace period ends, your seller selling access will be suspended and all listings hidden from buyers. Your saved products and account data will not be deleted.`,`subscription:${current.id}:expiry:${threshold}`,{subscriptionId:current.id,expiresAt:current.expiresAt});
     }
-    return reply({plans:plans??[],subscription:current,subscriptions:rows??[],notifications:notifications??[]},200,origin);
+    return reply({plans:plans??[],subscription:current,subscriptions:rows??[],notifications:notifications??[],paymentAccount:paymentAccount??null},200,origin);
   }
   if(path==="/seller/subscription" && method==="POST") {
     const auth=await requireRole(req,["SELLER"]);

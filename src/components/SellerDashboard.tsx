@@ -63,6 +63,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [currentSeller, setCurrentSeller] = useState<User>(seller);
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod' | 'transfer' | 'subscription'>('menu');
+  const [subscriptionNotice, setSubscriptionNotice] = useState<any>(null);
+  const [subscriptionPaymentAccount, setSubscriptionPaymentAccount] = useState<any>(null);
+  const [subscriptionNoticeDismissed, setSubscriptionNoticeDismissed] = useState(false);
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [searchProductQuery, setSearchProductQuery] = useState('');
@@ -142,6 +145,25 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [reportsError, setReportsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOpen) {
+      setSubscriptionNoticeDismissed(false);
+      return;
+    }
+    let active = true;
+    setSubscriptionNoticeDismissed(false);
+    marketplaceApi.subscriptions.sellerOverview()
+      .then((result) => {
+        if (!active) return;
+        setSubscriptionNotice(result.subscription || null);
+        setSubscriptionPaymentAccount(result.paymentAccount || null);
+      })
+      .catch(() => {
+        if (active) { setSubscriptionNotice(null); setSubscriptionPaymentAccount(null); }
+      });
+    return () => { active = false; };
+  }, [isOpen, seller.id, refreshKey]);
+
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
@@ -501,6 +523,45 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             </button>
           </div>
         </div>
+
+        {(() => {
+          const sub = subscriptionNotice;
+          if (!sub || !['active','grace'].includes(sub.status) || subscriptionNoticeDismissed) return null;
+          const now = Date.now();
+          const expiry = sub.expiresAt ? new Date(sub.expiresAt).getTime() : 0;
+          const graceEnd = sub.graceEndsAt ? new Date(sub.graceEndsAt).getTime() : 0;
+          const daysToExpiry = expiry ? Math.ceil((expiry - now) / 86400000) : 999;
+          const daysInGrace = graceEnd ? Math.max(0, Math.ceil((graceEnd - now) / 86400000)) : 0;
+          if (sub.status === 'active' && (daysToExpiry < 0 || daysToExpiry > 7)) return null;
+          const isGrace = sub.status === 'grace';
+          const plan = Array.isArray(sub.plan) ? sub.plan[0] : sub.plan;
+          const amount = Number(plan?.price ?? sub.amountPaid ?? 1500);
+          return (
+            <section role="alert" aria-live="assertive" className={`relative mx-3 mt-3 rounded-2xl border-2 p-4 shadow-lg ${isGrace ? 'border-red-400 bg-red-50 text-red-950' : 'border-amber-400 bg-amber-50 text-amber-950'}`}>
+              <button type="button" onClick={() => setSubscriptionNoticeDismissed(true)} aria-label="Close subscription warning" className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-slate-700 shadow hover:bg-white"><X className="h-4 w-4" /></button>
+              <div className="flex items-start gap-3 pr-8">
+                <span className="text-2xl" aria-hidden="true">⚠️</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-black">{isGrace ? 'GRACE PERIOD WARNING — RENEW NOW' : 'SUBSCRIPTION EXPIRY WARNING'}</h3>
+                  <p className="mt-1 text-xs leading-5">
+                    {isGrace
+                      ? `Your subscription has expired. You have ${daysInGrace} day(s) left in your 7-day grace period. If payment is not made and approved before the grace period ends, your seller account will be suspended from selling and all your products will be hidden from buyers. Your saved products and account information will not be deleted.`
+                      : `Your seller subscription expires in ${Math.max(0, daysToExpiry)} day(s). Renew now to avoid interruption. If you do not renew, your subscription will enter a 7-day grace period; after that, selling access will be suspended and your products hidden from buyers. Your saved data will not be deleted.`}
+                  </p>
+                  <div className="mt-3 rounded-xl border border-current/15 bg-white/90 p-3 text-xs">
+                    <p className="font-black">Renewal amount: {new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(amount)}</p>
+                    {subscriptionPaymentAccount ? <>
+                      <p className="mt-1">Bank: <b>{subscriptionPaymentAccount.bankName}</b></p>
+                      <p>Account name: <b>{subscriptionPaymentAccount.accountName}</b></p>
+                      <p>Account number: <b className="select-all tracking-wider">{subscriptionPaymentAccount.accountNumber}</b></p>
+                    </> : <p className="mt-1">Open Subscription &amp; Billing or contact Admin for the current payment account details.</p>}
+                  </div>
+                  <button type="button" onClick={() => { setSubscriptionNoticeDismissed(true); setActiveTab('subscription'); }} className="mt-3 rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white">Renew Subscription</button>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Profile Card / Quick Info Bar */}
         {activeTab !== 'menu' && <div className="bg-white px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
