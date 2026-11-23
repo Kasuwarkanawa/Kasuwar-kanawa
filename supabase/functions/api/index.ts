@@ -476,6 +476,7 @@ async function dispatch(req: Request, origin: string | null) {
     const {data:category}=await db.from("Category").select("id").eq("name",s.category).maybeSingle();
     const row={id:crypto.randomUUID(),...s,categoryId:category?.id??null,originalPrice:s.originalPrice??0,discountPercentage:s.discountPercentage??0,images:s.images??[],colors:s.colors??[],sizes:s.sizes??[],variations:s.variations??[],isFlashSale:s.isFlashSale??false,isPopular:s.isPopular??false,isNew:true,isSpecialOffer:s.isSpecialOffer??false,description:s.description??"",sellerId:auth.user.id,approvalStatus:"PENDING_APPROVAL",createdAt:now,updatedAt:now};
     const {data,error}=await db.from("Product").insert(row).select("*").single(); if(error) throw error;
+    await recordUserActivity((await currentUser(req))!.user.id,"ADMIN_PRODUCT_CREATED","Super Admin created a product",{productId:data.id,sellerId:b.sellerId,name:b.name});
     return reply(serializeProduct(data),201,origin);
   }
   if(sellerProductMatch && method==="PATCH") {
@@ -857,18 +858,18 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
     const b=z.object({name:z.string().trim().min(2).max(180).optional(),category:z.string().trim().min(1).max(120).optional(),price:z.number().positive().optional(),originalPrice:z.number().nonnegative().optional(),discountPercentage:z.number().int().min(0).max(100).optional(),image:z.string().trim().min(1).max(1000).optional(),description:z.string().max(10000).optional(),stockQuantity:z.number().int().min(0).max(100000).optional(),isFlashSale:z.boolean().optional(),isPopular:z.boolean().optional(),isNew:z.boolean().optional(),isSpecialOffer:z.boolean().optional()}).strict().parse(await bodyJson(req));
     const update:any={...b,updatedAt:new Date().toISOString()};if(update.category){const {data:category}=await db.from("Category").select("id").eq("name",update.category).maybeSingle();update.categoryId=category?.id??null;}
-    const {data,error}=await db.from("Product").update(update).eq("id",id).select("*").single();if(error)throw error;return reply(serializeProduct(data),200,origin);
+    const {data,error}=await db.from("Product").update(update).eq("id",id).select("*").single();if(error)throw error;await recordUserActivity((await currentUser(req))!.user.id,"ADMIN_PRODUCT_UPDATED","Super Admin updated product details",{productId:id,fields:Object.keys(update)});return reply(serializeProduct(data),200,origin);
   }
   if(adminProductMatch && method==="DELETE") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(adminProductMatch[1]);
-    const {data,error}=await db.from("Product").update({approvalStatus:"REJECTED",updatedAt:new Date().toISOString()}).eq("id",id).select("id").single();if(error)throw error;return reply({success:true,removedId:data.id},200,origin);
+    const {data,error}=await db.from("Product").update({approvalStatus:"REJECTED",updatedAt:new Date().toISOString()}).eq("id",id).select("id").single();if(error)throw error;await recordUserActivity((await currentUser(req))!.user.id,"ADMIN_PRODUCT_REMOVED","Super Admin removed a product from the marketplace",{productId:id});return reply({success:true,removedId:data.id},200,origin);
   }
 
     const approvalMatch=path.match(/^\/admin\/products\/([^/]+)\/approval$/);
   if(approvalMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(approvalMatch[1]);const {status}=z.object({status:z.enum(["APPROVED","REJECTED"])}).strict().parse(await bodyJson(req));
     const {data,error}=await db.from("Product").update({approvalStatus:status,updatedAt:new Date().toISOString()}).eq("id",id).select("*").single();
-    if(error)throw error;return reply(serializeProduct(data),200,origin);
+    if(error)throw error;await recordUserActivity((await currentUser(req))!.user.id,"PRODUCT_MODERATION","Super Admin changed product approval status",{productId:id,status});return reply(serializeProduct(data),200,origin);
   }
   if(path==="/admin/reports" && method==="GET") {
     await requireRole(req,["SUPER_ADMIN"]);const take=Math.min(100,Math.max(1,Number(url.searchParams.get("take")??50))),skip=Math.max(0,Number(url.searchParams.get("skip")??0)),status=url.searchParams.get("status");
@@ -884,7 +885,7 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);const [,type,id]=reportUpdate;
     const b=z.object({status:z.enum(["pending","reviewed","resolved","approved","rejected"]),adminNotes:z.string().trim().max(2000).optional()}).strict().parse(await bodyJson(req));
     const table=type==="product"?"ProductReport":type==="buyer"?"BuyerReport":"SellerReport";
-    const {data,error}=await db.from(table).update(b).eq("id",decodeURIComponent(id)).select("*").single();if(error)throw error;return reply(data,200,origin);
+    const {data,error}=await db.from(table).update(b).eq("id",decodeURIComponent(id)).select("*").single();if(error)throw error;await recordUserActivity((await currentUser(req))!.user.id,"REPORT_REVIEWED","Reviewed "+type+" report",{reportId:id,status:b.status,adminNotes:b.adminNotes??""});return reply(data,200,origin);
   }
 
 
