@@ -277,6 +277,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Seller products are persisted by the authenticated backend API.
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    const sampleLabels = prodColors.split(',').map((value) => value.trim()).filter(Boolean);
+    if (prodGalleryImages.length > 0 && sampleLabels.length !== prodGalleryImages.length) {
+      alert(`You uploaded ${prodGalleryImages.length} sample photos. Enter exactly ${prodGalleryImages.length} matching sample names in the same order.`);
+      return;
+    }
     const payload = {
       name: prodName.trim(),
       category: prodCategory,
@@ -289,7 +294,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       image: prodImage,
       images: [prodImage, ...prodGalleryImages],
       description: prodDescription,
-      colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
+      colors: sampleLabels,
       sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
       variations: [
         ...(prodVariations ? [{ name: 'Option', options: prodVariations.split(',').map((value) => value.trim()).filter(Boolean) }] : []),
@@ -322,7 +327,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setProdImage(SAMPLE_PRODUCT_IMAGES[0].url);
     setProdGalleryImages([]);
     setProdDescription('High quality authentic product sourced from Kano commercial hubs.');
-    setProdColors('White, Navy Blue, Golden');
+    setProdColors('');
     setProdSizes('Medium, Large, XL');
     setProdVariations('Standard Retail, Premium Packaging');
     setProdSpecs({});
