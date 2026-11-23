@@ -185,17 +185,25 @@ async function expiredSubscriptionSellerIds() {
   if(error) throw error;
   const latest=new Map<string,string>();
   for(const row of data??[]) if(!latest.has(row.sellerId)) latest.set(row.sellerId,row.status);
-  return [...latest.entries()].filter(([,status])=>status==="expired" || status==="cancelled" || status==="rejected").map(([sellerId])=>sellerId);
+  return [...latest.entries()].filter(([,status])=>status!=="active" && status!=="grace").map(([sellerId])=>sellerId);
 }
 async function notifySubscriptionSeller(userId:string, type:string, title:string, message:string, dedupeKey:string, data:Record<string,unknown>={}) {
-  const {error}=await db.from("UserNotification").upsert({
+  const {error}=await db.from("UserNotification").insert({
     id:crypto.randomUUID(),userId,type,title,message,data,dedupeKey,createdAt:new Date().toISOString()
-  },{onConflict:"userId,dedupeKey",ignoreDuplicates:true});
-  if(error) throw error;
+  });
+  if(error && error.code!=="23505") throw error;
 }
 async function runSubscriptionExpiry() {
+  const now=new Date().toISOString();
+  const [{data:toGrace,error:graceReadError},{data:toExpire,error:expireReadError}]=await Promise.all([
+    db.from("SellerSubscription").select("id,sellerId,expiresAt").eq("status","active").lte("expiresAt",now),
+    db.from("SellerSubscription").select("id,sellerId,graceEndsAt").eq("status","grace").lte("graceEndsAt",now)
+  ]);
+  if(graceReadError)throw graceReadError;if(expireReadError)throw expireReadError;
   const {error}=await db.rpc("process_seller_subscription_expiry");
   if(error) throw error;
+  for(const row of toGrace??[]) await notifySubscriptionSeller(row.sellerId,"subscription_grace","Subscription grace period started","Your subscription has expired. You have a 7-day grace period to renew before your products are hidden.",`subscription:${row.id}:grace`,{subscriptionId:row.id,expiresAt:row.expiresAt});
+  for(const row of toExpire??[]) await notifySubscriptionSeller(row.sellerId,"subscription_expired","Subscription expired","Your grace period has ended. Your products are hidden from the public marketplace until your subscription is renewed and approved.",`subscription:${row.id}:expired`,{subscriptionId:row.id,graceEndsAt:row.graceEndsAt});
 }
 
 async function dispatch(req: Request, origin: string | null) {
@@ -625,6 +633,15 @@ async function dispatch(req: Request, origin: string | null) {
     await requireRole(req,["SUPER_ADMIN"]);await runSubscriptionExpiry();
     const {data,error}=await db.from("SellerSubscription").select("*,plan:SellerSubscriptionPlan(*),seller:User!SellerSubscription_sellerId_fkey(id,fullName,businessName,email,phone)").order("createdAt",{ascending:false}).limit(300);
     if(error)throw error;return reply(data??[],200,origin);
+  }
+  const adminSubReceiptMatch=path.match(/^\/admin\/subscriptions\/([^/]+)\/receipt$/);
+  if(adminSubReceiptMatch && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const {data:sub,error}=await db.from("SellerSubscription").select("paymentReceiptPath").eq("id",decodeURIComponent(adminSubReceiptMatch[1])).maybeSingle();
+    if(error)throw error;if(!sub)fail("Subscription request not found.",404);if(!sub.paymentReceiptPath)fail("No payment receipt has been uploaded.",404);
+    const {data:signed,error:signedError}=await db.storage.from("payment-receipts").createSignedUrl(sub.paymentReceiptPath,300);
+    if(signedError || !signed?.signedUrl)throw signedError??new Error("Could not create subscription receipt link.");
+    return reply({url:signed.signedUrl,expiresIn:300},200,origin);
   }
   const adminSubDecisionMatch=path.match(/^\/admin\/subscriptions\/([^/]+)\/decision$/);
   if(adminSubDecisionMatch && method==="PATCH") {
