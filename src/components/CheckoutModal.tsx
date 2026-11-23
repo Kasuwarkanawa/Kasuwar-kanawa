@@ -317,7 +317,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-3"
                   >
                     <img
-                      src={item.product.image}
+                      src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || item.product.image) : item.product.image}
                       alt={item.product.name}
                       className="w-16 h-16 rounded-xl object-cover bg-white border border-slate-200 shrink-0 self-start"
                     />
@@ -335,7 +335,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {/* Color Selector */}
                         {item.product.colors && item.product.colors.length > 0 && (
                           <div className="flex items-center gap-1">
-                            <span className="text-slate-500">Color:</span>
+                            <span className="text-slate-500">Sample:</span>
                             <select
                               value={item.selectedColor || item.product.colors[0]}
                               onChange={(e) => handleItemVariation(item.id, 'selectedColor', e.target.value)}
