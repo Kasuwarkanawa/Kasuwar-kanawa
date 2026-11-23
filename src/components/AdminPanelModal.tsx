@@ -4126,8 +4126,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <img src={chosenImage} alt={it.product.name} className="h-14 w-14 rounded-lg border border-slate-200 bg-white object-cover" />
                         <div className="min-w-0">
                           <span className="font-bold text-slate-800 block">{it.product.name}</span>
-                          <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor ? \`Selected design: \${it.selectedColor}\` : ''} {it.selectedSize ? \`• Size: \${it.selectedSize}\` : ''} {it.selectedVariation ? \`• Option: \${it.selectedVariation}\` : ''}</span>
-                          {!!it.product.variations?.some((v) => v.name.startsWith('spec:')) && <span className="mt-1 block text-[10px] text-slate-500">{it.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => \`\${v.name.slice(5)}: \${v.options[0]}\`).join(' • ')}</span>}
+                          <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor ? `Selected design: ${it.selectedColor}` : ''} {it.selectedSize ? `• Size: ${it.selectedSize}` : ''} {it.selectedVariation ? `• Option: ${it.selectedVariation}` : ''}</span>
+                          {!!it.product.variations?.some((v) => v.name.startsWith('spec:')) && <span className="mt-1 block text-[10px] text-slate-500">{it.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => `${v.name.slice(5)}: ${v.options[0]}`).join(' • ')}</span>}
                         </div>
                       </div>
                       <span className="shrink-0 font-black text-[#0B172E]">₦{(it.product.price * it.quantity).toLocaleString()}</span>
