@@ -99,11 +99,17 @@ async function requireRole(req: Request, roles: string[]) {
   if (!roles.includes(auth.user.role)) fail("You do not have permission to access this resource.", 403);
   return auth;
 }
+async function recordUserActivity(userId:string,eventType:string,description:string,metadata:Record<string,unknown>={}) {
+  const {error}=await db.from("UserActivityLog").insert({id:crypto.randomUUID(),userId,eventType,description,metadata,createdAt:new Date().toISOString()});
+  if(error) throw error;
+}
 async function issueSession(userId: string) {
   const token = [...crypto.getRandomValues(new Uint8Array(48))].map(x => x.toString(16).padStart(2, "0")).join("");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
   const { error } = await db.from("Session").insert({ id: crypto.randomUUID(), userId, tokenHash: await sha256(token), expiresAt });
   if (error) throw error;
+  await recordUserActivity(userId,"LOGIN","User signed in");
+  await db.from("UserPresence").upsert({userId,lastSeenAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   return token;
 }
 const registerSchema = z.object({
@@ -312,8 +318,21 @@ async function dispatch(req: Request, origin: string | null) {
   }
   if (path === "/auth/logout" && method === "POST") {
     const token = cookieValue(req,COOKIE_NAME);
-    if (token) await db.from("Session").delete().eq("tokenHash",await sha256(token));
+    if (token) {
+      const tokenHash=await sha256(token);
+      const {data:session}=await db.from("Session").select("id,userId").eq("tokenHash",tokenHash).maybeSingle();
+      if(session?.userId) await recordUserActivity(session.userId,"LOGOUT","User signed out");
+      if(session?.id) await db.from("Session").delete().eq("id",session.id);
+    }
     return reply({success:true},200,origin,{"Set-Cookie":clearSessionCookie()});
+  }
+  if (path === "/auth/heartbeat" && method === "POST") {
+    const auth=await currentUser(req);
+    if(!auth) fail("Authentication required.",401);
+    const now=new Date().toISOString();
+    const {error}=await db.from("UserPresence").upsert({userId:auth.user.id,lastSeenAt:now,updatedAt:now});
+    if(error) throw error;
+    return reply({success:true,lastSeenAt:now},200,origin);
   }
 
   if (method === "GET" && path === "/products") {
@@ -709,6 +728,19 @@ async function dispatch(req: Request, origin: string | null) {
     let companyByOwner:Record<string,string>={};
     if(logisticsUsers.length){const companies=await db.from("LogisticsCompany").select("id,ownerUserId").in("ownerUserId",logisticsUsers);if(companies.error)throw companies.error;companyByOwner=Object.fromEntries((companies.data??[]).map((c:any)=>[c.ownerUserId,c.id]));}
     return reply(rows.map((u:any)=>({...safeUser(u),...(companyByOwner[u.id]?{logisticsCompanyId:companyByOwner[u.id]}:{})})),200,origin);
+  }
+  const userActivityMatch=path.match(/^\/admin\/users\/([^/]+)\/activity$/);
+  if(userActivityMatch && method==="GET") {
+    await requireRole(req,["SUPER_ADMIN"]);
+    const userId=decodeURIComponent(userActivityMatch[1]);
+    const [{data:user,error:userError},{data:presence,error:presenceError},{data:events,error:eventsError}] = await Promise.all([
+      db.from("User").select("*").eq("id",userId).maybeSingle(),
+      db.from("UserPresence").select("lastSeenAt").eq("userId",userId).maybeSingle(),
+      db.from("UserActivityLog").select("id,eventType,description,metadata,createdAt").eq("userId",userId).order("createdAt",{ascending:false}).limit(Math.min(500,Math.max(1,Number(url.searchParams.get("take")??200))))
+    ]);
+    if(userError)throw userError;if(presenceError)throw presenceError;if(eventsError)throw eventsError;
+    if(!user)fail("User not found.",404);
+    return reply({user:safeUser(user),lastSeenAt:presence?.lastSeenAt??null,activities:events??[]},200,origin);
   }
   if(path==="/admin/users" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);
