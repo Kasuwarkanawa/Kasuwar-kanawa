@@ -414,6 +414,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                   {item.selectedSize && (
                                     <span>Size: <strong>{item.selectedSize}</strong></span>
                                   )}
+                                  {!!item.product.variations?.some((v) => v.name.startsWith('spec:')) && <span>{item.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => `${v.name.slice(5)}: ${v.options[0]}`).join(' • ')}</span>}
                                   <span>Qty: <strong>{item.quantity}</strong></span>
                                 </div>
                               </div>
