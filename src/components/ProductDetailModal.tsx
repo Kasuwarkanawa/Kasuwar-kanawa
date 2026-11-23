@@ -316,7 +316,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.colors && product.colors.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-slate-100">
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Select Sample / Design (Zaɓi Samfurin Zane):{' '}
+                      {product.category.toLowerCase().includes('shadda') || product.category.toLowerCase().includes('atamfa') || product.category.toLowerCase().includes('ankara') || product.category.toLowerCase().includes('fabric') ? 'Select Fabric Design / Colour (Zaɓi Zanen Atamfa ko Shadda)' : product.category.toLowerCase().includes('shoe') || product.category.toLowerCase().includes('footwear') ? 'Select Shoe Colour / Design' : product.category.toLowerCase().includes('phone') ? 'Select Phone Colour / Model' : 'Select Sample / Design'}{' '}
                       <span className="text-[#E6007E] font-black">{selectedColor}</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
