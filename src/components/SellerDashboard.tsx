@@ -88,7 +88,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productImageUploadError, setProductImageUploadError] = useState('');
 
-  const handleProductGalleryUpload = async (file?: File) => {
+  const handleProductGalleryUpload = async (file?: File, setAsMain = true) => {
     if (!file) return;
     setProductImageUploadError('');
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -118,7 +118,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
       }
       const uploadedUrl = `https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`;
-      setProdImage(uploadedUrl);
+      if (setAsMain) setProdImage(uploadedUrl);
       setProdGalleryImages((current) => current.includes(uploadedUrl) ? current : [...current, uploadedUrl]);
     } catch (error) {
       setProductImageUploadError(error instanceof Error ? error.message : 'Could not upload image. Please try again.');
@@ -1626,7 +1626,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     </div>
                   </div>
                   {productImageUploadError && <p role="alert" className="text-sm font-semibold text-red-600">{productImageUploadError}</p>}
-                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-bold text-[#E6007E]">+ Add Colour Sample Image<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={isUploadingProductImage} onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file); e.currentTarget.value = ""; }} /></label><div className="mt-2 flex flex-wrap gap-2">{prodGalleryImages.map((image,index) => <div key={image} className="relative"><img src={image} alt={`Colour sample ${index + 1}`} className="h-14 w-14 rounded-lg border object-cover"/><button type="button" onClick={() => setProdGalleryImages(items => items.filter(item => item !== image))} className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">×</button></div>)}</div><details className="text-sm">
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-bold text-[#E6007E]">+ Add Colour Sample Image<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={isUploadingProductImage} onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file, false); e.currentTarget.value = ""; }} /></label><div className="mt-2 flex flex-wrap gap-2">{prodGalleryImages.map((image,index) => <div key={image} className="relative"><img src={image} alt={`Colour sample ${index + 1}`} className="h-14 w-14 rounded-lg border object-cover"/><button type="button" onClick={() => setProdGalleryImages(items => items.filter(item => item !== image))} className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">×</button></div>)}</div><details className="text-sm">
                     <summary className="cursor-pointer font-semibold text-slate-600">Or enter an image URL</summary>
                     <input type="url" value={prodImage} onChange={(e) => setProdImage(e.target.value)}
                       placeholder="https://..." className="mt-2 w-full rounded-lg border border-slate-300 p-2" />
