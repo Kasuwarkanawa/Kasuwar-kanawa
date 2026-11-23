@@ -56,6 +56,24 @@ export const marketplaceApi = {
     profile: () => request<{ user: any }>('/buyer/profile'),
     updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/buyer/profile', { method: 'PATCH', body: JSON.stringify(data) }),
   },
+  subscriptions: {
+    sellerOverview: () => request<any>('/seller/subscription'),
+    createRequest: (data: { planId: string; paymentMethod: 'bank_transfer' | 'paystack'; paymentReference?: string }) =>
+      request<any>('/seller/subscription', { method: 'POST', body: JSON.stringify(data) }),
+    uploadReceipt: (id: string, file: File) =>
+      request<any>(`/seller/subscription/${encodeURIComponent(id)}/receipt`, { method: 'POST', headers: { 'Content-Type': file.type }, body: file }),
+    adminPlans: () => request<any[]>('/admin/subscriptions/plans'),
+    createPlan: (data: { name: string; description: string; price: number; durationDays: number; graceDays: number; isActive: boolean }) =>
+      request<any>('/admin/subscriptions/plans', { method: 'POST', body: JSON.stringify(data) }),
+    updatePlan: (id: string, data: Record<string, unknown>) =>
+      request<any>(`/admin/subscriptions/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    adminList: () => request<any[]>('/admin/subscriptions'),
+    decide: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
+      request<any>(`/admin/subscriptions/${encodeURIComponent(id)}/decision`, { method: 'PATCH', body: JSON.stringify({ decision, adminNotes }) }),
+    adminReceipt: (id: string) => request<{ url: string; expiresIn: number }>(`/admin/subscriptions/${encodeURIComponent(id)}/receipt`),
+    notifications: () => request<any[]>('/notifications/mine'),
+    markNotificationRead: (id: string) => request<any>(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' }),
+  },
   seller: {
     profile: () => request<{ user: any }>('/seller/profile'),
     updateProfile: (data: Record<string, unknown>) => request<{ user: any }>('/seller/profile', { method: 'PATCH', body: JSON.stringify(data) }),

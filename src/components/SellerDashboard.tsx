@@ -34,6 +34,7 @@ import { UserAvatar } from './UserAvatar';
 import { CODSettlementPanel } from './CODSettlementPanel';
 import { TransferPayoutPanel } from './TransferPayoutPanel';
 import { ProfileImageUploader } from './ProfileImageUploader';
+import { SubscriptionCenter } from './SubscriptionCenter';
 
 interface SellerDashboardProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 }) => {
   const [currentSeller, setCurrentSeller] = useState<User>(seller);
   const [showLogoModal, setShowLogoModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod' | 'transfer'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'products' | 'orders' | 'history' | 'reports' | 'cod' | 'transfer' | 'subscription'>('menu');
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [searchProductQuery, setSearchProductQuery] = useState('');
@@ -623,6 +624,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('subscription')}
+            className="py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Subscription & Billing</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('reports')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'reports'
@@ -640,6 +650,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
           
           {activeTab === 'cod' && <CODSettlementPanel role="seller" />}
           {activeTab === 'transfer' && <TransferPayoutPanel role="seller" />}
+          {activeTab === 'subscription' && <SubscriptionCenter role="seller" />}
 
           {/* 1. OVERVIEW TAB */}
           {activeTab === 'overview' && (

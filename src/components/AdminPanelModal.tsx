@@ -51,6 +51,7 @@ import { UserAvatar } from './UserAvatar';
 import { ProfileImageUploader } from './ProfileImageUploader';
 import { CODSettlementPanel } from './CODSettlementPanel';
 import { TransferPayoutPanel } from './TransferPayoutPanel';
+import { SubscriptionCenter } from './SubscriptionCenter';
 import { SUPABASE_PUBLIC_KEY } from '../utils/apiConfig';
 import {
   User,
@@ -103,6 +104,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     | 'deliveries'
     | 'logistics'
     | 'cod_settlements'
+    | 'subscriptions'
   >('menu');
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1363,6 +1365,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 { id: 'logistics', label: 'Logistics Management', icon: Truck, badge: null },
                 { id: 'cod_settlements', label: 'COD Settlement', icon: CreditCard, badge: null },
                 { id: 'transfer_payouts', label: 'Bank Transfer Payouts', icon: CreditCard, badge: null },
+                { id: 'subscriptions', label: 'Seller Subscriptions', icon: ShieldCheck, badge: null },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -1417,6 +1420,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {/* Main Content Body */}
             <div className={`p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5 bg-slate-50 [touch-action:pan-y] ${activeTab === 'menu' ? 'hidden' : ''}`}>
               
+              {activeTab === 'subscriptions' && <SubscriptionCenter role="admin" />}
+
               {/* ============================================================ */}
               {/* TAB 1: ADMIN DASHBOARD (2. ADMIN DASHBOARD - 8 Stat Cards) */}
               {/* ============================================================ */}
