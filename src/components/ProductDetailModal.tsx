@@ -148,7 +148,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const selectProductColor = (color: string) => {
     setSelectedColor(color);
     const index = (product.colors || []).indexOf(color);
-    setSelectedImage(product.images?.[index] || product.image);
+    setSelectedImage(product.images?.[index + 1] || (product.images?.length === product.colors?.length ? product.images[index] : undefined) || product.image);
   };
 
   return (
@@ -299,7 +299,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Category</span><span className="text-right font-bold text-slate-800">{product.category}</span></div>
                         {!!product.colors?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Available colours</span><span className="text-right font-bold text-slate-800">{product.colors.join(", ")}</span></div>}
                         {!!product.sizes?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Sizes / Storage</span><span className="text-right font-bold text-slate-800">{product.sizes.join(", ")}</span></div>}
-                        {(product.variations || []).map((variation, index) => <div key={index} className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">{variation.name}</span><span className="text-right font-bold text-slate-800">{variation.options.join(", ")}</span></div>)}
+                        {(product.variations || []).map((variation, index) => <div key={index} className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">{variation.name.startsWith('spec:') ? variation.name.slice(5) : variation.name}</span><span className="text-right font-bold text-slate-800">{variation.options.join(", ")}</span></div>)}
                         <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Stock available</span><span className="text-right font-bold text-slate-800">{product.stockQuantity ?? product.stockLeft ?? (product.inStock === true ? "In stock" : product.inStock === false ? "Out of stock" : "Confirm with seller")}</span></div>
                         <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Product ID</span><span className="text-right font-bold text-slate-800 break-all">{product.id}</span></div>
                       </div>
@@ -314,24 +314,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.colors && product.colors.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-slate-100">
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Select Color (Zaɓi Launi):{' '}
+                      Select Sample / Design (Zaɓi Samfurin Zane):{' '}
                       <span className="text-[#E6007E] font-black">{selectedColor}</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {product.colors.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() => selectProductColor(color)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            selectedColor === color
-                              ? 'bg-[#0B172E] text-white shadow-xs ring-2 ring-[#E6007E]'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          {color}
-                        </button>
-                      ))}
+                      {product.colors.map((color, index) => {
+                        const sampleImage = product.images?.[index + 1] || (product.images?.length === product.colors?.length ? product.images[index] : undefined);
+                        return <button key={color} type="button" onClick={() => selectProductColor(color)} className={`w-20 overflow-hidden rounded-xl border-2 text-left transition-all ${selectedColor === color ? 'border-[#E6007E] ring-2 ring-pink-200' : 'border-slate-200 hover:border-slate-400'}`}>
+                          {sampleImage && <img src={sampleImage} alt={color} className="h-16 w-full bg-white object-cover" />}
+                          <span className={`block truncate px-1.5 py-1 text-center text-[10px] font-bold ${selectedColor === color ? 'bg-[#0B172E] text-white' : 'bg-slate-50 text-slate-700'}`}>{color}</span>
+                        </button>;
+                      })}
                     </div>
                   </div>
                 )}
@@ -363,9 +356,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
 
                 {/* 3. SELECT PRODUCT VARIATIONS */}
-                {product.variations && product.variations.length > 0 && (
+                {product.variations?.some((variation) => !variation.name.startsWith('spec:')) && (
                   <div className="mt-3.5">
-                    {product.variations.map((v, i) => (
+                    {product.variations.filter((v) => !v.name.startsWith('spec:')).map((v, i) => (
                       <div key={i} className="mb-2">
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">
                           {v.name}:{' '}
