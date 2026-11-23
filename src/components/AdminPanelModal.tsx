@@ -1621,6 +1621,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               setIsLoadingActivityReport(true);
                               try {
                                 const report = await marketplaceApi.adminUsers.activity(user.id, 500);
+                                setActiveTab('users');
                                 setSelectedActivityReport(report);
                               } catch (error) {
                                 showNotification(error instanceof Error ? error.message : 'Unable to load user activity history.');
