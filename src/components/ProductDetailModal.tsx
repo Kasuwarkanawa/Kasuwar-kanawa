@@ -211,9 +211,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
 
-              <div className="mt-4 p-3.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-bold">Seller details:</span>
-                <span className="font-extrabold text-[#0B172E] text-right">{product.sellerBusinessName || product.sellerName || "Kasuwar Kanawa Merchant"}{product.sellerId && <span className="block text-[10px] text-slate-500 font-semibold">Seller ID: {product.sellerId}</span>}{product.sellerVerified && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED SELLER</span>}</span>
+              <div className="mt-4 rounded-lg bg-white border border-slate-200 p-3.5 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <ShieldCheck className="h-4 w-4 text-slate-400" />
+                  <span>Seller information</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-extrabold text-[#0B172E]">{product.sellerBusinessName || product.sellerName || "Seller information not provided"}</span>
+                  {product.sellerVerified && <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED</span>}
+                </div>
               </div>
             </div>
 
@@ -544,7 +550,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Real feedback from verified buyers across Kano & Arewa
+                  Customer ratings and feedback for this product
                 </p>
               </div>
             </div>
@@ -637,9 +643,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           {rev.buyerName.slice(0, 1)}
                         </div>
                         <span className="text-xs font-bold text-slate-900">{rev.buyerName}</span>
-                        <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-bold">
-                          Verified Buyer
-                        </span>
+                        
                       </div>
 
                       <div className="flex items-center gap-1 text-amber-400">
