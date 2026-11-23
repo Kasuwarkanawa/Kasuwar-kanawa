@@ -983,6 +983,13 @@ async function dispatch(req: Request, origin: string | null) {
       paymentMethod:z.enum(["opay","cod"]),
       shippingAddress:z.object({fullName:z.string().trim().min(2).max(120),phoneNumber:z.string().trim().min(7).max(24),state:z.string().trim().min(1).max(100),city:z.string().trim().min(1).max(100),area:z.string().trim().min(1).max(100),completeAddress:z.string().trim().min(5).max(500)}).strict(),
     }).strict().parse(await bodyJson(req));
+    await runSubscriptionExpiry();
+    const productIds=b.items.map(item=>item.productId);
+    const {data:checkoutProducts,error:productReadError}=await db.from("Product").select("id,sellerId,approvalStatus").in("id",productIds);
+    if(productReadError)throw productReadError;
+    const blockedSellerIds=await expiredSubscriptionSellerIds();
+    const unavailable=(checkoutProducts??[]).filter((product:any)=>product.approvalStatus!=="APPROVED" || blockedSellerIds.includes(product.sellerId));
+    if(unavailable.length)fail("One or more products are no longer available because the seller subscription has expired or the product is not approved.",409);
     const {data:orderId,error}=await db.rpc("edge_checkout_order",{p_buyer_id:auth.user.id,p_items:b.items,p_payment_method:b.paymentMethod,p_shipping_address:b.shippingAddress});
     if(error) {
       if(error.message?.includes("different sellers"))fail(error.message,400);
