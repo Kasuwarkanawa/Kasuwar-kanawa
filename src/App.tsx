@@ -5,7 +5,6 @@ import { NavigationBar } from './components/NavigationBar';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { MainPromotionalBanner } from './components/MainPromotionalBanner';
 import { TrustBadges } from './components/TrustBadges';
-import { CategoriesSection } from './components/CategoriesSection';
 import { FlashSalesSection } from './components/FlashSalesSection';
 import { SpecialOffersSection } from './components/SpecialOffersSection';
 import { DiscountAdvertisements } from './components/DiscountAdvertisements';
@@ -36,7 +35,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dismissedSpotlightId, setDismissedSpotlightId] = useState<string | null>(null);
-  const [showAllProducts, setShowAllProducts] = useState(false);
 
   // Dynamic products list (only approved products appear on public marketplace)
   const [liveProducts, setLiveProducts] = useState<Product[]>([]);
@@ -321,8 +319,21 @@ export default function App() {
   );
   const allProducts = useMemo(() => [...liveProducts].sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '')), [liveProducts]);
   const specialOfferProducts = useMemo(
-    () => liveProducts.filter((p) => p.isSpecialOffer || (p.discountPercentage && p.discountPercentage >= 15)),
+    () => liveProducts.filter((p) => (p.isSpecialOffer || (p.discountPercentage && p.discountPercentage >= 15)) && !p.isFlashSale),
     [liveProducts]
+  );
+  // Keep homepage collections mutually exclusive so a product card is not repeated in several rows.
+  const homepagePopularProducts = useMemo(
+    () => popularProducts.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id)).slice(0, 8),
+    [popularProducts, flashSaleProducts, specialOfferProducts]
+  );
+  const homepageNewProducts = useMemo(
+    () => newProducts.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id) && !homepagePopularProducts.some((x) => x.id === p.id)).slice(0, 8),
+    [newProducts, flashSaleProducts, specialOfferProducts, homepagePopularProducts]
+  );
+  const homepageRecommendedProducts = useMemo(
+    () => allProducts.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id) && !homepagePopularProducts.some((x) => x.id === p.id) && !homepageNewProducts.some((x) => x.id === p.id)),
+    [allProducts, flashSaleProducts, specialOfferProducts, homepagePopularProducts, homepageNewProducts]
   );
 
   // Search Results
@@ -654,11 +665,6 @@ export default function App() {
 
         {!searchResults && !categoryFilteredProducts && (
           <>
-            <CategoriesSection
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-              products={liveProducts}
-            />
             <TrustBadges />
             <FlashSalesSection
               products={liveProducts}
@@ -682,13 +688,13 @@ export default function App() {
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
             <PopularProductsSection
-              products={(popularProducts.length ? popularProducts : allProducts).slice(0, 8)}
+              products={homepagePopularProducts}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
             <NewProductsSection
-              products={(newProducts.length ? newProducts : allProducts).slice(0, 8)}
+              products={homepageNewProducts}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
@@ -791,9 +797,9 @@ export default function App() {
                   <span className="h-6 w-1.5 rounded-full bg-[#E6007E]" />
                   <h2 className="text-xl font-black tracking-tight text-[#0B172E] sm:text-2xl">Recommended for You</h2>
                 </div>
-                <p className="ml-3 mt-1 text-xs font-medium text-slate-500 sm:text-sm">Explore approved products from trusted sellers on Kasuwar Kanawa ({allProducts.length})</p>
+                <p className="ml-3 mt-1 text-xs font-medium text-slate-500 sm:text-sm">Explore more approved products from trusted sellers on Kasuwar Kanawa ({homepageRecommendedProducts.length})</p>
               </div>
-              {allProducts.length > 8 && (
+              {homepageRecommendedProducts.length > 8 && (
                 <button
                   type="button"
                   onClick={() => setShowAllProducts((current) => !current)}
@@ -804,11 +810,11 @@ export default function App() {
                 </button>
               )}
             </div>
-            {allProducts.length === 0 ? (
+            {homepageRecommendedProducts.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No approved products are available yet.</div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-                {(showAllProducts ? allProducts : allProducts.slice(0, 8)).map((product) => (
+                {(showAllProducts ? homepageRecommendedProducts : homepageRecommendedProducts.slice(0, 8)).map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -819,14 +825,14 @@ export default function App() {
                 ))}
               </div>
             )}
-            {!showAllProducts && allProducts.length > 8 && (
+            {!showAllProducts && homepageRecommendedProducts.length > 8 && (
               <div className="mt-5 text-center">
                 <button
                   type="button"
                   onClick={() => setShowAllProducts(true)}
                   className="rounded-lg border border-[#E6007E] bg-white px-6 py-2.5 text-sm font-bold text-[#E6007E] transition hover:bg-pink-50"
                 >
-                  See All {allProducts.length} Products
+                  See All {homepageRecommendedProducts.length} Products
                 </button>
               </div>
             )}
