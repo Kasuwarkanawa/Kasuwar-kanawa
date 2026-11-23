@@ -1195,7 +1195,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                               {ord.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-2.5">
                                   <img
-                                    src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || item.product.image) : item.product.image}
+                                    src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || (item.product.images?.length === item.product.colors?.length ? item.product.images[(item.product.colors || []).indexOf(item.selectedColor)] : undefined) || item.product.image) : item.product.image}
                                     alt={item.product.name}
                                     className="w-10 h-10 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"
                                   />
@@ -1210,7 +1210,6 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                       </div>
                                     )}
                                     {!!item.product.variations?.some((v) => v.name.startsWith('spec:')) && <div className="text-[9px] text-slate-500">{item.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => `${v.name.slice(5)}: ${v.options[0]}`).join(' • ')}</div>}
-                                    )}
                                   </div>
                                 </div>
                               ))}
