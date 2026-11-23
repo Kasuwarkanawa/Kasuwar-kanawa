@@ -13,3 +13,12 @@ create index if not exists "UserActivityLog_type_created_idx"
 alter table public."UserActivityLog" enable row level security;
 revoke all on public."UserActivityLog" from anon, authenticated;
 grant select, insert, update, delete on public."UserActivityLog" to service_role;
+
+create table if not exists public."UserPresence" (
+  "userId" text primary key references public."User"("id") on delete cascade,
+  "lastSeenAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."UserPresence" enable row level security;
+revoke all on public."UserPresence" from anon, authenticated;
+grant select, insert, update, delete on public."UserPresence" to service_role;
