@@ -258,6 +258,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'logistics' | 'admin'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended' | 'rejected'>('all');
+  const [selectedActivityReport, setSelectedActivityReport] = useState<any | null>(null);
+  const [isLoadingActivityReport, setIsLoadingActivityReport] = useState(false);
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [paymentSubFilter, setPaymentSubFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected'>('pending');
   const [reportSubTab, setReportSubTab] = useState<'product_reports' | 'buyer_reports' | 'seller_reports'>('product_reports');
@@ -1704,8 +1706,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               <button
                                 type="button"
                                 onClick={async () => {
+                                  setIsLoadingActivityReport(true);
                                   try {
                                     const report = await marketplaceApi.adminUsers.activity(u.id, 500);
+                                    setSelectedActivityReport(report);
                                     const safe = (value: unknown) => String(value ?? '').replace(/[&<>"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch] || ch));
                                     const rows = report.activities.map((event) => `<tr><td>${safe(new Date(event.createdAt).toLocaleString())}</td><td>${safe(event.eventType)}</td><td>${safe(event.description)}</td></tr>`).join('');
                                     const popup = window.open('', '_blank', 'width=900,height=700');
@@ -1713,11 +1717,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     popup.document.write(`<!doctype html><html><head><title>Kasuwar Kanawa - User Activity</title><style>body{font:14px Arial;padding:24px;color:#172033}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#eee}.meta{line-height:1.8}</style></head><body><h1>Kasuwar Kanawa — User Activity Report</h1><div class="meta"><b>Name:</b> ${safe(report.user.fullName)}<br><b>Role:</b> ${safe(report.user.accountType)}<br><b>Email:</b> ${safe(report.user.email)}<br><b>Phone:</b> ${safe(report.user.phone)}<br><b>Last seen:</b> ${report.lastSeenAt ? safe(new Date(report.lastSeenAt).toLocaleString()) : 'Not recorded'}<br><b>Last login:</b> ${report.lastLoginAt ? safe(new Date(report.lastLoginAt).toLocaleString()) : 'Not recorded'}<br><b>Last logout:</b> ${report.lastLogoutAt ? safe(new Date(report.lastLogoutAt).toLocaleString()) : 'Not recorded'}<br><b>Report generated:</b> ${safe(new Date().toLocaleString())}</div><table><thead><tr><th>Date / Time</th><th>Event</th><th>Activity</th></tr></thead><tbody>${rows || '<tr><td colspan="3">No recorded activity yet.</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
                                     popup.document.close();
                                   } catch (error) { showNotification(error instanceof Error ? error.message : 'Unable to load user activity history.'); }
+                                  finally { setIsLoadingActivityReport(false); }
                                 }}
                                 className="rounded-md bg-indigo-50 px-2 py-1.5 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100"
-                                title="View and print user activity report"
+                                title="View user activity history"
                               >
-                                History / Print
+                                {isLoadingActivityReport ? 'Loading…' : 'View History'}
                               </button>
                               <button
                                 type="button"
@@ -1758,6 +1763,47 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </tbody>
                     </table>
                   </div>
+                  {selectedActivityReport && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label="User activity history">
+                      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#0B172E] p-4 text-white">
+                          <div>
+                            <h3 className="text-base font-black">User Activity History</h3>
+                            <p className="text-xs text-slate-300">{selectedActivityReport.user.fullName} · {selectedActivityReport.user.accountType}</p>
+                          </div>
+                          <button type="button" onClick={() => setSelectedActivityReport(null)} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-bold">Close</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 border-b border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
+                          <div className="rounded-lg bg-white p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Last Seen</div><div className="mt-1 text-xs font-black text-slate-900">{selectedActivityReport.lastSeenAt ? new Date(selectedActivityReport.lastSeenAt).toLocaleString() : 'Not recorded'}</div></div>
+                          <div className="rounded-lg bg-white p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Last Login</div><div className="mt-1 text-xs font-black text-slate-900">{selectedActivityReport.lastLoginAt ? new Date(selectedActivityReport.lastLoginAt).toLocaleString() : 'Not recorded'}</div></div>
+                          <div className="rounded-lg bg-white p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Last Logout</div><div className="mt-1 text-xs font-black text-slate-900">{selectedActivityReport.lastLogoutAt ? new Date(selectedActivityReport.lastLogoutAt).toLocaleString() : 'Not recorded'}</div></div>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-auto p-3">
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-xs text-slate-600">{selectedActivityReport.activities.length} recorded events · Newest first</div>
+                            <button type="button" onClick={() => {
+                              const report = selectedActivityReport;
+                              const safe = (value: unknown) => String(value ?? '').replace(/[&<>"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch] || ch));
+                              const rows = report.activities.map((event: any) => `<tr><td>${safe(new Date(event.createdAt).toLocaleString())}</td><td>${safe(event.eventType)}</td><td>${safe(event.description)}</td></tr>`).join('');
+                              const popup = window.open('', '_blank', 'width=900,height=700');
+                              if (!popup) { showNotification('Allow pop-ups to print the user activity report.'); return; }
+                              popup.document.write(`<!doctype html><html><head><title>Kasuwar Kanawa - User Activity</title><style>body{font:14px Arial;padding:24px;color:#172033}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#eee}.meta{line-height:1.8}</style></head><body><h1>Kasuwar Kanawa — User Activity Report</h1><div class="meta"><b>Name:</b> ${safe(report.user.fullName)}<br><b>Role:</b> ${safe(report.user.accountType)}<br><b>Email:</b> ${safe(report.user.email)}<br><b>Phone:</b> ${safe(report.user.phone)}<br><b>Last seen:</b> ${report.lastSeenAt ? safe(new Date(report.lastSeenAt).toLocaleString()) : 'Not recorded'}<br><b>Last login:</b> ${report.lastLoginAt ? safe(new Date(report.lastLoginAt).toLocaleString()) : 'Not recorded'}<br><b>Last logout:</b> ${report.lastLogoutAt ? safe(new Date(report.lastLogoutAt).toLocaleString()) : 'Not recorded'}</div><table><thead><tr><th>Date / Time</th><th>Event</th><th>Activity</th></tr></thead><tbody>${rows || '<tr><td colspan="3">No recorded activity yet.</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+                              popup.document.close();
+                            }} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white">Print Report</button>
+                          </div>
+                          <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="w-full text-left text-xs">
+                              <thead className="sticky top-0 bg-slate-100 text-[10px] uppercase text-slate-600"><tr><th className="p-3">Date / Time</th><th className="p-3">Event</th><th className="p-3">Activity</th></tr></thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {selectedActivityReport.activities.map((event: any) => <tr key={event.id}><td className="whitespace-nowrap p-3 text-slate-500">{new Date(event.createdAt).toLocaleString()}</td><td className="p-3 font-black text-indigo-700">{event.eventType}</td><td className="p-3 text-slate-700">{event.description}</td></tr>)}
+                                {!selectedActivityReport.activities.length && <tr><td colSpan={3} className="p-6 text-center text-slate-500">No recorded activity yet.</td></tr>}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
