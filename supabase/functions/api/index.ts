@@ -1014,11 +1014,26 @@ async function dispatch(req: Request, origin: string | null) {
     const {error}=await db.from("CartItem").update({quantity}).eq("id",id);if(error)throw error;return reply({success:true},200,origin);
   }
   if(cartItemMatch && method==="DELETE") {
-    const auth=await requireRole(req,["BUYER"]);const id=decodeURIComponent(cartItemMatch[1]);
-    const {data:item}=await db.from("CartItem").select("id,cart:Cart!CartItem_cartId_fkey(userId)").eq("id",id).maybeSingle();
-    const cartOwnerId = item?.cart?.[0]?.userId;
+    const auth=await requireRole(req,["BUYER"]);
+    const id=decodeURIComponent(cartItemMatch[1]);
+    const {data:item,error:lookupError}=await db.from("CartItem")
+      .select("id,cart:Cart!CartItem_cartId_fkey(userId)")
+      .eq("id",id)
+      .maybeSingle();
+    if(lookupError)throw lookupError;
+    const cartRelation:any=item?.cart;
+    const cartOwnerId=Array.isArray(cartRelation) ? cartRelation[0]?.userId : cartRelation?.userId;
     if(!item || cartOwnerId!==auth.user.id)fail("Cart item not found.",404);
-    const {error}=await db.from("CartItem").delete().eq("id",id);if(error)throw error;return reply({success:true},200,origin);
+
+    // Confirm that Postgres actually removed the row before reporting success.
+    const {data:deleted,error:deleteError}=await db.from("CartItem")
+      .delete()
+      .eq("id",id)
+      .select("id")
+      .maybeSingle();
+    if(deleteError)throw deleteError;
+    if(!deleted)fail("Cart item could not be deleted. Please refresh and try again.",409);
+    return reply({success:true,deletedId:deleted.id},200,origin);
   }
   if(path==="/cart" && method==="DELETE") {
     const auth=await requireRole(req,["BUYER"]);const {data:cart}=await db.from("Cart").select("id").eq("userId",auth.user.id).maybeSingle();
