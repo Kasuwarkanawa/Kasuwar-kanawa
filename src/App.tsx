@@ -27,6 +27,7 @@ import { CartItem, Product, User, Order, FlashSale, PromotionalAdvertisement, An
 import { db } from './db/database';
 import { authApi } from './utils/authApi';
 import { marketplaceApi } from './utils/marketplaceApi';
+import { AlertTriangle } from 'lucide-react';
 import { CheckCircle2, Search, X, Shield, Store, UserCheck, ArrowRight, ShieldCheck, ShoppingBag } from 'lucide-react';
 
 export default function App() {
@@ -354,6 +355,51 @@ export default function App() {
   // A seller dashboard must only ever receive the currently authenticated seller.
   const activeSellerUser = currentUser?.accountType === 'seller' ? currentUser : null;
 
+  // Phase 10: seller subscription warning is available throughout the storefront.
+  const [globalSellerSubscription, setGlobalSellerSubscription] = useState<any>(null);
+  const [globalSubscriptionPaymentAccount, setGlobalSubscriptionPaymentAccount] = useState<any>(null);
+  const [globalWarningDismissed, setGlobalWarningDismissed] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.accountType !== 'seller') {
+      setGlobalSellerSubscription(null);
+      setGlobalSubscriptionPaymentAccount(null);
+      setGlobalWarningDismissed(false);
+      return;
+    }
+    let active = true;
+    const loadSubscriptionWarning = async () => {
+      try {
+        const result = await marketplaceApi.subscriptions.sellerOverview();
+        if (!active) return;
+        setGlobalSellerSubscription(result.subscription || null);
+        setGlobalSubscriptionPaymentAccount(result.paymentAccount || null);
+      } catch {
+        if (active) {
+          setGlobalSellerSubscription(null);
+          setGlobalSubscriptionPaymentAccount(null);
+        }
+      }
+    };
+    void loadSubscriptionWarning();
+    const refreshTimer = window.setInterval(loadSubscriptionWarning, 30000);
+    return () => { active = false; window.clearInterval(refreshTimer); };
+  }, [currentUser?.id, currentUser?.accountType]);
+
+  useEffect(() => {
+    if (!globalWarningDismissed) return;
+    const showAgainTimer = window.setTimeout(() => setGlobalWarningDismissed(false), 10000);
+    return () => window.clearTimeout(showAgainTimer);
+  }, [globalWarningDismissed]);
+
+  const globalSub = globalSellerSubscription;
+  const globalExpiryTime = globalSub?.expiresAt ? new Date(globalSub.expiresAt).getTime() : 0;
+  const globalDaysToExpiry = globalExpiryTime ? Math.ceil((globalExpiryTime - Date.now()) / 86400000) : 999;
+  const showGlobalSellerWarning = Boolean(activeSellerUser && !sellerDashboardOpen && !globalWarningDismissed &&
+    globalSub && ['active', 'grace'].includes(globalSub.status) &&
+    (globalSub.status === 'grace' || (globalDaysToExpiry >= 0 && globalDaysToExpiry <= 7)));
+
+
   const openBuyerDashboard = () => {
     if (!currentUser) {
       setAuthInitialMode('login');
@@ -404,6 +450,28 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col selection:bg-[#E6007E] selection:text-white">
+      {showGlobalSellerWarning && (
+        <section role="alert" aria-live="assertive" className={"fixed top-2 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[min(760px,calc(100vw-2rem))] z-[100] rounded-2xl border-2 p-4 shadow-2xl animate-pulse " + (globalSub.status === 'grace' ? 'border-red-500 bg-red-50 text-red-950' : 'border-amber-500 bg-amber-50 text-amber-950')}>
+          <button type="button" onClick={() => setGlobalWarningDismissed(true)} aria-label="Close subscription warning" className="absolute right-2 top-2 rounded-full bg-white p-1.5 text-slate-700 shadow"><X className="h-4 w-4" /></button>
+          <div className="flex items-start gap-3 pr-8">
+            <AlertTriangle className="mt-0.5 h-7 w-7 shrink-0 text-amber-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black uppercase">Seller subscription warning</p>
+              <p className="mt-1 text-xs font-semibold">
+                {globalSub.status === 'grace'
+                  ? 'Your 7-day grace period is active. Renew now. If it ends, selling access will be suspended and your products hidden from buyers. Your saved products and account will not be deleted.'
+                  : 'Your subscription expires in ' + globalDaysToExpiry + ' day(s). Renew before expiry to avoid interruption. If you do not renew during the 7-day grace period, selling access will be suspended and your products hidden from buyers; saved products and account data will remain.'}
+              </p>
+              <div className="mt-2 rounded-lg bg-white/80 p-2 text-xs">
+                <p>Renewal amount: <b>{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number((Array.isArray(globalSub.plan) ? globalSub.plan[0] : globalSub.plan)?.price ?? globalSub.amountPaid ?? 1500))}</b></p>
+                {globalSubscriptionPaymentAccount?.accountNumber && <p className="mt-1">Pay to {globalSubscriptionPaymentAccount.bankName}: <b>{globalSubscriptionPaymentAccount.accountNumber}</b> · {globalSubscriptionPaymentAccount.accountName}</p>}
+              </div>
+              <button type="button" onClick={() => setSellerDashboardOpen(true)} className="mt-3 rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white">Open Seller Dashboard / Renew</button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* System Phase 4 Portal Bar: Connect Buyer, Seller & Super Admin */}
       <div className="bg-[#081225] text-slate-300 py-1.5 px-3 sm:px-6 text-[11px] border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
