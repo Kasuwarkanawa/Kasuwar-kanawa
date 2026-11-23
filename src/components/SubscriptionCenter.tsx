@@ -12,6 +12,7 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [current, setCurrent] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [liveNotification, setLiveNotification] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -43,6 +44,28 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
   };
   useEffect(() => { void load(); }, [role]);
 
+  useEffect(() => {
+    if (role !== 'seller') return;
+    let active = true;
+    let lastNotificationId = '';
+    const poll = async () => {
+      try {
+        const items = await marketplaceApi.subscriptions.notifications();
+        if (!active) return;
+        setNotifications(items || []);
+        const newest = (items || [])[0];
+        if (newest?.id && lastNotificationId && newest.id !== lastNotificationId) {
+          setLiveNotification(newest);
+          window.setTimeout(() => setLiveNotification((current) => current?.id === newest.id ? null : current), 7000);
+        }
+        if (newest?.id) lastNotificationId = newest.id;
+      } catch { /* Keep subscription centre available during temporary notification outages. */ }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 10000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [role]);
+
   const createRequest = async () => {
     if (!selectedPlan) { setError('Choose a subscription plan first.'); return; }
     setBusy('request'); setError(''); setNotice('');
@@ -70,6 +93,18 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create plan.'); }
     finally { setBusy(null); }
   };
+  const renew = async (sub: any) => {
+    const sellerName = sellerOf(sub.seller)?.businessName || sellerOf(sub.seller)?.fullName || 'this seller';
+    if (!window.confirm(`Renew subscription for ${sellerName} for another ${planOf(sub.plan)?.durationDays || 30} days?`)) return;
+    setBusy(`renew:${sub.id}`); setError(''); setNotice('');
+    try {
+      const updated = await marketplaceApi.subscriptions.renew(sub.id);
+      setNotice(`Subscription renewed. New expiry: ${date(updated.expiresAt)}. Seller notification sent.`);
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to renew subscription.'); }
+    finally { setBusy(null); }
+  };
+
   const decide = async (id: string, decision: 'approve' | 'reject') => {
     setBusy(id); setError(''); setNotice('');
     try { await marketplaceApi.subscriptions.decide(id, decision); setNotice(decision === 'approve' ? 'Subscription approved and activated.' : 'Subscription request rejected.'); await load(); }
@@ -94,6 +129,7 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
         <div><h2 className="text-lg font-black">{role === 'admin' ? 'Seller Subscription Management' : 'Seller Subscription & Billing'}</h2><p className="mt-1 text-xs text-slate-300">{role === 'admin' ? 'Create plans, review payment evidence and activate seller subscriptions.' : 'Manage your plan, submit payment proof and track your renewal status.'}</p></div>
         <button type="button" onClick={() => void load()} className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold hover:bg-white/10">Refresh</button>
       </div>
+      {liveNotification && <div role="status" aria-live="polite" className="fixed right-3 top-3 z-[120] max-w-sm rounded-xl border border-emerald-300 bg-emerald-50 p-4 shadow-2xl"><p className="text-sm font-black text-emerald-900">{liveNotification.title}</p><p className="mt-1 text-xs text-emerald-800">{liveNotification.message}</p></div>}
       {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
       {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</div>}
 
@@ -147,7 +183,14 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
           {plans.length === 0 ? <p className="text-sm text-slate-500">No plans created yet.</p> : plans.map(plan => <div key={plan.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-0"><div><p className="font-bold">{plan.name} · {money(plan.price)}</p><p className="text-xs text-slate-500">{plan.durationDays} days · {plan.graceDays} grace days · {plan.description}</p></div><button type="button" disabled={!!busy} onClick={async () => { setBusy(plan.id); try { await marketplaceApi.subscriptions.updatePlan(plan.id,{isActive:!plan.isActive}); await load(); } catch(e) { setError(e instanceof Error ? e.message : 'Plan update failed.'); } finally { setBusy(null); } }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">{plan.isActive ? 'Deactivate' : 'Activate'}</button></div>)}
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-          <h3 className="font-black">Seller subscription requests</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black">Subscribed Sellers & Expiry Dates</h3><p className="mt-1 text-xs text-slate-500">Latest subscription record for each seller, including active, grace and expired accounts.</p></div><span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-black text-pink-700">{new Map(subscriptions.map((item: any) => [item.sellerId, item])).size} sellers</span></div>
+          {subscriptions.length === 0 ? <p className="text-sm text-slate-500">No seller subscriptions found.</p> : Array.from(new Map(subscriptions.map((item: any) => [item.sellerId, item])).values()).map((sub: any) => <div key={sub.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+            <div className="min-w-0"><p className="font-bold">{sellerOf(sub.seller)?.businessName || sellerOf(sub.seller)?.fullName || 'Seller'}</p><p className="text-xs text-slate-500">{sellerOf(sub.seller)?.email || '—'} · {sellerOf(sub.seller)?.phone || '—'}</p><p className="mt-1 text-xs text-slate-600">Plan: {planOf(sub.plan)?.name || '—'} · Expires: <b>{date(sub.expiresAt)}</b></p><p className="text-[11px] text-slate-500">Grace ends: {date(sub.graceEndsAt)} · Status: {sub.status}</p></div>
+            <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${sub.status === 'active' ? 'bg-emerald-100 text-emerald-700' : sub.status === 'grace' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700'}`}>{sub.status}</span>{['active','grace','expired'].includes(sub.status) && <button type="button" disabled={!!busy} onClick={() => void renew(sub)} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white disabled:opacity-50">{busy === `renew:${sub.id}` ? 'Renewing…' : 'Renew'}</button>}</div>
+          </div>)}
+        </section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+          <h3 className="font-black">Payment requests & history</h3>
           {subscriptions.length === 0 ? <p className="text-sm text-slate-500">No subscription records yet.</p> : subscriptions.map(sub => <div key={sub.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{sellerOf(sub.seller)?.businessName || sellerOf(sub.seller)?.fullName || 'Seller'}</p><p className="text-xs text-slate-500">{sellerOf(sub.seller)?.email} · {sellerOf(sub.seller)?.phone}</p><p className="mt-1 text-xs text-slate-600">{planOf(sub.plan)?.name} · {money(sub.amountPaid)} · {date(sub.createdAt)}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase">{sub.status}</span></div>
             <p className="text-xs text-slate-500">Method: {sub.paymentMethod || '—'} · Reference: {sub.paymentReference || '—'}</p>
