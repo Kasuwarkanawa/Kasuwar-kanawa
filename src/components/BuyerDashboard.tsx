@@ -399,7 +399,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                           {order.items.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-3 text-xs">
                               <img
-                                src={item.product.image}
+                                src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || item.product.image) : item.product.image}
                                 alt={item.product.name}
                                 className="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"
                               />
@@ -409,7 +409,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                 </h4>
                                 <div className="text-slate-500 text-[11px] flex gap-2 flex-wrap">
                                   {item.selectedColor && (
-                                    <span>Color: <strong>{item.selectedColor}</strong></span>
+                                    <span>Sample: <strong>{item.selectedColor}</strong></span>
                                   )}
                                   {item.selectedSize && (
                                     <span>Size: <strong>{item.selectedSize}</strong></span>
