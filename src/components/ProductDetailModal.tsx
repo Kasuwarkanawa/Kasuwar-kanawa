@@ -213,7 +213,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               <div className="mt-4 p-3.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-bold">Seller details:</span>
-                <span className="font-extrabold text-[#0B172E] text-right">{product.sellerName || "Kasuwar Kanawa Merchant"}{product.sellerId && <span className="block text-[10px] text-slate-500 font-semibold">Seller ID: {product.sellerId}</span>}{product.sellerVerified && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED SELLER</span>}</span>
+                <span className="font-extrabold text-[#0B172E] text-right">{product.sellerBusinessName || product.sellerName || "Kasuwar Kanawa Merchant"}{product.sellerId && <span className="block text-[10px] text-slate-500 font-semibold">Seller ID: {product.sellerId}</span>}{product.sellerVerified && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED SELLER</span>}</span>
               </div>
             </div>
 
@@ -391,7 +391,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </span>
                     <button
                       type="button"
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => setQuantity(Math.min(quantity + 1, product.stockQuantity ?? product.stockLeft ?? Number.MAX_SAFE_INTEGER))} disabled={product.stockQuantity === 0 || product.stockLeft === 0 || quantity >= (product.stockQuantity ?? product.stockLeft ?? Number.MAX_SAFE_INTEGER)}
                       className="px-3 py-1 hover:bg-slate-100 text-slate-700 font-bold cursor-pointer"
                     >
                       +
@@ -406,7 +406,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <button
                     type="button"
                     onClick={handleAdd}
-                    className="py-3 px-3 bg-pink-50 hover:bg-pink-100 active:bg-pink-200 text-[#E6007E] font-bold text-xs sm:text-sm rounded-xl border border-pink-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false}
+                    className="py-3 px-3 bg-pink-50 hover:bg-pink-100 active:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-[#E6007E] font-bold text-xs sm:text-sm rounded-xl border border-pink-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {addedAnimation ? (
                       <>
@@ -424,7 +425,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <button
                     type="button"
                     onClick={handleBuy}
-                    className="py-3 px-3 bg-[#E6007E] hover:bg-[#D00071] active:bg-[#B80064] text-white font-black text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    disabled={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false}
+                    className="py-3 px-3 bg-[#E6007E] hover:bg-[#D00071] active:bg-[#B80064] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <Zap className="w-4 h-4 fill-white" />
                     <span>Buy Now ({formatPrice(product.price * quantity)})</span>
@@ -436,11 +438,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="flex items-center gap-3 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1">
                       <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Fast Kano Delivery</span>
+                      <span>Delivery availability confirmed at checkout</span>
                     </span>
                     <span className="flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
-                      <span>Warranty Guaranteed</span>
+                      <span>Check product return terms before purchase</span>
                     </span>
                   </div>
 
