@@ -4121,7 +4121,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <div key={it.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                     <div>
                       <span className="font-bold text-slate-800 block">{it.product.name}</span>
-                      <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor || ''} {it.selectedSize || ''}</span>
+                      <span className="text-[10px] text-slate-500">Qty: {it.quantity} • {it.selectedColor ? `Sample: ${it.selectedColor}` : ''} {it.selectedSize ? `• Size: ${it.selectedSize}` : ''} {it.selectedVariation ? `• Option: ${it.selectedVariation}` : ''}</span>
                     </div>
                     <span className="font-black text-[#0B172E]">₦{(it.product.price * it.quantity).toLocaleString()}</span>
                   </div>
