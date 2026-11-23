@@ -126,7 +126,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 const itemTotal = item.product.price * item.quantity;
                 const hasDiscount = item.product.originalPrice > item.product.price;
                 const selectedColorIndex = item.selectedColor ? (item.product.colors || []).indexOf(item.selectedColor) : -1;
-                const cartImage = selectedColorIndex >= 0 ? (item.product.images?.[selectedColorIndex] || item.product.image) : item.product.image;
+                const cartImage = selectedColorIndex >= 0 ? (item.product.images?.[selectedColorIndex + 1] || (item.product.images?.length === item.product.colors?.length ? item.product.images[selectedColorIndex] : undefined) || item.product.image) : item.product.image;
 
                 return (
                   <div
@@ -163,7 +163,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         <div className="flex flex-wrap gap-1.5 mt-1.5 text-[10px]">
                           {item.selectedColor && (
                             <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700 font-semibold">
-                              Color: <strong className="text-slate-900">{item.selectedColor}</strong>
+                              Sample: <strong className="text-slate-900">{item.selectedColor}</strong>
                             </span>
                           )}
                           {item.selectedSize && (
