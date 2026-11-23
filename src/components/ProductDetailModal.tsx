@@ -218,8 +218,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-extrabold text-[#0B172E]">{product.sellerBusinessName || product.sellerName || "Seller information not provided"}</span>
-                  {product.sellerVerified && <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED</span>}
+                  {product.sellerActive && <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> ACTIVE SELLER</span>}
                 </div>
+              </div>
+              <div className="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3.5 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-black text-[#0B172E]">
+                  <Truck className="h-4 w-4 text-sky-700" />
+                  <span>Delivery information</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Delivery availability and fees are checked at checkout using your state, city, and order subtotal. The final delivery charge is shown before you confirm your order.
+                </p>
               </div>
             </div>
 
@@ -444,7 +453,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="flex items-center gap-3 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1">
                       <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Delivery availability confirmed at checkout</span>
+                      <span>Delivery fee is calculated at checkout for your address</span>
                     </span>
                     <span className="flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
