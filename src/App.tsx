@@ -34,6 +34,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const [dismissedSpotlightId, setDismissedSpotlightId] = useState<string | null>(null);
 
   // Dynamic products list (only approved products appear on public marketplace)
