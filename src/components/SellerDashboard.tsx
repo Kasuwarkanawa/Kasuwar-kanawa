@@ -84,6 +84,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [prodOriginalPrice, setProdOriginalPrice] = useState<number>(0);
   const [prodStock, setProdStock] = useState<number>(10);
   const [prodImage, setProdImage] = useState(SAMPLE_PRODUCT_IMAGES[0].url);
+  const [prodGalleryImages, setProdGalleryImages] = useState<string[]>([]);
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productImageUploadError, setProductImageUploadError] = useState('');
 
@@ -116,7 +117,9 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         const detail = await response.json().catch(() => ({}));
         throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
       }
-      setProdImage(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`);
+      const uploadedUrl = `https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+      setProdImage(uploadedUrl);
+      setProdGalleryImages((current) => current.includes(uploadedUrl) ? current : [...current, uploadedUrl]);
     } catch (error) {
       setProductImageUploadError(error instanceof Error ? error.message : 'Could not upload image. Please try again.');
     } finally {
@@ -272,7 +275,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         : 0,
       stockQuantity: Number(prodStock),
       image: prodImage,
-      images: [prodImage],
+      images: Array.from(new Set([prodImage, ...prodGalleryImages])),
       description: prodDescription,
       colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
       sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
@@ -304,6 +307,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setProdOriginalPrice(20000);
     setProdStock(15);
     setProdImage(SAMPLE_PRODUCT_IMAGES[0].url);
+    setProdGalleryImages([]);
     setProdDescription('High quality authentic product sourced from Kano commercial hubs.');
     setProdColors('White, Navy Blue, Golden');
     setProdSizes('Medium, Large, XL');
@@ -319,6 +323,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setProdOriginalPrice(prod.originalPrice);
     setProdStock(prod.stockQuantity || prod.stockLeft || 10);
     setProdImage(prod.image);
+    setProdGalleryImages((prod.images || []).filter((image) => image !== prod.image));
     setProdDescription(prod.description || '');
     setProdColors((prod.colors || []).join(', '));
     setProdSizes((prod.sizes || []).join(', '));
@@ -1606,7 +1611,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 {/* Upload product image from device gallery or choose sample */}
                 <div className="space-y-3">
-                  <label className="block font-bold text-slate-700 mb-1">Product Image</label>
+                  <label className="block font-bold text-slate-700 mb-1">Product Images & Colour Samples</label><p className="mb-2 text-xs text-slate-500">Upload extra photos in the same order as your colour list. Buyers can select a colour to switch the product image.</p>
                   <div className="flex flex-wrap items-center gap-3">
                     <img src={prodImage} alt="Product preview" className="h-24 w-24 rounded-xl border border-slate-200 object-cover bg-slate-50" />
                     <div className="flex flex-col gap-2">
@@ -1621,7 +1626,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     </div>
                   </div>
                   {productImageUploadError && <p role="alert" className="text-sm font-semibold text-red-600">{productImageUploadError}</p>}
-                  <details className="text-sm">
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-bold text-[#E6007E]">+ Add Colour Sample Image<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={isUploadingProductImage} onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file); e.currentTarget.value = ""; }} /></label><div className="mt-2 flex flex-wrap gap-2">{prodGalleryImages.map((image,index) => <div key={image} className="relative"><img src={image} alt={`Colour sample ${index + 1}`} className="h-14 w-14 rounded-lg border object-cover"/><button type="button" onClick={() => setProdGalleryImages(items => items.filter(item => item !== image))} className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">×</button></div>)}</div><details className="text-sm">
                     <summary className="cursor-pointer font-semibold text-slate-600">Or enter an image URL</summary>
                     <input type="url" value={prodImage} onChange={(e) => setProdImage(e.target.value)}
                       placeholder="https://..." className="mt-2 w-full rounded-lg border border-slate-300 p-2" />
