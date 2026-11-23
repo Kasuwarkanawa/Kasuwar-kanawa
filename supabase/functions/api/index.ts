@@ -684,7 +684,7 @@ async function dispatch(req: Request, origin: string | null) {
     const expiresAt=new Date(renewalStart.getTime()+Number(joinedPlan.durationDays)*86400000).toISOString();
     const {error:cancelError}=await db.from("SellerSubscription").update({status:"cancelled",updatedAt:nowIso}).eq("sellerId",sub.sellerId).in("status",["active","grace"]).neq("id",id);
     if(cancelError)throw cancelError;
-    const {data,error}=await db.from("SellerSubscription").update({status:"active",startsAt:nowIso,expiresAt,graceEndsAt:null,approvedBy:admin.user.id,approvedAt:nowIso,updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*),seller:User!SellerSubscription_sellerId_fkey(id,fullName,businessName,email,phone)").single();
+    const {data,error}=await db.from("SellerSubscription").update({status:"active",startsAt:renewalStart.toISOString(),expiresAt,graceEndsAt:null,approvedBy:admin.user.id,approvedAt:nowIso,updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*),seller:User!SellerSubscription_sellerId_fkey(id,fullName,businessName,email,phone)").single();
     if(error)throw error;
     await recordUserActivity(sub.sellerId,"SUBSCRIPTION_RENEWED","Super Admin manually renewed seller subscription",{subscriptionId:id,renewedBy:admin.user.id,expiresAt,durationDays:Number(joinedPlan.durationDays)});
     await notifySubscriptionSeller(sub.sellerId,"subscription_renewed","Subscription renewed",`Your seller subscription has been renewed. Your new expiry date is ${new Date(expiresAt).toLocaleDateString("en-NG")}.`,`subscription:${id}:renewed:${expiresAt}`,{subscriptionId:id,expiresAt,durationDays:Number(joinedPlan.durationDays)});
