@@ -68,6 +68,7 @@ export const marketplaceApi = {
     updatePlan: (id: string, data: Record<string, unknown>) =>
       request<any>(`/admin/subscriptions/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
     adminList: () => request<any[]>('/admin/subscriptions'),
+    renew: (id: string) => request<any>(`/admin/subscriptions/${encodeURIComponent(id)}/renew`, { method: 'POST', body: JSON.stringify({}) }),
     decide: (id: string, decision: 'approve' | 'reject', adminNotes?: string) =>
       request<any>(`/admin/subscriptions/${encodeURIComponent(id)}/decision`, { method: 'PATCH', body: JSON.stringify({ decision, adminNotes }) }),
     adminReceipt: (id: string) => request<{ url: string; expiresIn: number }>(`/admin/subscriptions/${encodeURIComponent(id)}/receipt`),
