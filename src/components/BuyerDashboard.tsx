@@ -399,7 +399,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                           {order.items.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-3 text-xs">
                               <img
-                                src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || item.product.image) : item.product.image}
+                                src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || (item.product.images?.length === item.product.colors?.length ? item.product.images[(item.product.colors || []).indexOf(item.selectedColor)] : undefined) || item.product.image) : item.product.image}
                                 alt={item.product.name}
                                 className="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"
                               />
