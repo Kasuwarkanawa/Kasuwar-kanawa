@@ -73,6 +73,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     if (!product) return;
     let active = true;
     setSelectedImage(product.image);
+    setDescriptionExpanded(false);
     setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
     setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
     setSelectedVariation(product.variations && product.variations[0]?.options.length ? product.variations[0].options[0] : '');
