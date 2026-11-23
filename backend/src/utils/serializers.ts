@@ -20,7 +20,7 @@ export function serializeProduct(product: any) {
     approvalStatus: approvalStatus === 'APPROVED' ? 'approved' : approvalStatus === 'REJECTED' ? 'rejected' : 'pending_approval',
     rating: Number(rating.toFixed(1)), reviewsCount,
     // Public catalog responses may identify the merchant but must never expose direct contact details.
-    ...(seller ? { sellerId: seller.id, sellerName: seller.fullName, sellerBusinessName: seller.businessName } : {}),
+    ...(seller ? { sellerId: seller.id, sellerName: seller.fullName, sellerBusinessName: seller.businessName, sellerVerified: seller.status === 'ACTIVE' } : {}),
   };
 }
 
