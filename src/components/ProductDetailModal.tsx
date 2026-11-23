@@ -245,8 +245,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="text-xs text-slate-400">
                     ({reviews.length || product.reviewsCount || 0} customer reviews)
                   </span>
-                  <span className="text-emerald-700 bg-emerald-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-                    ✓ In Stock (Kano Hub)
+                  <span className={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false ? "text-red-700 bg-red-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200" : "text-emerald-700 bg-emerald-50 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200"}>
+                    {product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false ? "Out of stock" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "In stock" : "Availability: confirm with seller"}
                   </span>
                 </div>
 
@@ -267,23 +267,30 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   )}
                 </div>
 
-                {/* Description */}
-                {product.description && (
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-                    <p className={descriptionExpanded ? "text-xs sm:text-sm text-slate-600 leading-relaxed" : "text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3"}>{product.description}</p>
-                    {product.description.length > 120 && <button type="button" onClick={() => setDescriptionExpanded(value => !value)} className="mt-2 text-sm font-black text-red-600 underline underline-offset-2">{descriptionExpanded ? "See Less" : "See More 👉"}</button>}
-                  </div>
-                )}
-                <div className="mt-4 rounded-lg border border-slate-200 overflow-hidden">
-                  <div className="bg-[#0B172E] px-3 py-2 text-xs font-black uppercase tracking-wide text-white">Full Product Specifications</div>
-                  <div className="divide-y divide-slate-100 text-xs">
-                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Category</span><span className="text-right font-bold text-slate-800">{product.category}</span></div>
-                    {!!product.colors?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Available colours</span><span className="text-right font-bold text-slate-800">{product.colors.join(", ")}</span></div>}
-                    {!!product.sizes?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Sizes / Storage</span><span className="text-right font-bold text-slate-800">{product.sizes.join(", ")}</span></div>}
-                    {(product.variations || []).map((variation, index) => <div key={index} className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">{variation.name}</span><span className="text-right font-bold text-slate-800">{variation.options.join(", ")}</span></div>)}
-                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Stock available</span><span className="text-right font-bold text-slate-800">{product.stockQuantity ?? product.stockLeft ?? (product.inStock ? "In stock" : "Check availability")}</span></div>
-                    <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Product ID</span><span className="text-right font-bold text-slate-800 break-all">{product.id}</span></div>
-                  </div>
+                {/* Description and full specifications share one See More control */}
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white overflow-hidden">
+                  {product.description && (
+                    <div className="p-3">
+                      <div className="mb-1 text-xs font-black uppercase tracking-wide text-[#0B172E]">Product Description</div>
+                      <p className={descriptionExpanded ? "text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line" : "text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3 whitespace-pre-line"}>{product.description}</p>
+                    </div>
+                  )}
+                  {descriptionExpanded && (
+                    <div className="border-t border-slate-200">
+                      <div className="bg-[#0B172E] px-3 py-2 text-xs font-black uppercase tracking-wide text-white">Full Product Specifications</div>
+                      <div className="divide-y divide-slate-100 text-xs">
+                        <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Category</span><span className="text-right font-bold text-slate-800">{product.category}</span></div>
+                        {!!product.colors?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Available colours</span><span className="text-right font-bold text-slate-800">{product.colors.join(", ")}</span></div>}
+                        {!!product.sizes?.length && <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Sizes / Storage</span><span className="text-right font-bold text-slate-800">{product.sizes.join(", ")}</span></div>}
+                        {(product.variations || []).map((variation, index) => <div key={index} className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">{variation.name}</span><span className="text-right font-bold text-slate-800">{variation.options.join(", ")}</span></div>)}
+                        <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Stock available</span><span className="text-right font-bold text-slate-800">{product.stockQuantity ?? product.stockLeft ?? (product.inStock === true ? "In stock" : product.inStock === false ? "Out of stock" : "Confirm with seller")}</span></div>
+                        <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Product ID</span><span className="text-right font-bold text-slate-800 break-all">{product.id}</span></div>
+                      </div>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => setDescriptionExpanded(value => !value)} aria-expanded={descriptionExpanded} className="w-full border-t border-slate-200 bg-pink-50 px-3 py-2.5 text-left text-sm font-black text-[#E6007E] hover:bg-pink-100">
+                    {descriptionExpanded ? "See Less ↑" : "See More 👉"}
+                  </button>
                 </div>
 
                 {/* 1. SELECT PRODUCT COLORS */}
