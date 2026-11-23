@@ -62,7 +62,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {product.sellerVerified && (
           <div className="absolute top-2 left-2 z-10 mt-7 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[9px] font-black uppercase text-white shadow-md">
-            <Check className="h-3 w-3" /> Verified ID
+            <Check className="h-3 w-3" /> Verified Seller
           </div>
         )}
 
