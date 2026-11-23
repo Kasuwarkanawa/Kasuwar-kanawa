@@ -95,6 +95,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       setProductImageUploadError('Please choose a JPG, PNG or WebP image.');
       return;
     }
+    if (!setAsMain && prodGalleryImages.length >= 4) {
+      setProductImageUploadError('You can add up to 4 sample/design photos for one product.');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setProductImageUploadError('Image must be 5MB or smaller.');
       return;
@@ -137,16 +141,58 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [prodVariations, setProdVariations] = useState('Standard, Premium Edition');
   const [prodSpecs, setProdSpecs] = useState<Record<string, string>>({});
 
-  const categorySpecFields = (category: string) => {
+  const categoryProfile = (category: string) => {
     const value = category.toLowerCase();
-    if (value.includes('shadda') || value.includes('atamfa') || value.includes('ankara') || value.includes('fabric')) return ['Fabric Type', 'Material', 'Length / Yards', 'Pattern / Design', 'Fabric Finish'];
-    if (value.includes('shoe') || value.includes('footwear') || value.includes('leather')) return ['Shoe Type', 'Upper Material', 'Sole Type', 'Fit', 'Gender'];
-    if (value.includes('phone') || value.includes('gadget')) return ['Brand', 'Model', 'Storage', 'RAM', 'Battery', 'Network', 'Condition'];
-    if (value.includes('electronic') || value.includes('appliance')) return ['Brand', 'Model', 'Power / Capacity', 'Key Features', 'Warranty', 'Condition'];
-    if (value.includes('abaya') || value.includes('veil') || value.includes('fashion') || value.includes('cap')) return ['Material', 'Style', 'Fit', 'Gender', 'Care Instructions'];
-    if (value.includes('grocery') || value.includes('provision')) return ['Brand', 'Pack Size / Weight', 'Expiry Date', 'Origin'];
-    return ['Brand', 'Model', 'Material', 'Size / Capacity', 'Condition', 'Warranty'];
+    if (value.includes('shadda') || value.includes('atamfa') || value.includes('ankara') || value.includes('fabric') || value.includes('textile')) return {
+      kind: 'fabric', sampleLabel: 'Fabric Design / Colour Samples', samplePlaceholder: 'Royal Blue, Gold Pattern, White Design',
+      sizeLabel: 'Fabric Length / Yards', sizePlaceholder: '5 Yards, 6 Yards, 10 Yards',
+      variationLabel: 'Fabric Quality / Grade', variationPlaceholder: 'Standard, Super, Premium',
+      fields: ['Fabric Type', 'Material / Composition', 'Length / Yards per Piece', 'Pattern / Design', 'Fabric Finish', 'Fabric Width', 'Care Instructions'],
+    };
+    if (value.includes('shoe') || value.includes('footwear') || value.includes('leather')) return {
+      kind: 'shoes', sampleLabel: 'Shoe Colour / Design Samples', samplePlaceholder: 'Black Leather, Brown Suede, White Sneaker',
+      sizeLabel: 'Shoe Sizes', sizePlaceholder: '39, 40, 41, 42, 43, 44',
+      variationLabel: 'Shoe Style / Fit', variationPlaceholder: 'Regular Fit, Wide Fit, High-top',
+      fields: ['Shoe Type', 'Upper Material', 'Sole Material', 'Closure Type', 'Fit', 'Gender', 'Country of Origin'],
+    };
+    if (value.includes('phone') || value.includes('mobile')) return {
+      kind: 'phone', sampleLabel: 'Phone Colour / Model Samples', samplePlaceholder: 'Midnight Black, Blue, Silver',
+      sizeLabel: 'Storage / Memory Options', sizePlaceholder: '128GB / 6GB RAM, 256GB / 8GB RAM',
+      variationLabel: 'Phone Version / Network', variationPlaceholder: 'Single SIM, Dual SIM, 5G',
+      fields: ['Brand', 'Model', 'Storage', 'RAM', 'Battery Capacity', 'Network', 'SIM Type', 'Condition', 'Warranty'],
+    };
+    if (value.includes('computer') || value.includes('laptop')) return {
+      kind: 'computer', sampleLabel: 'Colour / Model Samples', samplePlaceholder: 'Silver, Grey, Black',
+      sizeLabel: 'Memory / Storage Options', sizePlaceholder: '8GB RAM / 256GB SSD, 16GB RAM / 512GB SSD',
+      variationLabel: 'Processor / Version', variationPlaceholder: 'Core i5, Core i7, Ryzen 5',
+      fields: ['Brand', 'Model', 'Processor', 'RAM', 'Storage Type / Capacity', 'Screen Size', 'Graphics', 'Operating System', 'Condition', 'Warranty'],
+    };
+    if (value.includes('electronic') || value.includes('appliance')) return {
+      kind: 'electronics', sampleLabel: 'Colour / Model Samples', samplePlaceholder: 'Black, Silver, White',
+      sizeLabel: 'Size / Capacity Options', sizePlaceholder: '32 inch, 43 inch, 55 inch',
+      variationLabel: 'Model / Version', variationPlaceholder: 'Basic, Deluxe, Smart',
+      fields: ['Brand', 'Model', 'Power / Capacity', 'Voltage', 'Key Features', 'Warranty', 'Condition'],
+    };
+    if (value.includes('abaya') || value.includes('veil') || value.includes('fashion') || value.includes('cap') || value.includes('clothing')) return {
+      kind: 'fashion', sampleLabel: 'Clothing Colour / Design Samples', samplePlaceholder: 'Black, Navy Blue, Emerald Green',
+      sizeLabel: 'Clothing Sizes', sizePlaceholder: 'S, M, L, XL, XXL',
+      variationLabel: 'Style / Fabric Type', variationPlaceholder: 'Classic, Premium, Embroidered',
+      fields: ['Material', 'Style', 'Fit', 'Gender', 'Sleeve / Length', 'Care Instructions'],
+    };
+    if (value.includes('grocery') || value.includes('provision') || value.includes('food')) return {
+      kind: 'grocery', sampleLabel: 'Brand / Package Samples', samplePlaceholder: 'Brand A, Brand B',
+      sizeLabel: 'Pack Size / Weight', sizePlaceholder: '500g, 1kg, 5kg',
+      variationLabel: 'Pack / Flavour', variationPlaceholder: 'Small Pack, Family Pack',
+      fields: ['Brand', 'Pack Size / Weight', 'Expiry Date', 'Origin', 'Ingredients'],
+    };
+    return {
+      kind: 'general', sampleLabel: 'Colour / Design Samples', samplePlaceholder: 'Black, Blue, Gold',
+      sizeLabel: 'Size / Capacity Options', sizePlaceholder: 'Small, Medium, Large',
+      variationLabel: 'Product Options', variationPlaceholder: 'Standard, Deluxe, Premium',
+      fields: ['Brand', 'Model', 'Material', 'Size / Capacity', 'Condition', 'Warranty'],
+    };
   };
+  const categorySpecFields = (category: string) => categoryProfile(category).fields;
 
   // Report Buyer Form State
   const [reportReason, setReportReason] = useState('Unreachable phone number after multiple dispatch attempts');
@@ -1210,7 +1256,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                                     </div>
                                     {(item.selectedColor || item.selectedSize || item.selectedVariation) && (
                                       <div className="text-[10px] font-semibold text-[#E6007E]">
-                                        {[item.selectedColor ? `Sample: ${item.selectedColor}` : '', item.selectedSize ? `Size: ${item.selectedSize}` : '', item.selectedVariation ? `Option: ${item.selectedVariation}` : ''].filter(Boolean).join(' • ')}
+                                        {[item.selectedColor ? `Selected design: ${item.selectedColor}` : '', item.selectedSize ? `Size: ${item.selectedSize}` : '', item.selectedVariation ? `Option: ${item.selectedVariation}` : ''].filter(Boolean).join(' • ')}
                                       </div>
                                     )}
                                     {!!item.product.variations?.some((v) => v.name.startsWith('spec:')) && <div className="text-[9px] text-slate-500">{item.product.variations.filter((v) => v.name.startsWith('spec:')).map((v) => `${v.name.slice(5)}: ${v.options[0]}`).join(' • ')}</div>}
@@ -1639,7 +1685,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 {/* Upload product image from device gallery or choose sample */}
                 <div className="space-y-3">
-                  <label className="block font-bold text-slate-700 mb-1">Product Main Photo & Sample Designs</label><p className="mb-2 text-xs text-slate-500">Upload 3–4 sample/design photos. Enter matching names below in the same order (example: Royal Blue, Gold Pattern, White Design). Buyers must choose their preferred sample.</p>
+                  <label className="block font-bold text-slate-700 mb-1">Product Main Photo & Sample Designs</label><p className="mb-2 text-xs text-slate-500">Upload up to 4 sample/design photos. Enter matching names below in the same order. Buyers select the exact design they want, and that selection is saved with the order.</p>
                   <div className="flex flex-wrap items-center gap-3">
                     <img src={prodImage} alt="Product preview" className="h-24 w-24 rounded-xl border border-slate-200 object-cover bg-slate-50" />
                     <div className="flex flex-col gap-2">
@@ -1654,7 +1700,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     </div>
                   </div>
                   {productImageUploadError && <p role="alert" className="text-sm font-semibold text-red-600">{productImageUploadError}</p>}
-                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-bold text-[#E6007E]">+ Add Colour Sample Image<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={isUploadingProductImage} onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file, false); e.currentTarget.value = ""; }} /></label><div className="mt-2 flex flex-wrap gap-2">{prodGalleryImages.map((image,index) => <div key={image} className="relative"><img src={image} alt={`Colour sample ${index + 1}`} className="h-14 w-14 rounded-lg border object-cover"/><button type="button" onClick={() => setProdGalleryImages(items => items.filter(item => item !== image))} className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">×</button></div>)}</div><details className="text-sm">
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-bold text-[#E6007E]">+ Add Sample / Design Photo<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={isUploadingProductImage} onChange={(e) => { const file = e.currentTarget.files?.[0]; void handleProductGalleryUpload(file, false); e.currentTarget.value = ""; }} /></label><div className="mt-2 flex flex-wrap gap-2">{prodGalleryImages.map((image,index) => <div key={image} className="relative"><img src={image} alt={`Colour sample ${index + 1}`} className="h-14 w-14 rounded-lg border object-cover"/><button type="button" onClick={() => setProdGalleryImages(items => items.filter(item => item !== image))} className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">×</button></div>)}</div><details className="text-sm">
                     <summary className="cursor-pointer font-semibold text-slate-600">Or enter an image URL</summary>
                     <input type="url" value={prodImage} onChange={(e) => setProdImage(e.target.value)}
                       placeholder="https://..." className="mt-2 w-full rounded-lg border border-slate-300 p-2" />
@@ -1701,10 +1747,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Sample / Design Names (same order as photos)</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{categoryProfile(prodCategory).sampleLabel} (same order as photos)</label>
                     <input
                       type="text"
-                      placeholder="Design A, Design B, Design C"
+                      placeholder={categoryProfile(prodCategory).samplePlaceholder}
                       value={prodColors}
                       onChange={(e) => setProdColors(e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
@@ -1712,10 +1758,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{prodCategory.toLowerCase().includes('shoe') || prodCategory.toLowerCase().includes('footwear') ? 'Shoe Sizes' : prodCategory.toLowerCase().includes('shadda') || prodCategory.toLowerCase().includes('atamfa') || prodCategory.toLowerCase().includes('ankara') ? 'Fabric Length / Yards' : prodCategory.toLowerCase().includes('phone') ? 'Storage Options' : 'Sizes / Capacity'}</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{categoryProfile(prodCategory).sizeLabel}</label>
                     <input
                       type="text"
-                      placeholder="5 Yards, L, XL"
+                      placeholder={categoryProfile(prodCategory).sizePlaceholder}
                       value={prodSizes}
                       onChange={(e) => setProdSizes(e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
@@ -1723,10 +1769,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Product Variations</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{categoryProfile(prodCategory).variationLabel}</label>
                     <input
                       type="text"
-                      placeholder="Standard, Deluxe"
+                      placeholder={categoryProfile(prodCategory).variationPlaceholder}
                       value={prodVariations}
                       onChange={(e) => setProdVariations(e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
