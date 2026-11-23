@@ -651,6 +651,50 @@ export default function App() {
         {/* Featured homepage banner advertisement */}
         {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner />}
 
+        {!searchResults && !categoryFilteredProducts && (
+          <>
+            <CategoriesSection
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              products={liveProducts}
+            />
+            <TrustBadges />
+            <FlashSalesSection
+              products={liveProducts}
+              activeFlashSale={activeFlashSale}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
+            <DiscountAdvertisements
+              promotions={activePromotions}
+              onStartShopping={() => {
+                const el = document.getElementById('all-products-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onSelectCategory={setSelectedCategory}
+            />
+            <SpecialOffersSection
+              products={specialOfferProducts}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
+            <PopularProductsSection
+              products={allProducts.slice(0, 8)}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
+            <NewProductsSection
+              products={allProducts.slice(0, 8)}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
+          </>
+        )}
+
         {/* Active Search Results View (if search active) */}
         {searchResults && (
           <section
