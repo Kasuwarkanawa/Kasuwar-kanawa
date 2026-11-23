@@ -256,7 +256,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Filter & Search States
   const [searchQuery, setSearchQuery] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'admin'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'logistics' | 'admin'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended' | 'rejected'>('all');
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [paymentSubFilter, setPaymentSubFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected'>('pending');
@@ -1611,6 +1611,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <option value="all">All Roles</option>
                         <option value="buyer">Buyers Only</option>
                         <option value="seller">Sellers Only</option>
+                        <option value="logistics">Logistics Only</option>
                         <option value="admin">Admins Only</option>
                       </select>
 
@@ -1709,7 +1710,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     const rows = report.activities.map((event) => `<tr><td>${safe(new Date(event.createdAt).toLocaleString())}</td><td>${safe(event.eventType)}</td><td>${safe(event.description)}</td></tr>`).join('');
                                     const popup = window.open('', '_blank', 'width=900,height=700');
                                     if (!popup) { showNotification('Allow pop-ups to print the user activity report.'); return; }
-                                    popup.document.write(`<!doctype html><html><head><title>Kasuwar Kanawa - User Activity</title><style>body{font:14px Arial;padding:24px;color:#172033}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#eee}.meta{line-height:1.8}</style></head><body><h1>Kasuwar Kanawa — User Activity Report</h1><div class="meta"><b>Name:</b> ${safe(report.user.fullName)}<br><b>Role:</b> ${safe(report.user.accountType)}<br><b>Email:</b> ${safe(report.user.email)}<br><b>Phone:</b> ${safe(report.user.phone)}<br><b>Last seen:</b> ${report.lastSeenAt ? safe(new Date(report.lastSeenAt).toLocaleString()) : 'Not recorded'}<br><b>Report generated:</b> ${safe(new Date().toLocaleString())}</div><table><thead><tr><th>Date / Time</th><th>Event</th><th>Activity</th></tr></thead><tbody>${rows || '<tr><td colspan="3">No recorded activity yet.</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+                                    popup.document.write(`<!doctype html><html><head><title>Kasuwar Kanawa - User Activity</title><style>body{font:14px Arial;padding:24px;color:#172033}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#eee}.meta{line-height:1.8}</style></head><body><h1>Kasuwar Kanawa — User Activity Report</h1><div class="meta"><b>Name:</b> ${safe(report.user.fullName)}<br><b>Role:</b> ${safe(report.user.accountType)}<br><b>Email:</b> ${safe(report.user.email)}<br><b>Phone:</b> ${safe(report.user.phone)}<br><b>Last seen:</b> ${report.lastSeenAt ? safe(new Date(report.lastSeenAt).toLocaleString()) : 'Not recorded'}<br><b>Last login:</b> ${report.lastLoginAt ? safe(new Date(report.lastLoginAt).toLocaleString()) : 'Not recorded'}<br><b>Last logout:</b> ${report.lastLogoutAt ? safe(new Date(report.lastLogoutAt).toLocaleString()) : 'Not recorded'}<br><b>Report generated:</b> ${safe(new Date().toLocaleString())}</div><table><thead><tr><th>Date / Time</th><th>Event</th><th>Activity</th></tr></thead><tbody>${rows || '<tr><td colspan="3">No recorded activity yet.</td></tr>'}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
                                     popup.document.close();
                                   } catch (error) { showNotification(error instanceof Error ? error.message : 'Unable to load user activity history.'); }
                                 }}
