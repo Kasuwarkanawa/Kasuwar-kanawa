@@ -155,33 +155,33 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       {/* Backdrop */}
       <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
 
-      <div className="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 my-4 max-h-[92vh] flex flex-col">
+      <div className="relative bg-white w-full max-w-7xl rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 my-1 sm:my-3 max-h-[98vh] flex flex-col">
         {/* Top Header */}
-        <div className="bg-[#0B172E] text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0">
+        <div className="bg-white text-[#0B172E] border-b border-slate-200 p-3.5 sm:p-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <span className="bg-[#E6007E] text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full uppercase">
+            <span className="bg-[#E6007E] text-white text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-md uppercase">
               Product Details
             </span>
-            <span className="text-xs text-slate-300 hidden sm:inline truncate max-w-md">
+            <span className="text-xs text-slate-500 hidden sm:inline truncate max-w-md">
               {product.name}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"
+            className="p-2 rounded-lg text-slate-500 hover:text-[#E6007E] hover:bg-pink-50 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-3 sm:p-6 lg:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/70">
           {/* Main Grid: Gallery Left, Details Right */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] gap-5 lg:gap-8 bg-white rounded-xl border border-slate-200 p-3 sm:p-5">
             {/* Gallery Column */}
             <div>
               {/* Main Image */}
-              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-xs">
+              <div className="relative aspect-square w-full max-h-[620px] rounded-lg overflow-hidden bg-white border border-slate-200">
                 {product.discountPercentage > 0 && (
                   <div className="absolute top-3 left-3 bg-[#E6007E] text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-md z-10">
                     -{product.discountPercentage}% OFF
@@ -211,7 +211,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
 
-              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+              <div className="mt-4 p-3.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-bold">Seller details:</span>
                 <span className="font-extrabold text-[#0B172E] text-right">{product.sellerName || "Kasuwar Kanawa Merchant"}{product.sellerId && <span className="block text-[10px] text-slate-500 font-semibold">Seller ID: {product.sellerId}</span>}{product.sellerVerified && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="mr-1 h-3 w-3"/> VERIFIED SELLER</span>}</span>
               </div>
@@ -251,7 +251,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
 
                 {/* Pricing & Discount */}
-                <div className="mt-3.5 p-3.5 rounded-xl bg-pink-50/60 border border-pink-100 flex items-baseline gap-3">
+                <div className="mt-3.5 p-4 rounded-lg bg-pink-50 border border-pink-200 flex items-baseline gap-3 flex-wrap">
                   <span className="text-2xl sm:text-3xl font-black text-[#E6007E] tabular-nums">
                     {formatPrice(product.price)}
                   </span>
@@ -269,12 +269,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 {/* Description */}
                 {product.description && (
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
                     <p className={descriptionExpanded ? "text-xs sm:text-sm text-slate-600 leading-relaxed" : "text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3"}>{product.description}</p>
                     {product.description.length > 120 && <button type="button" onClick={() => setDescriptionExpanded(value => !value)} className="mt-2 text-sm font-black text-red-600 underline underline-offset-2">{descriptionExpanded ? "See Less" : "See More 👉"}</button>}
                   </div>
                 )}
-                <div className="mt-4 rounded-xl border border-slate-200 overflow-hidden">
+                <div className="mt-4 rounded-lg border border-slate-200 overflow-hidden">
                   <div className="bg-[#0B172E] px-3 py-2 text-xs font-black uppercase tracking-wide text-white">Full Product Specifications</div>
                   <div className="divide-y divide-slate-100 text-xs">
                     <div className="flex justify-between gap-3 px-3 py-2"><span className="font-semibold text-slate-500">Category</span><span className="text-right font-bold text-slate-800">{product.category}</span></div>
@@ -394,7 +394,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
 
               {/* Action Buttons: Add to Cart and Buy Now */}
-              <div className="pt-4 border-t border-slate-100 space-y-2">
+              <div className="pt-4 border-t border-slate-200 space-y-2 sticky bottom-0 bg-white/95 backdrop-blur-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -525,7 +525,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           )}
 
           {/* 10. PRODUCT COMMENTS AND RATINGS SECTION */}
-          <div className="pt-6 border-t border-slate-200 space-y-4">
+          <div className="pt-6 border-t border-slate-200 space-y-4 bg-white rounded-xl p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-[#0B172E] flex items-center gap-2">
