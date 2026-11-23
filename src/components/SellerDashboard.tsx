@@ -287,7 +287,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         : 0,
       stockQuantity: Number(prodStock),
       image: prodImage,
-      images: Array.from(new Set([prodImage, ...prodGalleryImages])),
+      images: [prodImage, ...prodGalleryImages],
       description: prodDescription,
       colors: prodColors.split(',').map((value) => value.trim()).filter(Boolean),
       sizes: prodSizes.split(',').map((value) => value.trim()).filter(Boolean),
@@ -1573,7 +1573,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                     <label className="block font-bold text-slate-700 mb-1">Product Category</label>
                     <select
                       value={prodCategory}
-                      onChange={(e) => setProdCategory(e.target.value)}
+                      onChange={(e) => { setProdCategory(e.target.value); setProdSpecs({}); }}
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-[#E6007E] bg-white"
                     >
                       <option value="Kano Shadda & Kaftan">Kano Shadda & Kaftan</option>
