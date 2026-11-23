@@ -276,6 +276,7 @@ async function dispatch(req: Request, origin: string | null) {
     };
     const { data: user, error } = await db.from("User").insert(userRow).select("*").single();
     if (error) throw error;
+    await recordUserActivity(user.id,"ACCOUNT_REGISTERED","User registered an account",{role});
     if (role === "LOGISTICS") {
       const { error: companyError } = await db.from("LogisticsCompany").insert({
         id: crypto.randomUUID(), ownerUserId: user.id, companyName: data.businessName!,
@@ -616,6 +617,7 @@ async function dispatch(req: Request, origin: string | null) {
       paymentMethod:b.paymentMethod,paymentReference:b.paymentReference??null,createdAt:now,updatedAt:now
     }).select("*,plan:SellerSubscriptionPlan(*)").single();
     if(error)throw error;
+    await recordUserActivity(auth.user.id,"SUBSCRIPTION_REQUESTED","Requested seller subscription",{subscriptionId:data.id,planId:plan.id,amount:plan.price,paymentMethod:b.paymentMethod});
     await notifySubscriptionSeller(auth.user.id,"subscription_request","Subscription request created","Your subscription request was created. Submit payment proof and wait for Admin approval.",`subscription:${data.id}:created`,{subscriptionId:data.id});
     return reply(data,201,origin);
   }
@@ -635,6 +637,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(uploadError)throw uploadError;
     const {data,error}=await db.from("SellerSubscription").update({paymentReceiptPath:objectPath,status:"pending_approval",updatedAt:new Date().toISOString()}).eq("id",id).select("id,status,paymentReceiptPath,updatedAt").single();
     if(error){await db.storage.from("payment-receipts").remove([objectPath]);throw error;}
+    await recordUserActivity(auth.user.id,"SUBSCRIPTION_RECEIPT_UPLOADED","Uploaded seller subscription payment proof",{subscriptionId:id});
     return reply(data,200,origin);
   }
   if(path==="/admin/subscriptions/plans" && method==="GET") {
@@ -687,11 +690,13 @@ async function dispatch(req: Request, origin: string | null) {
       const expiresAt=new Date(now.getTime()+Number(joinedPlan.durationDays)*86400000).toISOString();
       const {data,error}=await db.from("SellerSubscription").update({status:"active",startsAt:nowIso,expiresAt,graceEndsAt:null,approvedBy:admin.user.id,approvedAt:nowIso,updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*)").single();
       if(error)throw error;
+      await recordUserActivity(sub.sellerId,"SUBSCRIPTION_APPROVED","Super Admin approved seller subscription",{subscriptionId:id,approvedBy:admin.user.id,expiresAt});
       await notifySubscriptionSeller(sub.sellerId,"subscription_approved","Subscription approved","Your seller subscription is active. You can continue selling on Kasuwar Kanawa.",`subscription:${id}:approved`,{subscriptionId:id,expiresAt});
       return reply(data,200,origin);
     }
     const {data,error}=await db.from("SellerSubscription").update({status:"rejected",updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*)").single();
     if(error)throw error;
+    await recordUserActivity(sub.sellerId,"SUBSCRIPTION_REJECTED","Super Admin rejected seller subscription",{subscriptionId:id,rejectedBy:admin.user.id,notes:b.adminNotes??""});
     await notifySubscriptionSeller(sub.sellerId,"subscription_rejected","Subscription request declined",b.adminNotes||"Your subscription request was declined. Contact Admin for details.",`subscription:${id}:rejected`,{subscriptionId:id});
     return reply(data,200,origin);
   }
@@ -1035,6 +1040,7 @@ async function dispatch(req: Request, origin: string | null) {
       throw error;
     }
     const order=await getOrder(orderId);if(!order)throw new Error("Order creation did not return an order.");
+    await recordUserActivity(auth.user.id,"ORDER_CREATED",`Placed order ${order.orderNumber??order.id}`,{orderId:order.id,orderNumber:order.orderNumber,totalAmount:order.totalAmount,paymentMethod:order.paymentMethod});
     return reply(orderForBuyer(order),201,origin);
   }
 
