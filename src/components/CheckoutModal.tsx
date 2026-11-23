@@ -317,7 +317,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-3"
                   >
                     <img
-                      src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || item.product.image) : item.product.image}
+                      src={item.selectedColor ? (item.product.images?.[(item.product.colors || []).indexOf(item.selectedColor) + 1] || (item.product.images?.length === item.product.colors?.length ? item.product.images[(item.product.colors || []).indexOf(item.selectedColor)] : undefined) || item.product.image) : item.product.image}
                       alt={item.product.name}
                       className="w-16 h-16 rounded-xl object-cover bg-white border border-slate-200 shrink-0 self-start"
                     />
