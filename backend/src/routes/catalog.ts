@@ -7,7 +7,7 @@ import { serializeProduct } from '../utils/serializers.js';
 
 export const catalogRouter = Router();
 const publicProductInclude = {
-  seller: { select: { id: true, fullName: true, businessName: true, phone: true, whatsAppNumber: true } },
+  seller: { select: { id: true, fullName: true, businessName: true, status: true, phone: true, whatsAppNumber: true } },
   reviews: { select: { rating: true } },
 } as const;
 const paginationSchema = z.object({ take: z.coerce.number().int().min(1).max(100).default(50), skip: z.coerce.number().int().min(0).max(100_000).default(0) });
