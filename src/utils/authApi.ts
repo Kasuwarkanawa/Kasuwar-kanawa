@@ -99,14 +99,15 @@ export const authApi = {
   async currentUser(): Promise<User | null> {
     try {
       const result = await request<{ user?: User }>('/auth/me');
-      if (result.user) {
-        void request<{success:boolean}>('/auth/heartbeat', { method: 'POST' }).catch(() => undefined);
-      }
       return result.user || null;
     } catch (error) {
       if (error instanceof Error && error.message.includes('(401)')) return null;
       throw error;
     }
+  },
+
+  async heartbeat(): Promise<void> {
+    await request<{ success: boolean }>('/auth/heartbeat', { method: 'POST' });
   },
 
   async logout(): Promise<void> {
