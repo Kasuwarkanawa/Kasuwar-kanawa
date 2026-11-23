@@ -20,6 +20,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [addedAnimation, setAddedAnimation] = useState(false);
+  const isOutOfStock = product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false;
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -122,6 +123,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.name}
           </h3>
 
+          <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+            <span className={isOutOfStock ? "font-bold text-red-700" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "font-bold text-emerald-700" : "font-medium text-slate-500"}>
+              {isOutOfStock ? "Out of stock" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "In stock" : "Availability not confirmed"}
+            </span>
+            {product.sellerActive && <span className="font-bold text-emerald-700">Active seller</span>}
+          </div>
+
           {/* Rating Stars & Reviews */}
           <div className="mt-1.5 flex items-center gap-1 flex-wrap">
             <div className="flex items-center text-amber-400">
@@ -164,7 +172,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Add to Cart */}
           <button
             onClick={handleAdd}
-            className="w-full py-2 px-2 bg-pink-50 hover:bg-pink-100 active:bg-pink-200 text-[#E6007E] font-bold text-xs rounded-lg border border-pink-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+            disabled={isOutOfStock}
+            className="w-full py-2 px-2 disabled:opacity-50 disabled:cursor-not-allowed bg-pink-50 hover:bg-pink-100 active:bg-pink-200 text-[#E6007E] font-bold text-xs rounded-lg border border-pink-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
             aria-label={`Add ${product.name} to Cart`}
           >
             {addedAnimation ? (
@@ -183,7 +192,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Buy Now */}
           <button
             onClick={handleBuy}
-            className="w-full py-2 px-2 bg-[#E6007E] hover:bg-[#D00071] active:bg-[#B80064] text-white font-extrabold text-xs rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+            disabled={isOutOfStock}
+            className="w-full py-2 px-2 disabled:opacity-50 disabled:cursor-not-allowed bg-[#E6007E] hover:bg-[#D00071] active:bg-[#B80064] text-white font-extrabold text-xs rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
             aria-label={`Buy ${product.name} Now`}
           >
             <Zap className="w-3.5 h-3.5 fill-white" />
