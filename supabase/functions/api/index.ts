@@ -196,13 +196,16 @@ async function notifySubscriptionSeller(userId:string, type:string, title:string
 async function runSubscriptionExpiry() {
   const now=new Date().toISOString();
   const [{data:toGrace,error:graceReadError},{data:toExpire,error:expireReadError}]=await Promise.all([
-    db.from("SellerSubscription").select("id,sellerId,expiresAt").eq("status","active").lte("expiresAt",now),
+    db.from("SellerSubscription").select("id,sellerId,expiresAt,plan:SellerSubscriptionPlan(graceDays)").eq("status","active").lte("expiresAt",now),
     db.from("SellerSubscription").select("id,sellerId,graceEndsAt").eq("status","grace").lte("graceEndsAt",now)
   ]);
   if(graceReadError)throw graceReadError;if(expireReadError)throw expireReadError;
   const {error}=await db.rpc("process_seller_subscription_expiry");
   if(error) throw error;
-  for(const row of toGrace??[]) await notifySubscriptionSeller(row.sellerId,"subscription_grace","Subscription grace period started","Your subscription has expired. You have a 7-day grace period to renew before your products are hidden.",`subscription:${row.id}:grace`,{subscriptionId:row.id,expiresAt:row.expiresAt});
+  for(const row of toGrace??[]) {
+    const graceDays=Number(row.plan?.graceDays??7);
+    await notifySubscriptionSeller(row.sellerId,"subscription_grace","Subscription grace period started",`Your subscription has expired. You have a ${graceDays}-day grace period to renew before your products are hidden.`,`subscription:${row.id}:grace`,{subscriptionId:row.id,expiresAt:row.expiresAt,graceDays});
+  }
   for(const row of toExpire??[]) await notifySubscriptionSeller(row.sellerId,"subscription_expired","Subscription expired","Your grace period has ended. Your products are hidden from the public marketplace until your subscription is renewed and approved.",`subscription:${row.id}:expired`,{subscriptionId:row.id,graceEndsAt:row.graceEndsAt});
 }
 
@@ -338,9 +341,12 @@ async function dispatch(req: Request, origin: string | null) {
   }
   const productMatch = path.match(/^\/products\/([^/]+)$/);
   if (method === "GET" && productMatch) {
+    await runSubscriptionExpiry();
     const {data,error} = await db.from("Product").select("*").eq("id",decodeURIComponent(productMatch[1])).eq("approvalStatus","APPROVED").maybeSingle();
     if (error) throw error;
     if (!data) fail("Product not found.",404);
+    const blockedSellerIds=await expiredSubscriptionSellerIds();
+    if(blockedSellerIds.includes(data.sellerId)) fail("Product not found.",404);
     return reply((await withProductDetails([data]))[0],200,origin);
   }
   const reviewsMatch = path.match(/^\/products\/([^/]+)\/reviews$/);
