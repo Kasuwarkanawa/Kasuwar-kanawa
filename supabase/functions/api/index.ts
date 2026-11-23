@@ -488,7 +488,7 @@ async function dispatch(req: Request, origin: string | null) {
   if(sellerProductMatch && method==="DELETE") {
     const auth=await requireRole(req,["SELLER"]); const id=decodeURIComponent(sellerProductMatch[1]);
     const {data,error}=await db.from("Product").delete().eq("id",id).eq("sellerId",auth.user.id).select("id").maybeSingle();
-    if(error) throw error; if(!data) fail("Product not found.",404); return reply({success:true},200,origin);
+    if(error) throw error; if(!data) fail("Product not found.",404); await recordUserActivity(auth.user.id,"PRODUCT_DELETED","Deleted a product",{productId:id}); return reply({success:true},200,origin);
   }
 
   // Buyer/Seller profile APIs. Only profile fields are writable; role, status and password stay server-controlled.
@@ -740,7 +740,7 @@ async function dispatch(req: Request, origin: string | null) {
     ]);
     if(userError)throw userError;if(presenceError)throw presenceError;if(eventsError)throw eventsError;
     if(!user)fail("User not found.",404);
-    return reply({user:safeUser(user),lastSeenAt:presence?.lastSeenAt??null,activities:events??[]},200,origin);
+    const activityRows=events??[];\n    const lastLoginAt=activityRows.find((event:any)=>event.eventType==="LOGIN")?.createdAt??null;\n    const lastLogoutAt=activityRows.find((event:any)=>event.eventType==="LOGOUT")?.createdAt??null;\n    return reply({user:safeUser(user),lastSeenAt:presence?.lastSeenAt??null,lastLoginAt,lastLogoutAt,activities:activityRows},200,origin);
   }
   if(path==="/admin/users" && method==="POST") {
     await requireRole(req,["SUPER_ADMIN"]);
