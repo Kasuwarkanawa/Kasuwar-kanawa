@@ -125,6 +125,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               items.map((item) => {
                 const itemTotal = item.product.price * item.quantity;
                 const hasDiscount = item.product.originalPrice > item.product.price;
+                const selectedColorIndex = item.selectedColor ? (item.product.colors || []).indexOf(item.selectedColor) : -1;
+                const cartImage = selectedColorIndex >= 0 ? (item.product.images?.[selectedColorIndex] || item.product.image) : item.product.image;
 
                 return (
                   <div
@@ -134,8 +136,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex gap-3">
                       {/* Product Image */}
                       <div className="shrink-0 flex flex-col items-center gap-1">
-                        <button type="button" onClick={() => setPreviewImage({ src: item.product.image, alt: item.product.name })} className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${item.product.name} image`}>
-                          <img src={item.product.image} alt={item.product.name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-contain bg-white border border-slate-200 shadow-2xs" />
+                        <button type="button" onClick={() => setPreviewImage({ src: cartImage, alt: item.product.name })} className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E6007E]" aria-label={`Preview ${item.product.name} image`}>
+                          <img src={cartImage} alt={item.product.name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-contain bg-white border border-slate-200 shadow-2xs" />
                         </button>
                         <span className="text-[9px] text-[#E6007E] font-semibold">Tap to preview</span>
                       </div>
