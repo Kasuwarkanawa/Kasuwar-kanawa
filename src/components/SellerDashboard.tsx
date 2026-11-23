@@ -118,8 +118,12 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
       }
       const uploadedUrl = `https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`;
-      if (setAsMain) setProdImage(uploadedUrl);
-      setProdGalleryImages((current) => current.includes(uploadedUrl) ? current : [...current, uploadedUrl]);
+      if (setAsMain) {
+        setProdImage(uploadedUrl);
+        setProdGalleryImages((current) => current.filter((image) => image !== uploadedUrl));
+      } else {
+        setProdGalleryImages((current) => current.includes(uploadedUrl) ? current : [...current, uploadedUrl]);
+      }
     } catch (error) {
       setProductImageUploadError(error instanceof Error ? error.message : 'Could not upload image. Please try again.');
     } finally {
