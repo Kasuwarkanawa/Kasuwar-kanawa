@@ -126,6 +126,25 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  // Keep last-seen presence fresh while any authenticated role is using the app.
+  useEffect(() => {
+    if (!currentUser) return;
+    let active = true;
+    const sendHeartbeat = () => {
+      if (active && document.visibilityState === 'visible') {
+        void authApi.heartbeat().catch(() => undefined);
+      }
+    };
+    sendHeartbeat();
+    const interval = window.setInterval(sendHeartbeat, 30_000);
+    document.addEventListener('visibilitychange', sendHeartbeat);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', sendHeartbeat);
+    };
+  }, [currentUser?.id]);
+
   // Load the authenticated buyer's persistent cart from Supabase.
   useEffect(() => {
     if (!currentUser || currentUser.accountType !== 'buyer') return;
