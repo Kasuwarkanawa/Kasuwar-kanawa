@@ -454,9 +454,9 @@ export default function App() {
         <section role="alert" aria-live="assertive" className={"fixed top-2 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[min(760px,calc(100vw-2rem))] z-[100] rounded-2xl border-2 p-4 shadow-2xl animate-pulse " + (globalSub.status === 'grace' ? 'border-red-500 bg-red-50 text-red-950' : 'border-amber-500 bg-amber-50 text-amber-950')}>
           <button type="button" onClick={() => setGlobalWarningDismissed(true)} aria-label="Close subscription warning" className="absolute right-2 top-2 rounded-full bg-white p-1.5 text-slate-700 shadow"><X className="h-4 w-4" /></button>
           <div className="flex items-start gap-3 pr-8">
-            <AlertTriangle className="mt-0.5 h-7 w-7 shrink-0 text-amber-600" />
+            <div className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-600 text-white shadow-lg ring-4 ring-red-200 animate-pulse"><AlertTriangle className="h-10 w-10 stroke-[3]" /></div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black uppercase">Seller subscription warning</p>
+              <p className="text-base font-black uppercase tracking-wide text-red-700">🚨 DANGER ZONE — SELLER SUBSCRIPTION WARNING</p>
               <p className="mt-1 text-xs font-semibold">
                 {globalSub.status === 'grace'
                   ? 'Your 7-day grace period is active. Renew now. If it ends, selling access will be suspended and your products hidden from buyers. Your saved products and account will not be deleted.'
