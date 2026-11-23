@@ -203,7 +203,8 @@ async function runSubscriptionExpiry() {
   const {error}=await db.rpc("process_seller_subscription_expiry");
   if(error) throw error;
   for(const row of toGrace??[]) {
-    const graceDays=Number(row.plan?.[0]?.graceDays??7);
+    const joinedPlan=Array.isArray(row.plan)?row.plan[0]:row.plan;
+    const graceDays=Number(joinedPlan?.graceDays??7);
     await notifySubscriptionSeller(row.sellerId,"subscription_grace","Subscription grace period started",`Your subscription has expired. You have a ${graceDays}-day grace period to renew before your products are hidden.`,`subscription:${row.id}:grace`,{subscriptionId:row.id,expiresAt:row.expiresAt,graceDays});
   }
   for(const row of toExpire??[]) await notifySubscriptionSeller(row.sellerId,"subscription_expired","Subscription expired","Your grace period has ended. Your products are hidden from the public marketplace until your subscription is renewed and approved.",`subscription:${row.id}:expired`,{subscriptionId:row.id,graceEndsAt:row.graceEndsAt});
@@ -661,7 +662,9 @@ async function dispatch(req: Request, origin: string | null) {
     if(b.decision==="approve") {
       const {error:cancelError}=await db.from("SellerSubscription").update({status:"cancelled",updatedAt:nowIso}).eq("sellerId",sub.sellerId).in("status",["active","grace"]);
       if(cancelError)throw cancelError;
-      const expiresAt=new Date(now.getTime()+Number(sub.plan.durationDays)*86400000).toISOString();
+      const joinedPlan=Array.isArray(sub.plan)?sub.plan[0]:sub.plan;
+      if(!joinedPlan) fail("Subscription plan could not be loaded.",500);
+      const expiresAt=new Date(now.getTime()+Number(joinedPlan.durationDays)*86400000).toISOString();
       const {data,error}=await db.from("SellerSubscription").update({status:"active",startsAt:nowIso,expiresAt,graceEndsAt:null,approvedBy:admin.user.id,approvedAt:nowIso,updatedAt:nowIso}).eq("id",id).select("*,plan:SellerSubscriptionPlan(*)").single();
       if(error)throw error;
       await notifySubscriptionSeller(sub.sellerId,"subscription_approved","Subscription approved","Your seller subscription is active. You can continue selling on Kasuwar Kanawa.",`subscription:${id}:approved`,{subscriptionId:id,expiresAt});

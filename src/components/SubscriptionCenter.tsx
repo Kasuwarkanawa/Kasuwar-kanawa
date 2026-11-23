@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { marketplaceApi } from '../utils/marketplaceApi';
 
 type Props = { role: 'seller' | 'admin' };
+const planOf = (value: any) => Array.isArray(value) ? value[0] : value;
+const sellerOf = (value: any) => Array.isArray(value) ? value[0] : value;
 const money = (value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(value || 0));
 const date = (value?: string | null) => value ? new Date(value).toLocaleString() : '—';
 
@@ -76,7 +78,7 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
   };
   const openReceipt = async (id: string) => {
     setBusy(`receipt:${id}`); setError('');
-    try { const result = await marketplaceApi.subscriptions.adminReceipt(id); window.open(result.url, '_blank', 'noopener,noreferrer'); }
+    try { const result = await marketplaceApi.subscriptions.adminReceipt(id); window.location.assign(result.url); }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to open receipt.'); }
     finally { setBusy(null); }
   };
@@ -99,7 +101,7 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
           <div className="flex items-center justify-between gap-2"><h3 className="font-black text-slate-900">Current subscription</h3><span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase ${current?.status === 'active' ? 'bg-emerald-100 text-emerald-700' : current?.status === 'grace' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{current?.status || 'No subscription'}</span></div>
           {current ? <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><p className="text-xs text-slate-500">Plan</p><p className="font-bold">{current.plan?.name || 'Seller plan'}</p></div>
+            <div><p className="text-xs text-slate-500">Plan</p><p className="font-bold">{planOf(current.plan)?.name || 'Seller plan'}</p></div>
             <div><p className="text-xs text-slate-500">Amount</p><p className="font-bold">{money(current.amountPaid)}</p></div>
             <div><p className="text-xs text-slate-500">Starts</p><p className="font-semibold">{date(current.startsAt)}</p></div>
             <div><p className="text-xs text-slate-500">Expires</p><p className="font-semibold">{date(current.expiresAt)}</p></div>
@@ -147,7 +149,7 @@ export const SubscriptionCenter: React.FC<Props> = ({ role }) => {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
           <h3 className="font-black">Seller subscription requests</h3>
           {subscriptions.length === 0 ? <p className="text-sm text-slate-500">No subscription records yet.</p> : subscriptions.map(sub => <div key={sub.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
-            <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{sub.seller?.businessName || sub.seller?.fullName || 'Seller'}</p><p className="text-xs text-slate-500">{sub.seller?.email} · {sub.seller?.phone}</p><p className="mt-1 text-xs text-slate-600">{sub.plan?.name} · {money(sub.amountPaid)} · {date(sub.createdAt)}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase">{sub.status}</span></div>
+            <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{sellerOf(sub.seller)?.businessName || sellerOf(sub.seller)?.fullName || 'Seller'}</p><p className="text-xs text-slate-500">{sellerOf(sub.seller)?.email} · {sellerOf(sub.seller)?.phone}</p><p className="mt-1 text-xs text-slate-600">{planOf(sub.plan)?.name} · {money(sub.amountPaid)} · {date(sub.createdAt)}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase">{sub.status}</span></div>
             <p className="text-xs text-slate-500">Method: {sub.paymentMethod || '—'} · Reference: {sub.paymentReference || '—'}</p>
             <div className="flex flex-wrap gap-2">{sub.paymentReceiptPath && <button type="button" disabled={!!busy} onClick={() => void openReceipt(sub.id)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">{busy === `receipt:${sub.id}` ? 'Opening…' : 'View receipt'}</button>}{['pending_payment','pending_approval'].includes(sub.status) && <><button type="button" disabled={!!busy} onClick={() => void decide(sub.id,'approve')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">{busy === sub.id ? 'Saving…' : 'Approve & activate'}</button><button type="button" disabled={!!busy} onClick={() => void decide(sub.id,'reject')} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white">Reject</button></>}</div>
             {sub.expiresAt && <p className="text-[11px] text-slate-500">Expires: {date(sub.expiresAt)}{sub.graceEndsAt ? ` · Grace ends: ${date(sub.graceEndsAt)}` : ''}</p>}
