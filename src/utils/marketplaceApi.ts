@@ -191,6 +191,7 @@ export const marketplaceApi = {
       if (params.skip) query.set('skip', String(params.skip));
       return request<any[]>(`/admin/users?${query.toString()}`);
     },
+    activity: (id: string, take = 200) => request<{user:any;lastSeenAt:string|null;activities:Array<{id:string;eventType:string;description:string;metadata:Record<string,unknown>;createdAt:string}>}>(`/admin/users/${encodeURIComponent(id)}/activity?take=${take}`),
     updateProfile: (id: string, data: Record<string, unknown>) => request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
     setStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED' | 'REJECTED') =>
       request<{ user: any }>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
