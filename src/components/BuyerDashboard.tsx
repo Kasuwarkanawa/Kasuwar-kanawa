@@ -409,7 +409,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                                 </h4>
                                 <div className="text-slate-500 text-[11px] flex gap-2 flex-wrap">
                                   {item.selectedColor && (
-                                    <span>Sample: <strong>{item.selectedColor}</strong></span>
+                                    <span>Selected design: <strong>{item.selectedColor}</strong></span>
                                   )}
                                   {item.selectedSize && (
                                     <span>Size: <strong>{item.selectedSize}</strong></span>
