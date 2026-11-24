@@ -470,7 +470,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleOpenCreatePromotion = () => {
     setEditingAd(null); setAdTitle(''); setAdDescription(''); setAdBadge('PROMO!');
-    setAdDiscountTag('Save 20%'); setAdImage('https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80');
+    setAdDiscountTag('Save 20%'); setAdImage('');
     setAdLinkText('Shop Now'); setAdLinkUrl('#popular-products-section'); setAdIsActive(true); setIsCreatingAd(true);
   };
 
@@ -481,7 +481,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   const handleSavePromotion = async (event: React.FormEvent) => {
-    event.preventDefault(); setPromotionSaving(true);
+    event.preventDefault();
+    if (!adImage.trim()) { showNotification('Upload a promotion image from your gallery or paste an image URL.'); return; }
+    setPromotionSaving(true);
     const payload = { title: adTitle.trim(), description: adDescription.trim(), badge: adBadge.trim() || undefined,
       discountTag: adDiscountTag.trim() || undefined, image: adImage.trim(), linkText: adLinkText.trim() || 'Shop Now',
       linkUrl: adLinkUrl.trim() || '#popular-products-section', isActive: adIsActive };
@@ -1088,6 +1090,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleSaveFlashSale = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fsBannerImage.trim()) { showNotification('Upload a Flash Sale banner image from your gallery or enter an image URL.'); return; }
     if (fsProductIds.length === 0) { showNotification('Select at least one approved product for the Flash Sale.'); return; }
     if (new Date(fsEndTime) <= new Date(fsStartTime)) { showNotification('Flash Sale end time must be after its start time.'); return; }
     const payload = {
@@ -3958,7 +3961,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <label className="block text-xs font-bold text-slate-700">Promotion title<input required maxLength={200} value={adTitle} onChange={(e) => setAdTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
             <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={2000} value={adDescription} onChange={(e) => setAdDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" rows={3} /></label>
             <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Badge<input value={adBadge} onChange={(e) => setAdBadge(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Discount tag<input value={adDiscountTag} onChange={(e) => setAdDiscountTag(e.target.value)} placeholder="Save 20%" className="mt-1 w-full rounded-lg border p-2" /></label></div>
-            <div className="space-y-2"><label className="block text-xs font-bold text-slate-700">Upload image from Gallery<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleAdImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingAdImage} className="mt-1 block w-full rounded-lg border p-2 text-xs" /></label>{isUploadingAdImage && <p className="text-xs text-slate-500">Uploading image…</p>}{adImageUploadError && <p className="text-xs text-red-600">{adImageUploadError}</p>}{adImage && <img src={adImage} alt="Promotion preview" className="h-28 w-full rounded-lg border object-cover" />}<label className="block text-xs font-bold text-slate-700">Image URL<input required type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <div className="space-y-2"><label className="block text-xs font-bold text-slate-700">Upload image from Gallery<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleAdImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingAdImage} className="mt-1 block w-full rounded-xl border-2 border-dashed border-fuchsia-300 bg-fuchsia-50 p-3 text-xs" /><p className="mt-1 text-[11px] text-slate-500">Select a clear banner from your phone gallery. JPG, PNG or WebP, maximum 5MB.</p></label>{isUploadingAdImage && <p className="text-xs text-slate-500">Uploading image…</p>}{adImageUploadError && <p className="text-xs text-red-600">{adImageUploadError}</p>}{adImage && <div className="overflow-hidden rounded-2xl border-2 border-fuchsia-200 bg-slate-950 shadow-lg"><img src={adImage} alt="Large promotion banner preview" className="block aspect-[16/7] max-h-[320px] w-full object-contain sm:object-cover" /></div>}<label className="block text-xs font-bold text-slate-700">Or paste Image URL<input type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} placeholder="https://…" className="mt-1 w-full rounded-lg border p-2" /></label></div>
             <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Button text<input value={adLinkText} onChange={(e) => setAdLinkText(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Button link<input value={adLinkUrl} onChange={(e) => setAdLinkUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
             <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={adIsActive} onChange={(e) => setAdIsActive(e.target.checked)} /> Publish promotion immediately</label>
             <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAd(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={promotionSaving || isUploadingAdImage} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{promotionSaving ? 'Saving…' : 'Save Promotion'}</button></div>
@@ -4005,8 +4008,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               <div className="space-y-2">
                 <label className="block font-bold text-slate-700 mb-1">Flash Sale Banner Image</label>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleFlashSaleImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingFsImage} className="w-full rounded-lg border border-slate-300 p-2" />
-                {isUploadingFsImage && <p className="text-slate-500">Uploading image…</p>}{fsImageUploadError && <p className="text-red-600">{fsImageUploadError}</p>}{fsBannerImage && <img src={fsBannerImage} alt="Flash Sale banner preview" className="h-28 w-full rounded-lg border object-cover" />}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleFlashSaleImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingFsImage} className="w-full rounded-xl border-2 border-dashed border-pink-300 bg-pink-50 p-3" />
+                <p className="text-[11px] text-slate-500">Choose a clear JPG, PNG or WebP banner from your phone gallery (maximum 5MB).</p>
+                <label className="block font-bold text-slate-700">Or paste Flash Sale image URL<input type="url" value={fsBannerImage} onChange={(e) => setFsBannerImage(e.target.value)} placeholder="https://…" className="mt-1 w-full rounded-lg border border-slate-300 p-2" /></label>
+                {isUploadingFsImage && <p className="text-slate-500">Uploading image…</p>}{fsImageUploadError && <p className="text-red-600">{fsImageUploadError}</p>}{fsBannerImage && <div className="overflow-hidden rounded-2xl border-2 border-pink-200 bg-slate-950 shadow-lg"><img src={fsBannerImage} alt="Large Flash Sale banner preview" className="block aspect-[16/7] max-h-[320px] w-full object-contain sm:object-cover" /></div>}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
