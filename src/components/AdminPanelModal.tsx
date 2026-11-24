@@ -397,6 +397,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [fsEndTime, setFsEndTime] = useState(new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16));
   const [fsProductIds, setFsProductIds] = useState<string[]>([]);
   const [fsIsActive, setFsIsActive] = useState(true);
+  const [fsBannerImage, setFsBannerImage] = useState('');
+  const [isUploadingFsImage, setIsUploadingFsImage] = useState(false);
+  const [fsImageUploadError, setFsImageUploadError] = useState('');
 
   // Product Discounts States
   const [editingDiscountProduct, setEditingDiscountProduct] = useState<Product | null>(null);
@@ -418,6 +421,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [adLinkText, setAdLinkText] = useState('Shop Now');
   const [adLinkUrl, setAdLinkUrl] = useState('#popular-products-section');
   const [adIsActive, setAdIsActive] = useState(true);
+  const [isUploadingAdImage, setIsUploadingAdImage] = useState(false);
+  const [adImageUploadError, setAdImageUploadError] = useState('');
 
   // Announcements States
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -426,6 +431,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [ancDescription, setAncDescription] = useState('');
   const [ancType, setAncType] = useState<'info' | 'discount' | 'alert' | 'event'>('discount');
   const [ancIsPublished, setAncIsPublished] = useState(true);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+
+  const uploadAdminContentImage = async (file: File): Promise<string> => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPG, PNG or WebP image.');
+    if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller.');
+    const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const fileName = `admin-content-${crypto.randomUUID()}.${extension}`;
+    const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, { method: 'POST', headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`, 'Content-Type': file.type, 'x-upsert': 'false' }, body: file });
+    if (!response.ok) { const detail = await response.json().catch(() => ({})); throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`); }
+    return `https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`;
+  };
+  const handleAdImageUpload = async (file?: File) => {
+    if (!file) return; setAdImageUploadError(''); setIsUploadingAdImage(true);
+    try { setAdImage(await uploadAdminContentImage(file)); } catch (error) { setAdImageUploadError(error instanceof Error ? error.message : 'Could not upload promotion image.'); } finally { setIsUploadingAdImage(false); }
+  };
+  const handleFlashSaleImageUpload = async (file?: File) => {
+    if (!file) return; setFsImageUploadError(''); setIsUploadingFsImage(true);
+    try { setFsBannerImage(await uploadAdminContentImage(file)); } catch (error) { setFsImageUploadError(error instanceof Error ? error.message : 'Could not upload Flash Sale image.'); } finally { setIsUploadingFsImage(false); }
+  };
+  const handleOpenCreateAnnouncement = () => { setEditingAnnouncement(null); setAncTitle(''); setAncDescription(''); setAncType('info'); setAncIsPublished(true); setIsCreatingAnnouncement(true); };
+  const handleOpenEditAnnouncement = (announcement: Announcement) => { setEditingAnnouncement(announcement); setAncTitle(announcement.title); setAncDescription(announcement.description); setAncType(announcement.type || 'info'); setAncIsPublished(announcement.isPublished); setIsCreatingAnnouncement(true); };
+  const handleSaveAnnouncement = async (event: React.FormEvent) => {
+    event.preventDefault(); setIsSavingAnnouncement(true);
+    const payload = { title: ancTitle.trim(), description: ancDescription.trim(), type: ancType, isPublished: ancIsPublished };
+    try {
+      const saved = editingAnnouncement ? await marketplaceApi.content.updateAnnouncement(editingAnnouncement.id, payload) : await marketplaceApi.content.createAnnouncement(payload);
+      setBackendAnnouncements((items) => editingAnnouncement ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items]);
+      setIsCreatingAnnouncement(false); showNotification(editingAnnouncement ? 'Announcement updated.' : 'Announcement created.'); triggerRefresh();
+    } catch (error) { showNotification(error instanceof Error ? error.message : 'Unable to save announcement.'); }
+    finally { setIsSavingAnnouncement(false); }
+  };
+  const handleDeleteAnnouncement = async (announcement: Announcement) => {
+    if (!window.confirm(`Delete announcement \"${announcement.title}\"?`)) return;
+    try { await marketplaceApi.content.deleteAnnouncement(announcement.id); setBackendAnnouncements((items) => items.filter((item) => item.id !== announcement.id)); showNotification('Announcement deleted.'); triggerRefresh(); }
+    catch (error) { showNotification(error instanceof Error ? error.message : 'Unable to delete announcement.'); }
+  };
 
   const handleOpenCreatePromotion = () => {
     setEditingAd(null); setAdTitle(''); setAdDescription(''); setAdBadge('PROMO!');
@@ -1027,6 +1068,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setFsStartTime(new Date().toISOString().slice(0, 16));
     setFsEndTime(new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16));
     setFsProductIds(backendApprovedProducts.slice(0, 4).map((p) => p.id));
+    setFsBannerImage(''); setFsImageUploadError('');
     setFsIsActive(true);
     setIsCreatingFlashSale(true);
   };
@@ -1039,6 +1081,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setFsStartTime(new Date(fs.startTime).toISOString().slice(0, 16));
     setFsEndTime(new Date(fs.endTime).toISOString().slice(0, 16));
     setFsProductIds(fs.productIds || []);
+    setFsBannerImage(fs.bannerImage || ''); setFsImageUploadError('');
     setFsIsActive(fs.isActive);
     setIsCreatingFlashSale(true);
   };
@@ -1050,6 +1093,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     const payload = {
       title: fsTitle.trim(),
       description: fsDescription.trim(),
+      bannerImage: fsBannerImage.trim() || undefined,
       discountPercentage: Number(fsDiscount),
       startTime: new Date(fsStartTime).toISOString(),
       endTime: new Date(fsEndTime).toISOString(),
@@ -2976,6 +3020,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-3">
+                      <div className="flex justify-end"><button type="button" onClick={handleOpenCreateAnnouncement} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white flex items-center gap-1"><Plus className="h-3.5 w-3.5" /> Create Announcement</button></div>
+                      {allAnnouncements.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-xs text-slate-500">No announcements yet. Create your first broadcast announcement.</div>}
                       {allAnnouncements.map((anc) => (
                         <div key={anc.id} className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
                           <div>
@@ -2985,12 +3031,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <h4 className="font-black text-xs text-[#0B172E]">{anc.title}</h4>
                             <p className="text-xs text-slate-600">{anc.description}</p>
                           </div>
+                          <div className="flex shrink-0 flex-col gap-2">
                           <button
                             type="button"
                             onClick={async () => {
                               try {
-                                await marketplaceApi.content.updateAnnouncement(anc.id, { isPublished: !anc.isPublished });
-                                setBackendAnnouncements((items) => items.map((item) => item.id === anc.id ? { ...item, isPublished: !item.isPublished } : item));
+                                const updated = await marketplaceApi.content.updateAnnouncement(anc.id, { isPublished: !anc.isPublished });
+                                setBackendAnnouncements((items) => items.map((item) => item.id === anc.id ? updated : item));
                                 triggerRefresh();
                               } catch (error) {
                                 showNotification(error instanceof Error ? error.message : 'Unable to update announcement.');
@@ -3002,6 +3049,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           >
                             {anc.isPublished ? 'Published' : 'Unpublished'}
                           </button>
+                          <button type="button" onClick={() => handleOpenEditAnnouncement(anc)} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Edit</button>
+                          <button type="button" onClick={() => void handleDeleteAnnouncement(anc)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-600">Delete</button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -3886,6 +3936,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
       )}
 
+      {isCreatingAnnouncement && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4">
+          <form onSubmit={handleSaveAnnouncement} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b pb-2"><h3 className="font-black text-sm text-[#0B172E]">{editingAnnouncement ? 'Edit Broadcast Announcement' : 'Create Broadcast Announcement'}</h3><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="text-slate-500"><X className="h-5 w-5" /></button></div>
+            <label className="block text-xs font-bold text-slate-700">Announcement title<input required maxLength={200} value={ancTitle} onChange={(e) => setAncTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={3000} rows={4} value={ancDescription} onChange={(e) => setAncDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <label className="block text-xs font-bold text-slate-700">Announcement type<select value={ancType} onChange={(e) => setAncType(e.target.value as 'info' | 'alert' | 'discount' | 'event')} className="mt-1 w-full rounded-lg border p-2"><option value="info">Information</option><option value="alert">Important Alert</option><option value="discount">Discount / Promotion</option><option value="event">Event</option></select></label>
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={ancIsPublished} onChange={(e) => setAncIsPublished(e.target.checked)} /> Publish immediately</label>
+            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={isSavingAnnouncement} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{isSavingAnnouncement ? 'Saving…' : 'Save Announcement'}</button></div>
+          </form>
+        </div>
+      )}
+
       {isCreatingAd && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
           <form onSubmit={handleSavePromotion} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-3">
@@ -3893,10 +3956,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <label className="block text-xs font-bold text-slate-700">Promotion title<input required maxLength={200} value={adTitle} onChange={(e) => setAdTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
             <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={2000} value={adDescription} onChange={(e) => setAdDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" rows={3} /></label>
             <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Badge<input value={adBadge} onChange={(e) => setAdBadge(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Discount tag<input value={adDiscountTag} onChange={(e) => setAdDiscountTag(e.target.value)} placeholder="Save 20%" className="mt-1 w-full rounded-lg border p-2" /></label></div>
-            <label className="block text-xs font-bold text-slate-700">Image URL<input required type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+            <div className="space-y-2"><label className="block text-xs font-bold text-slate-700">Upload image from Gallery<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleAdImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingAdImage} className="mt-1 block w-full rounded-lg border p-2 text-xs" /></label>{isUploadingAdImage && <p className="text-xs text-slate-500">Uploading image…</p>}{adImageUploadError && <p className="text-xs text-red-600">{adImageUploadError}</p>}{adImage && <img src={adImage} alt="Promotion preview" className="h-28 w-full rounded-lg border object-cover" />}<label className="block text-xs font-bold text-slate-700">Image URL<input required type="url" value={adImage} onChange={(e) => setAdImage(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
             <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-700">Button text<input value={adLinkText} onChange={(e) => setAdLinkText(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label><label className="text-xs font-bold text-slate-700">Button link<input value={adLinkUrl} onChange={(e) => setAdLinkUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label></div>
             <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={adIsActive} onChange={(e) => setAdIsActive(e.target.checked)} /> Publish promotion immediately</label>
-            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAd(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={promotionSaving} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{promotionSaving ? 'Saving…' : 'Save Promotion'}</button></div>
+            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAd(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={promotionSaving || isUploadingAdImage} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{promotionSaving ? 'Saving…' : 'Save Promotion'}</button></div>
           </form>
         </div>
       )}
@@ -3938,6 +4001,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700 mb-1">Flash Sale Banner Image</label>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { void handleFlashSaleImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={isUploadingFsImage} className="w-full rounded-lg border border-slate-300 p-2" />
+                {isUploadingFsImage && <p className="text-slate-500">Uploading image…</p>}{fsImageUploadError && <p className="text-red-600">{fsImageUploadError}</p>}{fsBannerImage && <img src={fsBannerImage} alt="Flash Sale banner preview" className="h-28 w-full rounded-lg border object-cover" />}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Discount (%)</label>
