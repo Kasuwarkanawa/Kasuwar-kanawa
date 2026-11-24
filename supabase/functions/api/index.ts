@@ -1298,8 +1298,8 @@ async function dispatch(req: Request, origin: string | null) {
 
 
   const flashAdminPath="/content/admin/flash-sales";
-  const flashSchema=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().max(2000).optional(),discountPercentage:z.number().int().min(1).max(100),startTime:z.string().datetime(),endTime:z.string().datetime(),productIds:z.array(z.string().trim().min(1).max(128)).min(1).max(100),isActive:z.boolean().default(false)});
-  const serializeSale=(sale:any)=>({id:sale.id,title:sale.title,description:sale.description||undefined,discountPercentage:sale.discountPercentage,startTime:sale.startTime,endTime:sale.endTime,productIds:(sale.products??[]).map((p:any)=>p.productId),isActive:sale.isActive,createdAt:sale.createdAt});
+  const flashSchema=z.object({title:z.string().trim().min(1).max(200),description:z.string().trim().max(2000).optional(),bannerImage:z.string().trim().max(1000).optional(),discountPercentage:z.number().int().min(1).max(100),startTime:z.string().datetime(),endTime:z.string().datetime(),productIds:z.array(z.string().trim().min(1).max(128)).min(1).max(100),isActive:z.boolean().default(false)});
+  const serializeSale=(sale:any)=>({id:sale.id,title:sale.title,description:sale.description||undefined,bannerImage:sale.bannerImage||undefined,discountPercentage:sale.discountPercentage,startTime:sale.startTime,endTime:sale.endTime,productIds:(sale.products??[]).map((p:any)=>p.productId),isActive:sale.isActive,createdAt:sale.createdAt});
   if(path===flashAdminPath && method==="GET") {
     await requireRole(req,["SUPER_ADMIN"]);const {data,error}=await db.from("FlashSale").select("*,products:FlashSaleProduct(productId)").order("createdAt",{ascending:false}).limit(100);
     if(error)throw error;return reply((data??[]).map(serializeSale),200,origin);
@@ -1309,7 +1309,7 @@ async function dispatch(req: Request, origin: string | null) {
     if(new Date(b.endTime)<=new Date(b.startTime))fail("Flash sale end time must be after its start time.",400);
     const productIds=[...new Set(b.productIds)];const {data:products,error:productError}=await db.from("Product").select("id").in("id",productIds).eq("approvalStatus","APPROVED");
     if(productError)throw productError;if((products??[]).length!==productIds.length)fail("Every selected flash sale product must exist and be approved.",400);
-    const {data:sale,error}=await db.from("FlashSale").insert({id:crypto.randomUUID(),title:b.title,description:b.description??null,discountPercentage:b.discountPercentage,startTime:b.startTime,endTime:b.endTime,isActive:b.isActive}).select("*").single();
+    const {data:sale,error}=await db.from("FlashSale").insert({id:crypto.randomUUID(),title:b.title,description:b.description??null,bannerImage:b.bannerImage??null,discountPercentage:b.discountPercentage,startTime:b.startTime,endTime:b.endTime,isActive:b.isActive}).select("*").single();
     if(error)throw error;
     const {error:linkError}=await db.from("FlashSaleProduct").insert(productIds.map(productId=>({flashSaleId:sale.id,productId})));
     if(linkError){await db.from("FlashSale").delete().eq("id",sale.id);throw linkError;}
@@ -1318,12 +1318,12 @@ async function dispatch(req: Request, origin: string | null) {
   const flashIdMatch=path.match(/^\/content\/admin\/flash-sales\/([^/]+)$/);
   if(flashIdMatch && method==="PATCH") {
     await requireRole(req,["SUPER_ADMIN"]);const id=decodeURIComponent(flashIdMatch[1]);
-    const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().max(2000).optional(),discountPercentage:z.number().int().min(1).max(100).optional(),startTime:z.string().datetime().optional(),endTime:z.string().datetime().optional(),productIds:z.array(z.string().trim().min(1).max(128)).min(1).max(100).optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
+    const b=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().trim().max(2000).optional(),bannerImage:z.string().trim().max(1000).optional(),discountPercentage:z.number().int().min(1).max(100).optional(),startTime:z.string().datetime().optional(),endTime:z.string().datetime().optional(),productIds:z.array(z.string().trim().min(1).max(128)).min(1).max(100).optional(),isActive:z.boolean().optional()}).strict().parse(await bodyJson(req));
     const {data:current}=await db.from("FlashSale").select("*").eq("id",id).maybeSingle();if(!current)fail("Flash sale not found.",404);
     if(new Date(b.endTime??current.endTime)<=new Date(b.startTime??current.startTime))fail("Flash sale end time must be after its start time.",400);
     if(b.productIds){const ids=[...new Set(b.productIds)];const {data:products,error}=await db.from("Product").select("id").in("id",ids).eq("approvalStatus","APPROVED");if(error)throw error;if((products??[]).length!==ids.length)fail("Every selected flash sale product must exist and be approved.",400);
       const del=await db.from("FlashSaleProduct").delete().eq("flashSaleId",id);if(del.error)throw del.error;const add=await db.from("FlashSaleProduct").insert(ids.map(productId=>({flashSaleId:id,productId})));if(add.error)throw add.error;}
-    const patch:any={};for(const k of ["title","description","discountPercentage","startTime","endTime","isActive"])if((b as any)[k]!==undefined)patch[k]=(b as any)[k];
+    const patch:any={};for(const k of ["title","description","bannerImage","discountPercentage","startTime","endTime","isActive"])if((b as any)[k]!==undefined)patch[k]=(b as any)[k];
     const {data:sale,error}=await db.from("FlashSale").update(patch).eq("id",id).select("*").single();if(error)throw error;
     const {data:links,error:linkError}=await db.from("FlashSaleProduct").select("productId").eq("flashSaleId",id);if(linkError)throw linkError;
     return reply(serializeSale({...sale,products:links??[]}),200,origin);
