@@ -14,6 +14,7 @@ export interface User {
   state: string;
   area: string;
   productCategory?: string;
+  registrationLanguage?: 'ha' | 'en';
   accountType: AccountType;
   status?: 'active' | 'pending' | 'suspended' | 'rejected';
   profileImage?: string;
