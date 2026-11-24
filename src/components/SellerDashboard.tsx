@@ -424,7 +424,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const openEditProduct = (prod: Product) => {
     setEditingProduct(prod);
     setProdName(prod.name);
-    setProdCategory(prod.category);
+    const isSolarProduct = prod.category.toLowerCase().includes('solar') || prod.category.toLowerCase().includes('inverter');
+    setProdCategory(isSolarProduct ? 'Solar / Batteries' : prod.category);
     setSolarProductType(prod.category.toLowerCase().includes('battery') ? 'Solar Batteries' : prod.category.toLowerCase().includes('inverter') ? 'Inverters' : 'Solar Panels');
     setProdPrice(prod.price);
     setProdOriginalPrice(prod.originalPrice);
