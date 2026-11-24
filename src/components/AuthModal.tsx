@@ -98,7 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         businessAddress: accountType === 'seller' || accountType === 'logistics' ? (businessAddress.trim() || address.trim()) : undefined,
         city: city.trim(), state: state.trim(), area: area.trim(),
         productCategory: accountType === 'seller' ? productCategory : undefined,
-        accountType, profileImage: profileImage.trim() || undefined,
+        accountType, registrationLanguage: accountType === 'seller' ? registrationLanguage || 'en' : undefined, profileImage: profileImage.trim() || undefined,
       });
       if (accountType === 'logistics') {
         setSuccessMessage(result.message || 'Logistics company registration received. Super Admin approval is required before sign-in.');
