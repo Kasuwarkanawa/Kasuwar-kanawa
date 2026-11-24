@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { TopContactBar } from './components/TopContactBar';
 import { Header } from './components/Header';
 import { NavigationBar } from './components/NavigationBar';
-import { AnnouncementBar } from './components/AnnouncementBar';
 import { MainPromotionalBanner } from './components/MainPromotionalBanner';
 import { TrustBadges } from './components/TrustBadges';
 import { FlashSalesSection } from './components/FlashSalesSection';
@@ -677,10 +676,7 @@ export default function App() {
         cartCount={cartCount}
       />
 
-      {/* 4. Announcements Ticker Bar */}
-      <AnnouncementBar />
-
-      {/* Phase 7: Dynamic Broadcast Announcements Section */}
+      {/* Single live broadcast ticker: only the first published admin announcement */}
       <AnnouncementsSection announcements={publishedAnnouncements} />
 
       {/* Toast Notification */}
