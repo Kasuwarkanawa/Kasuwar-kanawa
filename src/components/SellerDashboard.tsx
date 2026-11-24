@@ -66,6 +66,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [subscriptionNotice, setSubscriptionNotice] = useState<any>(null);
   const [subscriptionPaymentAccount, setSubscriptionPaymentAccount] = useState<any>(null);
   const [subscriptionNoticeDismissed, setSubscriptionNoticeDismissed] = useState(false);
+  const [showSellerWelcome, setShowSellerWelcome] = useState(false);
+  const sellerWelcomeLanguage = seller.registrationLanguage === 'ha' ? 'ha' : 'en';
   const [orderFilter, setOrderFilter] = useState<OrderStatus | 'all'>('all');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [searchProductQuery, setSearchProductQuery] = useState('');
@@ -234,6 +236,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     const reminderTimer = window.setTimeout(() => setSubscriptionNoticeDismissed(false), 10_000);
     return () => window.clearTimeout(reminderTimer);
   }, [isOpen, subscriptionNoticeDismissed]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const key = `kasuwar-kanawa:seller-welcome-seen:${seller.id}`;
+    setShowSellerWelcome(localStorage.getItem(key) !== '1');
+  }, [isOpen, seller.id]);
+
+  const dismissSellerWelcome = () => {
+    localStorage.setItem(`kasuwar-kanawa:seller-welcome-seen:${seller.id}`, '1');
+    setShowSellerWelcome(false);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -554,6 +567,54 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-950 overflow-hidden">
       <div className="relative bg-slate-50 w-full h-[100dvh] overflow-hidden flex flex-col">
+        {showSellerWelcome && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-3xl border border-pink-200 bg-white p-5 shadow-2xl sm:p-7">
+              <div className="mb-4 text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-100 text-3xl">🏪</div>
+                {sellerWelcomeLanguage === 'ha' ? (
+                  <>
+                    <p className="text-xs font-black uppercase tracking-widest text-[#E6007E]">Kasuwar Kanawa</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-900">Barka da zuwa shagonka!</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">An amince da asusunka na Seller. Muna maraba da kai cikin kasuwarmu. Ka karanta waɗannan dokoki domin gudanar da shago cikin gaskiya da aminci.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-black uppercase tracking-widest text-[#E6007E]">Kasuwar Kanawa</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-900">Welcome to your Seller Dashboard!</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Your Seller account has been approved. We welcome you to our marketplace. Please read these rules to operate your store responsibly and safely.</p>
+                  </>
+                )}
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <h3 className="mb-3 text-sm font-black text-amber-950">{sellerWelcomeLanguage === 'ha' ? 'Muhimman dokokin Seller' : 'Important Seller Rules'}</h3>
+                {sellerWelcomeLanguage === 'ha' ? (
+                  <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-amber-950">
+                    <li>Ka tabbatar bayanin kaya, hotuna, farashi da adadin kayan da ke hannunka gaskiya ne.</li>
+                    <li>Ka karɓi oda cikin kulawa, ka shirya kaya a kan lokaci, kuma ka sabunta matsayin oda daidai.</li>
+                    <li>Kada ka sayar da jabun kaya, kayan da doka ta hana, ko kayayyakin da ke yaudarar masu saye.</li>
+                    <li>Ka yi magana da masu saye cikin mutunci, kuma ka kiyaye bayanansu na sirri.</li>
+                    <li>Ka bi hanyoyin biyan kuɗi da oda na hukuma na Kasuwar Kanawa; kada ka yaudari mai saye ya biya ta wata hanya.</li>
+                    <li>Kada ka ƙirƙiri ƙarya ko reviews na bogi. Ka bi umarnin Super Admin da ƙa'idojin kasuwa.</li>
+                  </ol>
+                ) : (
+                  <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-amber-950">
+                    <li>Keep product descriptions, photos, prices and available stock accurate and honest.</li>
+                    <li>Handle orders responsibly, prepare items on time and keep order statuses up to date.</li>
+                    <li>Do not list counterfeit, illegal or misleading products.</li>
+                    <li>Communicate respectfully with buyers and protect their personal information.</li>
+                    <li>Use Kasuwar Kanawa's official order and payment processes. Never mislead buyers into unsafe payments.</li>
+                    <li>Do not create fake reviews or false claims. Follow Super Admin instructions and marketplace policies.</li>
+                  </ol>
+                )}
+              </div>
+              <p className="my-4 text-center text-xs font-semibold text-slate-500">{sellerWelcomeLanguage === 'ha' ? 'Allah Ya sanya albarka a kasuwancinka. Mun gode da kasancewarka tare da mu.' : 'We wish you a successful business. Thank you for being part of Kasuwar Kanawa.'}</p>
+              <button type="button" onClick={dismissSellerWelcome} className="w-full rounded-xl bg-[#E6007E] px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-[#D00071]">
+                {sellerWelcomeLanguage === 'ha' ? 'Na karanta — Ci gaba zuwa Dashboard' : 'I have read the rules — Continue to Dashboard'}
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Top Header */}
         <div className="bg-[#0B172E] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2b4e]">
