@@ -122,7 +122,7 @@ const registerSchema = z.object({
   email: z.string().trim().email().max(254), password: z.string().min(10).max(128),
   address: z.string().trim().max(300).optional(), businessAddress: z.string().trim().max(300).optional(),
   city: z.string().trim().max(100).optional(), state: z.string().trim().max(100).optional(), area: z.string().trim().max(100).optional(),
-  productCategory: z.string().trim().max(120).optional(), accountType: z.enum(["buyer","seller","logistics"]), profileImage: z.string().url().max(1000).optional(),
+  productCategory: z.string().trim().max(120).optional(), registrationLanguage: z.enum(["ha","en"]).optional(), accountType: z.enum(["buyer","seller","logistics"]), profileImage: z.string().url().max(1000).optional(),
 }).strict();
 const loginSchema = z.object({ identifier: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) }).strict();
 
@@ -275,7 +275,7 @@ async function dispatch(req: Request, origin: string | null) {
       email, passwordHash: await bcrypt.hash(data.password,12), address: data.address || data.businessAddress || "",
       businessAddress: role === "SELLER" || role === "LOGISTICS" ? (data.businessAddress || data.address || null) : null,
       city: data.city || "Kano City", state: data.state || "Kano State", area: data.area || "Kano Municipal",
-      productCategory: role === "SELLER" ? data.productCategory : null, role,
+      productCategory: role === "SELLER" ? data.productCategory : null, registrationLanguage: role === "SELLER" ? (data.registrationLanguage || "en") : "en", role,
       status: role === "BUYER" ? "ACTIVE" : "PENDING", profileImage: data.profileImage ?? null, createdAt: now, updatedAt: now,
     };
     const { data: user, error } = await db.from("User").insert(userRow).select("*").single();
