@@ -347,6 +347,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [catDescription, setCatDescription] = useState('');
   const [catImage, setCatImage] = useState('https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=400&q=80');
   const [catIconName, setCatIconName] = useState('Shirt');
+  const [isUploadingCategoryImage, setIsUploadingCategoryImage] = useState(false);
+  const [categoryImageUploadError, setCategoryImageUploadError] = useState('');
+
+  const handleCategoryImageUpload = async (file?: File) => {
+    if (!file) return;
+    setCategoryImageUploadError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setCategoryImageUploadError('Choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setCategoryImageUploadError('Image must be 5MB or smaller.');
+      return;
+    }
+    setIsUploadingCategoryImage(true);
+    try {
+      const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `category-${crypto.randomUUID()}.${extension}`;
+      const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_PUBLIC_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
+          'Content-Type': file.type,
+          'x-upsert': 'false',
+        },
+        body: file,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`);
+      }
+      setCatImage(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`);
+    } catch (error) {
+      setCategoryImageUploadError(error instanceof Error ? error.message : 'Could not upload category image.');
+    } finally {
+      setIsUploadingCategoryImage(false);
+    }
+  };
 
   // Flash Sale States
   const [editingFlashSale, setEditingFlashSale] = useState<FlashSale | null>(null);
@@ -933,6 +972,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setCatHausaName('');
     setCatDescription('');
     setCatImage('https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=400&q=80');
+    setCategoryImageUploadError('');
     setCatIconName('Building');
     setIsAddingCategory(true);
   };
@@ -943,6 +983,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setCatHausaName(cat.hausaName || '');
     setCatDescription(cat.description || '');
     setCatImage(cat.image);
+    setCategoryImageUploadError('');
     setCatIconName(cat.iconName);
     setIsAddingCategory(true);
   };
@@ -3794,13 +3835,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Banner Image URL</label>
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700 mb-1">Category Banner Image</label>
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <img src={catImage} alt="Category preview" className="h-20 w-24 rounded-lg border border-slate-200 bg-white object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#E6007E] px-3 py-2 font-bold text-white ${isUploadingCategoryImage ? 'pointer-events-none opacity-60' : ''}`}>
+                      <ImageIcon className="h-4 w-4" />
+                      {isUploadingCategoryImage ? 'Uploading image...' : 'Upload from Gallery'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={isUploadingCategoryImage}
+                        onChange={(e) => { void handleCategoryImageUpload(e.target.files?.[0]); e.currentTarget.value = ''; }}
+                      />
+                    </label>
+                    <p className="mt-1 text-[10px] text-slate-500">JPG, PNG or WebP • Maximum 5MB</p>
+                  </div>
+                </div>
+                {categoryImageUploadError && <p className="text-[11px] font-semibold text-red-600">{categoryImageUploadError}</p>}
+                <label className="block text-[11px] font-semibold text-slate-500">Or paste an image URL</label>
                 <input
-                  type="text"
-                  required
+                  type="url"
                   value={catImage}
                   onChange={(e) => setCatImage(e.target.value)}
+                  placeholder="https://..."
                   className="w-full border border-slate-300 rounded-lg p-2"
                 />
               </div>
@@ -3815,7 +3875,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#E6007E] text-white font-bold rounded-lg"
+                  disabled={isUploadingCategoryImage}
+                  className="px-4 py-1.5 bg-[#E6007E] text-white font-bold rounded-lg disabled:opacity-50"
                 >
                   Save Category
                 </button>
