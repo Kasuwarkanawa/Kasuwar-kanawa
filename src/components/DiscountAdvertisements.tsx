@@ -44,6 +44,9 @@ export const DiscountAdvertisements: React.FC<DiscountAdvertisementsProps> = ({
 
   return (
     <section id="discount-ads-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8 space-y-6">
+      {/* Large, clearly visible main promotion artwork */}
+      {mainAd?.image && <div className="mb-4 overflow-hidden rounded-2xl border border-pink-200 bg-slate-950 shadow-xl"><img src={mainAd.image} alt={`${mainAd.title} promotion banner`} className="block max-h-[420px] w-full object-contain" loading="eager" /></div>}
+
       {/* Main Promo Banner matching Reference Image */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0B172E] via-[#102347] to-[#0B172E] border-2 border-pink-500/40 p-5 sm:p-7 text-white shadow-xl">
         {/* Curved pink/blue glow lines */}
@@ -56,13 +59,7 @@ export const DiscountAdvertisements: React.FC<DiscountAdvertisementsProps> = ({
             {/* Gift Box Graphic or Banner Image */}
             <div className="relative flex items-center justify-center shrink-0">
               {mainAd?.image ? (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 border-yellow-200 shadow-lg">
-                  <img
-                    src={mainAd.image}
-                    alt={mainAd.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gradient-to-br from-pink-500 to-amber-400 border-2 border-yellow-200 shadow-lg flex items-center justify-center"><Sparkles className="w-7 h-7 text-white" /></div>
               ) : (
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl shadow-lg border-2 border-yellow-200 flex items-center justify-center transform -rotate-3">
                   <div className="absolute inset-y-0 w-3 bg-[#E6007E]" />
@@ -152,11 +149,11 @@ export const DiscountAdvertisements: React.FC<DiscountAdvertisementsProps> = ({
                 </button>
               </div>
 
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden border-2 border-white/20 shadow-md shrink-0 bg-slate-900">
+              <div className="w-32 h-28 sm:w-44 sm:h-32 rounded-xl overflow-hidden border-2 border-white/20 shadow-md shrink-0 bg-slate-900">
                 <img
                   src={ad.image}
                   alt={ad.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   loading="lazy"
                 />
               </div>
