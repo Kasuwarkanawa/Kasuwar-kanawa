@@ -20,6 +20,7 @@ export interface RegistrationData {
   area?: string;
   productCategory?: string;
   accountType: 'buyer' | 'seller' | 'logistics';
+  registrationLanguage?: 'ha' | 'en';
   profileImage?: string;
 }
 
