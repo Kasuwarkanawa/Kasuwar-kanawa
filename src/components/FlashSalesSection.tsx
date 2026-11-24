@@ -51,6 +51,11 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
 
   return (
     <section id="flash-sales-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
+      {activeFlashSale.bannerImage && (
+        <div className="mb-4 overflow-hidden rounded-2xl border-2 border-pink-200 bg-slate-950 shadow-xl">
+          <img src={activeFlashSale.bannerImage} alt={`${activeFlashSale.title || 'Flash Sale'} banner`} className="block max-h-[420px] w-full object-contain" loading="eager" />
+        </div>
+      )}
       {/* Flash Sales Banner Header */}
       <div className="bg-gradient-to-r from-[#E6007E] via-[#FF007F] to-[#0B172E] rounded-2xl p-3 sm:p-5 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left Badge */}
