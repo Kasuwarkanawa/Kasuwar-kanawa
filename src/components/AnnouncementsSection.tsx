@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Megaphone, Sparkles, AlertCircle, Info, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Megaphone, Sparkles, AlertCircle, Info, X } from 'lucide-react';
 import { Announcement } from '../types';
 
 interface AnnouncementsSectionProps {
@@ -7,108 +7,68 @@ interface AnnouncementsSectionProps {
 }
 
 export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({ announcements }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  useEffect(() => {
-    if (announcements.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % announcements.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [announcements.length]);
+  // Show only the first published announcement. The homepage has one broadcast strip,
+  // not a second rotating/static announcement bar.
+  const current = announcements[0];
 
-  if (isDismissed || announcements.length === 0) return null;
+  if (isDismissed || !current) return null;
 
-  const current = announcements[currentIndex] || announcements[0];
+  const palette = current.type === 'alert'
+    ? { shell: 'from-rose-950 via-red-900 to-orange-900', badge: 'bg-rose-500 text-white', glow: 'bg-orange-300/20', text: 'text-rose-50', label: 'IMPORTANT ALERT' }
+    : current.type === 'discount'
+    ? { shell: 'from-fuchsia-950 via-pink-800 to-amber-700', badge: 'bg-amber-300 text-fuchsia-950', glow: 'bg-yellow-200/20', text: 'text-pink-50', label: 'SPECIAL OFFER' }
+    : current.type === 'event'
+    ? { shell: 'from-violet-950 via-purple-800 to-indigo-700', badge: 'bg-violet-300 text-violet-950', glow: 'bg-sky-200/20', text: 'text-violet-50', label: 'MARKET EVENT' }
+    : { shell: 'from-sky-950 via-blue-900 to-cyan-800', badge: 'bg-cyan-300 text-sky-950', glow: 'bg-white/15', text: 'text-sky-50', label: 'ANNOUNCEMENT' };
 
-  const getTypeBadge = (type?: string) => {
-    switch (type) {
-      case 'discount':
-        return (
-          <span className="bg-[#E6007E] text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-            <Sparkles className="w-3 h-3" /> Special Offer
-          </span>
-        );
-      case 'alert':
-        return (
-          <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-            <AlertCircle className="w-3 h-3" /> Important
-          </span>
-        );
-      case 'event':
-        return (
-          <span className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-            <Megaphone className="w-3 h-3" /> Market Event
-          </span>
-        );
-      default:
-        return (
-          <span className="bg-[#0B172E] text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-            <Info className="w-3 h-3" /> Announcement
-          </span>
-        );
-    }
-  };
+  const TypeIcon = current.type === 'alert' ? AlertCircle : current.type === 'discount' ? Sparkles : current.type === 'event' ? Megaphone : Info;
 
   return (
-    <div className="max-w-7xl mx-auto w-full min-w-0 px-3 sm:px-6 pt-3 pb-1">
-      <div className="relative min-w-0 max-w-full overflow-hidden rounded-xl bg-gradient-to-r from-pink-50 via-white to-blue-50 border border-pink-200/90 shadow-xs p-3 sm:py-2.5 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 transition-all">
-        {/* Left Icon and Content */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="w-8 h-8 rounded-lg bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0">
-            <Megaphone className="w-4 h-4 animate-bounce" />
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0 sm:shrink-0">
-              <div className="shrink-0">{getTypeBadge(current.type)}</div>
-              <h4 className="min-w-0 flex-1 sm:flex-initial font-extrabold text-xs sm:text-sm text-[#0B172E] truncate">
-                {current.title}
-              </h4>
-            </div>
-            <p className="min-w-0 text-[11px] sm:text-xs text-slate-600 line-clamp-2 sm:truncate font-medium">
-              {current.description}
-            </p>
+    <section className="w-full px-0 sm:px-4 py-2" aria-label="Live marketplace broadcast">
+      <style>{`
+        @keyframes kasuwarBroadcastMarquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .kasuwar-broadcast-track {
+          display: inline-flex;
+          align-items: center;
+          min-width: max-content;
+          white-space: nowrap;
+          animation: kasuwarBroadcastMarquee 24s linear infinite;
+          will-change: transform;
+        }
+        .kasuwar-broadcast-track:hover { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+          .kasuwar-broadcast-track { animation: none; white-space: normal; min-width: 0; }
+        }
+      `}</style>
+      <div className={`relative flex min-h-[58px] items-center gap-3 overflow-hidden border-y border-white/15 bg-gradient-to-r ${palette.shell} px-3 py-3 text-white shadow-lg sm:rounded-2xl sm:border`}>
+        <div className={`pointer-events-none absolute -right-5 -top-10 h-28 w-28 rounded-full blur-2xl ${palette.glow}`} />
+        <div className="relative z-10 flex shrink-0 items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black tracking-wider shadow-md sm:text-xs ${palette.badge}`}>
+            <Megaphone className="h-4 w-4" />
+            <span className="hidden xs:inline">LIVE</span>
+            <span>{palette.label}</span>
+          </span>
+        </div>
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          <div className={`kasuwar-broadcast-track gap-4 text-sm font-bold sm:text-base ${palette.text}`}>
+            <span className="font-black">{current.title}</span>
+            <span className="opacity-80">✦</span>
+            <span>{current.description}</span>
+            <span className="opacity-80">✦</span>
+            <span className="font-black">{current.title}</span>
+            <span className="opacity-80">✦</span>
+            <span>{current.description}</span>
           </div>
         </div>
-
-        {/* Navigation Controls if multiple */}
-        <div className="flex items-center gap-1 shrink-0">
-          {announcements.length > 1 && (
-            <div className="flex items-center gap-0.5 text-slate-400 mr-1">
-              <button
-                type="button"
-                onClick={() => setCurrentIndex((prev) => (prev - 1 + announcements.length) % announcements.length)}
-                className="p-1 hover:text-[#0B172E] cursor-pointer"
-                title="Previous Announcement"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-[10px] font-bold text-slate-500 tabular-nums">
-                {currentIndex + 1}/{announcements.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentIndex((prev) => (prev + 1) % announcements.length)}
-                className="p-1 hover:text-[#0B172E] cursor-pointer"
-                title="Next Announcement"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsDismissed(true)}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-md cursor-pointer"
-            title="Dismiss Announcement"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <button type="button" onClick={() => setIsDismissed(true)} className="relative z-10 shrink-0 rounded-full bg-white/10 p-1.5 text-white/80 transition hover:bg-white/20 hover:text-white" title="Dismiss broadcast" aria-label="Dismiss broadcast">
+          <X className="h-4 w-4" />
+        </button>
       </div>
-    </div>
+    </section>
   );
 };
