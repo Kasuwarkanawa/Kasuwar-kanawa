@@ -364,7 +364,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsUploadingCategoryImage(true);
     try {
       const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-      const fileName = `category-${crypto.randomUUID()}.${extension}`;
+      const fileName = `${crypto.randomUUID()}.${extension}`;
       const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, {
         method: 'POST',
         headers: {
@@ -437,7 +437,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPG, PNG or WebP image.');
     if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller.');
     const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-    const fileName = `admin-content-${crypto.randomUUID()}.${extension}`;
+    const fileName = `${crypto.randomUUID()}.${extension}`;
     const response = await fetch(`https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/product-images/${fileName}`, { method: 'POST', headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`, 'Content-Type': file.type, 'x-upsert': 'false' }, body: file });
     if (!response.ok) { const detail = await response.json().catch(() => ({})); throw new Error(detail.message || detail.error || `Upload failed (${response.status}).`); }
     return `https://efirbpzfimzmpchsovbz.supabase.co/storage/v1/object/public/product-images/${fileName}`;
@@ -3023,13 +3023,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <div className="flex justify-end"><button type="button" onClick={handleOpenCreateAnnouncement} className="rounded-lg bg-[#E6007E] px-3 py-2 text-xs font-black text-white flex items-center gap-1"><Plus className="h-3.5 w-3.5" /> Create Announcement</button></div>
                       {allAnnouncements.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-xs text-slate-500">No announcements yet. Create your first broadcast announcement.</div>}
                       {allAnnouncements.map((anc) => (
-                        <div key={anc.id} className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
-                          <div>
-                            <span className="bg-[#E6007E] text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase inline-block mb-1">
-                              {anc.type || 'Announcement'}
-                            </span>
-                            <h4 className="font-black text-xs text-[#0B172E]">{anc.title}</h4>
-                            <p className="text-xs text-slate-600">{anc.description}</p>
+                        <div key={anc.id} className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${anc.type === 'alert' ? 'border-rose-200 bg-gradient-to-br from-rose-50 via-white to-orange-50' : anc.type === 'discount' ? 'border-fuchsia-200 bg-gradient-to-br from-fuchsia-100 via-white to-amber-50' : anc.type === 'event' ? 'border-violet-200 bg-gradient-to-br from-violet-100 via-white to-sky-50' : 'border-sky-200 bg-gradient-to-br from-sky-100 via-white to-indigo-50'}`}>
+                          <div className="pointer-events-none absolute -right-5 -top-7 h-24 w-24 rounded-full bg-white/60 blur-xl" />
+                          <div className="relative min-w-0 flex-1">
+                            <div className="mb-2 flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${anc.type === 'alert' ? 'bg-rose-600 text-white' : anc.type === 'discount' ? 'bg-fuchsia-600 text-white' : anc.type === 'event' ? 'bg-violet-600 text-white' : 'bg-sky-700 text-white'}`}>{anc.type || 'Announcement'}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${anc.isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{anc.isPublished ? 'LIVE BROADCAST' : 'DRAFT'}</span></div>
+                            <h4 className="font-black text-sm text-slate-900">{anc.title}</h4>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">{anc.description}</p>
                           </div>
                           <div className="flex shrink-0 flex-col gap-2">
                           <button
@@ -3937,14 +3936,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       )}
 
       {isCreatingAnnouncement && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4">
-          <form onSubmit={handleSaveAnnouncement} className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-3">
-            <div className="flex items-center justify-between border-b pb-2"><h3 className="font-black text-sm text-[#0B172E]">{editingAnnouncement ? 'Edit Broadcast Announcement' : 'Create Broadcast Announcement'}</h3><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="text-slate-500"><X className="h-5 w-5" /></button></div>
-            <label className="block text-xs font-bold text-slate-700">Announcement title<input required maxLength={200} value={ancTitle} onChange={(e) => setAncTitle(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-            <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={3000} rows={4} value={ancDescription} onChange={(e) => setAncDescription(e.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-            <label className="block text-xs font-bold text-slate-700">Announcement type<select value={ancType} onChange={(e) => setAncType(e.target.value as 'info' | 'alert' | 'discount' | 'event')} className="mt-1 w-full rounded-lg border p-2"><option value="info">Information</option><option value="alert">Important Alert</option><option value="discount">Discount / Promotion</option><option value="event">Event</option></select></label>
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={ancIsPublished} onChange={(e) => setAncIsPublished(e.target.checked)} /> Publish immediately</label>
-            <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="rounded-lg border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={isSavingAnnouncement} className="rounded-lg bg-[#E6007E] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{isSavingAnnouncement ? 'Saving…' : 'Save Announcement'}</button></div>
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <form onSubmit={handleSaveAnnouncement} className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden rounded-3xl border border-white/50 bg-white shadow-2xl">
+            <div className="relative overflow-hidden bg-gradient-to-r from-[#0B172E] via-[#253A70] to-[#E6007E] px-5 py-5 text-white"><div className="absolute -right-5 -top-10 h-32 w-32 rounded-full bg-white/10" /><div className="relative flex items-center justify-between gap-3"><div><span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200">Kasuwar Kanawa • Central Broadcast</span><h3 className="mt-1 text-base font-black">{editingAnnouncement ? 'Edit Broadcast' : 'Create Announcement'}</h3><p className="mt-1 text-[11px] text-white/75">Send a styled notice to marketplace visitors</p></div><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="rounded-full bg-white/15 p-2 text-white hover:bg-white/25"><X className="h-5 w-5" /></button></div></div>
+            <div className="space-y-3 p-5">
+            <label className="block text-xs font-bold text-slate-700">Announcement title<input required maxLength={200} value={ancTitle} onChange={(e) => setAncTitle(e.target.value)} placeholder="e.g. Weekend Mega Shopping Festival" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-100" /></label>
+            <label className="block text-xs font-bold text-slate-700">Description<textarea required maxLength={3000} rows={4} value={ancDescription} onChange={(e) => setAncDescription(e.target.value)} placeholder="Write the message customers should see…" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-100" /></label>
+            <label className="block text-xs font-bold text-slate-700">Broadcast style<select value={ancType} onChange={(e) => setAncType(e.target.value as 'info' | 'alert' | 'discount' | 'event')} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3"><option value="info">Blue • Information</option><option value="alert">Red • Important Alert</option><option value="discount">Pink / Gold • Promotion</option><option value="event">Purple • Special Event</option></select></label>
+            <div className={`rounded-2xl border p-3 ${ancType === 'alert' ? 'border-rose-200 bg-gradient-to-r from-rose-100 to-orange-50' : ancType === 'discount' ? 'border-fuchsia-200 bg-gradient-to-r from-fuchsia-100 to-amber-50' : ancType === 'event' ? 'border-violet-200 bg-gradient-to-r from-violet-100 to-sky-50' : 'border-sky-200 bg-gradient-to-r from-sky-100 to-indigo-50'}`}><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live preview</p><p className="mt-1 text-sm font-black text-slate-900">{ancTitle || 'Your announcement title'}</p><p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">{ancDescription || 'Your broadcast message will appear here.'}</p></div>
+            <label className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-700"><input type="checkbox" checked={ancIsPublished} onChange={(e) => setAncIsPublished(e.target.checked)} /> Publish immediately</label>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3"><button type="button" onClick={() => setIsCreatingAnnouncement(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" disabled={isSavingAnnouncement} className="rounded-xl bg-gradient-to-r from-[#0B172E] to-[#E6007E] px-4 py-2 text-xs font-black text-white shadow-lg disabled:opacity-50">{isSavingAnnouncement ? 'Saving…' : 'Save Broadcast'}</button></div>
+            </div>
           </form>
         </div>
       )}
