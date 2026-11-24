@@ -143,19 +143,41 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   const [prodVariations, setProdVariations] = useState('Standard, Premium Edition');
   const [prodSpecs, setProdSpecs] = useState<Record<string, string>>({});
 
-  const categoryProfile = (category: string) => {
+  const [solarProductType, setSolarProductType] = useState('Solar Panels');
+  const categoryProfile = (category: string, solarType = solarProductType) => {
     const value = category.toLowerCase();
     if (value.includes('shadda') || value.includes('atamfa') || value.includes('ankara') || value.includes('fabric') || value.includes('textile')) return {
       kind: 'fabric', sampleLabel: 'Fabric Design / Colour Samples', samplePlaceholder: 'Royal Blue, Gold Pattern, White Design',
-      sizeLabel: 'Fabric Length / Yards', sizePlaceholder: '5 Yards, 6 Yards, 10 Yards',
-      variationLabel: 'Fabric Quality / Grade', variationPlaceholder: 'Standard, Super, Premium',
-      fields: ['Fabric Type', 'Material / Composition', 'Length / Yards per Piece', 'Pattern / Design', 'Fabric Finish', 'Fabric Width', 'Care Instructions'],
+      sizeLabel: 'Fabric Sizes', sizePlaceholder: 'Width 45in, Height/Length 5yd',
+      variationLabel: 'Fabric Quality', variationPlaceholder: 'Standard, Super, Premium',
+      fields: ['Brand', 'Quality', 'Price per yard', 'Size (Height / Width)', 'How many yards', 'Color', 'Other'],
     };
-    if (value.includes('shoe') || value.includes('footwear') || value.includes('leather')) return {
-      kind: 'shoes', sampleLabel: 'Shoe Colour / Design Samples', samplePlaceholder: 'Black Leather, Brown Suede, White Sneaker',
+    if (value.includes('solar / batteries') || value.includes('solar panel') || value.includes('solar batteries') || value.includes('inverter')) {
+      const type = solarType.toLowerCase();
+      if (type.includes('battery')) return {
+        kind: 'solar-battery', sampleLabel: 'Battery Model / Colour Samples', samplePlaceholder: '12V 200Ah, 24V 100Ah',
+        sizeLabel: 'Battery Capacity', sizePlaceholder: '200Ah',
+        variationLabel: 'Battery Watt', variationPlaceholder: '2.4kW',
+        fields: ['Manufacturer', 'Quality', 'Battery (Ah)', 'Battery Watt', 'Description', 'Other'],
+      };
+      if (type.includes('inverter')) return {
+        kind: 'inverter', sampleLabel: 'Inverter Model Samples', samplePlaceholder: 'Pure Sine Wave, Hybrid',
+        sizeLabel: 'Inverter Watt', sizePlaceholder: '5kVA / 5000W',
+        variationLabel: 'Battery Capacity (Ah)', variationPlaceholder: '200Ah',
+        fields: ['Brand', 'Manufacturer', 'Watt', 'Am/hr'],
+      };
+      return {
+        kind: 'solar-panel', sampleLabel: 'Panel Model Samples', samplePlaceholder: 'Mono, Poly, Half-cut',
+        sizeLabel: 'Panel Watt', sizePlaceholder: '300W, 450W, 550W',
+        variationLabel: 'Available Quantity', variationPlaceholder: '10',
+        fields: ['Manufacturer', 'Quality', 'Panel / Watt', 'Quantities'],
+      };
+    }
+    if (value.includes('shoe') || value.includes('footwear') || value.includes('sandal') || value.includes('leather')) return {
+      kind: 'shoes', sampleLabel: 'Shoe / Sandal Design Samples', samplePlaceholder: 'Black Leather, Brown, White',
       sizeLabel: 'Shoe Sizes', sizePlaceholder: '39, 40, 41, 42, 43, 44',
-      variationLabel: 'Shoe Style / Fit', variationPlaceholder: 'Regular Fit, Wide Fit, High-top',
-      fields: ['Shoe Type', 'Upper Material', 'Sole Material', 'Closure Type', 'Fit', 'Gender', 'Country of Origin'],
+      variationLabel: 'Shoe Style', variationPlaceholder: 'Classic, Casual, Formal',
+      fields: ['Manufacturer', 'Size', 'Color', 'Description', 'Other'],
     };
     if (value.includes('phone') || value.includes('mobile')) return {
       kind: 'phone', sampleLabel: 'Phone Colour / Model Samples', samplePlaceholder: 'Midnight Black, Blue, Silver',
@@ -194,7 +216,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
       fields: ['Brand', 'Model', 'Material', 'Size / Capacity', 'Condition', 'Warranty'],
     };
   };
-  const categorySpecFields = (category: string) => categoryProfile(category).fields;
+  const categorySpecFields = (category: string) => categoryProfile(category, solarProductType).fields;
+  const isCustomCategoryForm = ['fabric', 'shoes', 'solar-panel', 'solar-battery', 'inverter'].includes(categoryProfile(prodCategory, solarProductType).kind);
 
   // Report Buyer Form State
   const [reportReason, setReportReason] = useState('Unreachable phone number after multiple dispatch attempts');
@@ -347,7 +370,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     }
     const payload = {
       name: prodName.trim(),
-      category: prodCategory,
+      category: prodCategory === 'Solar / Batteries' ? `Solar / Batteries - ${solarProductType}` : prodCategory,
       price: Number(prodPrice),
       originalPrice: Number(prodOriginalPrice || prodPrice),
       discountPercentage: prodOriginalPrice > prodPrice
@@ -384,6 +407,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setEditingProduct(null);
     setProdName('');
     setProdCategory(seller.productCategory || 'Kano Shadda & Kaftan');
+    setSolarProductType('Solar Panels');
     setProdPrice(15000);
     setProdOriginalPrice(20000);
     setProdStock(15);
@@ -401,6 +425,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     setEditingProduct(prod);
     setProdName(prod.name);
     setProdCategory(prod.category);
+    setSolarProductType(prod.category.toLowerCase().includes('battery') ? 'Solar Batteries' : prod.category.toLowerCase().includes('inverter') ? 'Inverters' : 'Solar Panels');
     setProdPrice(prod.price);
     setProdOriginalPrice(prod.originalPrice);
     setProdStock(prod.stockQuantity || prod.stockLeft || 10);
@@ -1693,15 +1718,16 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       onChange={(e) => { setProdCategory(e.target.value); setProdSpecs({}); }}
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-[#E6007E] bg-white"
                     >
-                      <option value="Kano Shadda & Kaftan">Kano Shadda & Kaftan</option>
-                       <option value="Atamfa & Ankara Fabrics">Atamfa & Ankara Fabrics</option>
+                      <option value="Kano Shadda & Kaftan">Atamfa / Shadda</option>
+                      <option value="Atamfa & Ankara Fabrics">Atamfa & Ankara Fabrics</option>
+                      <option value="Solar / Batteries">Solar / Batteries</option>
                       <option value="Phones & Gadgets">Phones & Gadgets</option>
                       <option value="Men's Fashion & Caps">Men's Fashion & Caps</option>
                       <option value="Women's Abayas & Veils">Women's Abayas & Veils</option>
                       <option value="Electronics & Appliances">Electronics & Appliances</option>
                        <option value="Computers & Accessories">Computers & Accessories</option>
-                      <option value="Shoes & Leather Bags">Shoes & Leather Bags</option>
-                       <option value="Footwear & Shoes">Footwear & Shoes</option>
+                      <option value="Shoes & Leather Bags">Shoes / Sandals</option>
+                      <option value="Footwear & Shoes">Footwear & Shoes</option>
                       <option value="Provisions & Groceries">Provisions & Groceries</option>
                     </select>
                   </div>
@@ -1806,7 +1832,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {!isCustomCategoryForm && <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">{categoryProfile(prodCategory).sampleLabel} (same order as photos)</label>
                     <input
@@ -1839,7 +1865,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
                     />
                   </div>
-                </div>
+                </div>}
 
                 <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                   <button
