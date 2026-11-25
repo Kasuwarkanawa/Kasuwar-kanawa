@@ -694,18 +694,11 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1">
         {/* Featured homepage banner advertisement */}
-        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner products={liveProducts.slice(0,2)} />}
+        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner products={liveProducts.slice(0,3)} activeFlashSale={activeFlashSale} />}
 
         {!searchResults && !categoryFilteredProducts && (
           <>
             <CategoriesSection selectedCategory={selectedCategory} onSelectCategory={(catId) => setSelectedCategory(catId)} products={liveProducts} />
-            <FlashSalesSection
-              products={liveProducts}
-              activeFlashSale={activeFlashSale}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              onViewDetails={(p) => setSelectedProductForDetail(p)}
-            />
             <PopularProductsSection
               products={homepagePopularProducts}
               onAddToCart={handleAddToCart}
