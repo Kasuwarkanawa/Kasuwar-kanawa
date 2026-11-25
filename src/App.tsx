@@ -821,20 +821,20 @@ export default function App() {
 
         {/* Full catalogue: compact recommendation row with an explicit expand action */}
         {!searchResults && !categoryFilteredProducts && (
-          <section id="all-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-10">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-pink-100 bg-white p-4 shadow-sm sm:p-5">
+          <section id="all-products-section" className="scroll-mt-24 max-w-7xl mx-auto px-4 sm:px-6 my-10">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="h-6 w-1.5 rounded-full bg-[#E6007E]" />
-                  <h2 className="text-xl font-black tracking-tight text-[#0B172E] sm:text-2xl">Recommended for You</h2>
+                  <span className="h-6 w-1.5 rounded-full bg-emerald-700" />
+                  <h2 className="text-xl font-black tracking-tight text-emerald-950 sm:text-2xl">All Products</h2>
                 </div>
-                <p className="ml-3 mt-1 text-xs font-medium text-slate-500 sm:text-sm">Explore more approved products from trusted sellers on Kasuwar Kanawa ({homepageRecommendedProducts.length})</p>
+                <p className="ml-3 mt-1 text-xs font-medium text-slate-500 sm:text-sm">Browse approved products from trusted sellers on Kasuwar Kanawa ({homepageRecommendedProducts.length})</p>
               </div>
               {homepageRecommendedProducts.length > 8 && (
                 <button
                   type="button"
                   onClick={() => setShowAllProducts((current) => !current)}
-                  className="rounded-full bg-[#E6007E] px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-200"
+                  className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
                   aria-expanded={showAllProducts}
                 >
                   {showAllProducts ? 'Show Less' : 'View All Products'}
@@ -861,7 +861,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAllProducts(true)}
-                  className="rounded-lg border border-[#E6007E] bg-white px-6 py-2.5 text-sm font-bold text-[#E6007E] transition hover:bg-pink-50"
+                  className="rounded-lg border border-emerald-700 bg-white px-6 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50"
                 >
                   See All {homepageRecommendedProducts.length} Products
                 </button>
