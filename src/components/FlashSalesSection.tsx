@@ -50,14 +50,14 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
   const pad = (n: number) => n.toString().padStart(2, '0');
 
   return (
-    <section id="flash-sales-section" className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
+    <section id="flash-sales-section" className="mx-auto my-10 w-full max-w-[1440px] px-3 sm:px-6">
       {activeFlashSale.bannerImage && (
-        <div className="mb-4 overflow-hidden rounded-2xl border-2 border-pink-200 bg-slate-950 shadow-xl">
+        <div className="mb-4 overflow-hidden rounded-2xl border border-emerald-100 bg-[#073d2c] shadow-xl">
           <img src={activeFlashSale.bannerImage} alt={`${activeFlashSale.title || 'Flash Sale'} banner`} className="block max-h-[420px] w-full object-contain" loading="eager" />
         </div>
       )}
       {/* Flash Sales Banner Header */}
-      <div className="bg-gradient-to-r from-[#E6007E] via-[#FF007F] to-[#0B172E] rounded-2xl p-3 sm:p-5 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-[#073d2c] via-[#0b6846] to-[#124b36] rounded-[26px] p-4 sm:p-6 text-white shadow-[0_18px_45px_rgba(5,65,42,.18)] flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left Badge */}
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
@@ -88,15 +88,15 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
           </div>
 
           <div className="flex items-center gap-1 text-white font-mono font-black text-base sm:text-xl">
-            <div className="bg-[#E6007E] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
+            <div className="bg-[#d6b45f] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
               {pad(hours)}
             </div>
             <span className="text-yellow-400">:</span>
-            <div className="bg-[#E6007E] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
+            <div className="bg-[#d6b45f] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
               {pad(minutes)}
             </div>
             <span className="text-yellow-400">:</span>
-            <div className="bg-[#E6007E] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
+            <div className="bg-[#d6b45f] px-2 py-0.5 rounded-md min-w-[32px] text-center shadow-xs">
               {pad(seconds)}
             </div>
           </div>
