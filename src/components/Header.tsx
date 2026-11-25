@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative flex shrink-0 items-center justify-center">
               <svg
                 viewBox="0 0 100 80"
-                className="w-8 h-7 sm:w-12 sm:h-10 text-[#E6007E]"
+                className="w-8 h-7 sm:w-12 sm:h-10 text-[#087A35]"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -140,13 +140,13 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-[clamp(0.58rem,3vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
                   KASUWAR&nbsp;
                 </span>
-                <span className="text-[clamp(0.62rem,3.2vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#E6007E]">
+                <span className="text-[clamp(0.62rem,3.2vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#087A35]">
                   KANAWA
                 </span>
               </div>
 
               <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
-                <svg className="w-3 h-2 sm:w-3.5 text-[#E6007E] shrink-0" viewBox="0 0 20 10" fill="currentColor">
+                <svg className="w-3 h-2 sm:w-3.5 text-[#087A35] shrink-0" viewBox="0 0 20 10" fill="currentColor">
                   <path d="M20 5C14 5 10 9 0 10C8 8 12 4 14 0C15 3 17 4.5 20 5Z" />
                 </svg>
 
@@ -154,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
                   AREWA • AREWA SAI DAN AREWA
                 </div>
 
-                <svg className="w-3 h-2 sm:w-3.5 text-[#E6007E] scale-x-[-1] shrink-0" viewBox="0 0 20 10" fill="currentColor">
+                <svg className="w-3 h-2 sm:w-3.5 text-[#087A35] scale-x-[-1] shrink-0" viewBox="0 0 20 10" fill="currentColor">
                   <path d="M20 5C14 5 10 9 0 10C8 8 12 4 14 0C15 3 17 4.5 20 5Z" />
                 </svg>
               </div>
@@ -172,14 +172,14 @@ export const Header: React.FC<HeaderProps> = ({
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search for products here..."
-                className="w-full pl-11 pr-28 py-2.5 bg-white border-2 border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#E6007E] focus:ring-2 focus:ring-[#E6007E]/20 transition-all shadow-xs"
+                className="w-full pl-11 pr-28 py-2.5 bg-white border-2 border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#087A35] focus:ring-2 focus:ring-[#087A35]/20 transition-all shadow-xs"
               />
 
               <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
 
               <button
                 type="submit"
-                className="absolute right-1 top-1 bottom-1 px-6 bg-[#E6007E] hover:bg-[#D00071] active:scale-95 text-white font-bold text-sm rounded-full transition-all flex items-center justify-center cursor-pointer shadow-sm"
+                className="absolute right-1 top-1 bottom-1 px-6 bg-[#087A35] hover:bg-[#06652C] active:scale-95 text-white font-bold text-sm rounded-full transition-all flex items-center justify-center cursor-pointer shadow-sm"
               >
                 Search
               </button>
@@ -213,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {currentUser ? (
                   <UserAvatar user={currentUser} size="sm" showBadge />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-pink-50 border border-pink-200 flex items-center justify-center text-[#E6007E] font-black text-xs">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#087A35] font-black text-xs">
                     <UserIcon className="w-4 h-4" />
                   </div>
                 )}
@@ -263,7 +263,7 @@ export const Header: React.FC<HeaderProps> = ({
                               ? 'bg-emerald-100 text-emerald-700'
                               : currentUser.accountType === 'admin'
                               ? 'bg-blue-100 text-blue-700'
-                              : 'bg-pink-100 text-[#E6007E]'
+                              : 'bg-pink-100 text-[#087A35]'
                           }`}>
                             {currentUser.accountType}
                           </span>
@@ -279,7 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
                               closeAccountMenu();
                               onOpenDashboard();
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 hover:text-[#E6007E] font-bold flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 hover:text-[#087A35] font-bold flex items-center gap-2 cursor-pointer"
                           >
                             <UserIcon className="w-4 h-4" />
                             <span>Buyer Dashboard & Profile</span>
@@ -291,7 +291,7 @@ export const Header: React.FC<HeaderProps> = ({
                               closeAccountMenu();
                               onOpenDashboard();
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 hover:text-[#E6007E] font-bold flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 hover:text-[#087A35] font-bold flex items-center gap-2 cursor-pointer"
                           >
                             <Package className="w-4 h-4" />
                             <span>My Orders & Tracking</span>
@@ -309,7 +309,7 @@ export const Header: React.FC<HeaderProps> = ({
                               onOpenSellerDashboard();
                             }
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-pink-50 text-[#E6007E] font-black flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-4 py-3 hover:bg-emerald-50 text-[#087A35] font-black flex items-center gap-2 cursor-pointer"
                         >
                           <Store className="w-4 h-4" />
                           <span>Seller Dashboard (Kayayyaki & Orders)</span>
@@ -324,7 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
                             closeAccountMenu();
                             onOpenLogisticsDashboard?.();
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-pink-50 text-[#E6007E] font-black flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-4 py-3 hover:bg-emerald-50 text-[#087A35] font-black flex items-center gap-2 cursor-pointer"
                         >
                           <Package className="w-4 h-4" />
                           <span>Logistics Dashboard</span>
@@ -366,7 +366,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <button
                         type="button"
                         onClick={openLogin}
-                        className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] text-white font-bold text-center rounded-xl cursor-pointer"
+                        className="w-full py-3 bg-[#087A35] hover:bg-[#06652C] text-white font-bold text-center rounded-xl cursor-pointer"
                       >
                         Buyer & Seller Login
                       </button>
@@ -403,7 +403,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   type="button"
                   onClick={openLogin}
-                  className="px-1.5 py-1.5 rounded-lg bg-[#E6007E] text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                  className="px-1.5 py-1.5 rounded-lg bg-[#087A35] text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
                 >
                   Login
                 </button>
@@ -422,13 +422,13 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCart}
-              className="flex items-center justify-center gap-1 sm:gap-2 py-1.5 px-1.5 sm:px-3 rounded-full bg-pink-50 hover:bg-pink-100 transition-colors border border-pink-200 text-[#E6007E] cursor-pointer group"
+              className="flex items-center justify-center gap-1 sm:gap-2 py-1.5 px-1.5 sm:px-3 rounded-full bg-emerald-50 hover:bg-pink-100 transition-colors border border-emerald-200 text-[#087A35] cursor-pointer group"
             >
               <div className="relative">
-                <ShoppingBag className="w-5 h-5 text-[#E6007E] transition-transform group-hover:scale-110" />
+                <ShoppingBag className="w-5 h-5 text-[#087A35] transition-transform group-hover:scale-110" />
 
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-[#E6007E] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-scale-in">
+                  <span className="absolute -top-1.5 -right-2 bg-[#087A35] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-scale-in">
                     {cartCount}
                   </span>
                 )}
@@ -449,14 +449,14 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onToggleMobileMenu}
-              className="md:hidden p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-[#E6007E] hover:bg-slate-100 cursor-pointer focus:outline-hidden"
+              className="md:hidden p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-[#087A35] hover:bg-slate-100 cursor-pointer focus:outline-hidden"
               aria-label="Toggle Navigation Menu"
               aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-[#E6007E]" />
+                <X className="w-6 h-6 text-[#087A35]" />
               ) : (
-                <Menu className="w-6 h-6 text-[#E6007E]" />
+                <Menu className="w-6 h-6 text-[#087A35]" />
               )}
             </button>
           </div>
@@ -470,14 +470,14 @@ export const Header: React.FC<HeaderProps> = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search for products here..."
-              className="w-full min-w-0 pl-10 pr-20 sm:pr-24 py-2 bg-white border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#E6007E]"
+              className="w-full min-w-0 pl-10 pr-20 sm:pr-24 py-2 bg-white border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#087A35]"
             />
 
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
 
             <button
               type="submit"
-              className="absolute right-1 top-1 bottom-1 px-3 sm:px-4 bg-[#E6007E] text-white font-bold text-xs rounded-full hover:bg-[#D00071]"
+              className="absolute right-1 top-1 bottom-1 px-3 sm:px-4 bg-[#087A35] text-white font-bold text-xs rounded-full hover:bg-[#06652C]"
             >
               Search
             </button>
