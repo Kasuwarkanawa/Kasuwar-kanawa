@@ -683,8 +683,8 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0B172E] text-white px-4 py-3 rounded-xl shadow-2xl border border-pink-500/40 flex items-center gap-2.5 animate-in slide-in-from-bottom-4 duration-200">
-          <div className="p-1 bg-[#E6007E] rounded-full">
+        <div className="fixed bottom-24 right-4 z-50 flex items-center gap-2.5 rounded-2xl border border-[#d6b45f]/50 bg-gradient-to-r from-[#063b2a] to-[#0b6846] px-4 py-3 text-white shadow-2xl animate-in slide-in-from-bottom-4 duration-200 md:bottom-6 md:right-6">
+          <div className="rounded-full bg-[#d6b45f] p-1">
             <CheckCircle2 className="w-4 h-4 text-white" />
           </div>
           <span className="text-xs sm:text-sm font-bold">{toastMessage}</span>
@@ -692,7 +692,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="min-h-screen flex-1 bg-[linear-gradient(180deg,#f8faf7_0%,#f1f6f0_48%,#ffffff_100%)] pb-20 md:pb-0">
         {/* Featured homepage banner advertisement */}
         {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner products={liveProducts.slice(0,3)} activeFlashSale={activeFlashSale} />}
 
@@ -730,12 +730,12 @@ export default function App() {
         {searchResults && (
           <section
             id="search-results-section"
-            className="max-w-7xl mx-auto px-4 sm:px-6 my-8"
+            className="mx-auto my-10 w-full max-w-[1440px] px-3 sm:px-6"
           >
-            <div className="flex items-center justify-between mb-5 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="mb-5 flex items-center justify-between gap-3 rounded-[22px] border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center gap-2">
                 <Search className="w-5 h-5 text-[#E6007E]" />
-                <h2 className="text-lg sm:text-xl font-black text-[#0B172E]">
+                <h2 className="text-lg font-black tracking-tight text-slate-950 sm:text-2xl">
                   Search Results for "{searchQuery}" ({searchResults.length})
                 </h2>
               </div>
@@ -749,7 +749,7 @@ export default function App() {
             </div>
 
             {searchResults.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 p-8">
+              <div className="rounded-[26px] border border-emerald-100 bg-white p-10 text-center shadow-sm sm:p-14">
                 <p className="text-base font-bold text-slate-700">
                   No products matched your search.
                 </p>
@@ -758,7 +758,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
                 {searchResults.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -777,27 +777,27 @@ export default function App() {
         {categoryFilteredProducts && (
           <section
             id="category-products-section"
-            className="max-w-7xl mx-auto px-4 sm:px-6 my-8"
+            className="mx-auto my-10 w-full max-w-[1440px] px-3 sm:px-6"
           >
-            <div className="flex items-center justify-between mb-5 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="mb-5 flex items-center justify-between gap-3 rounded-[22px] border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-6 bg-[#E6007E] rounded-full inline-block" />
-                <h2 className="text-lg sm:text-xl font-black text-[#0B172E] capitalize">
+                <span className="inline-block h-7 w-1.5 rounded-full bg-[#d6b45f]" />
+                <h2 className="text-lg font-black capitalize tracking-tight text-slate-950 sm:text-2xl">
                   {selectedCategory} Category ({categoryFilteredProducts.length} items)
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedCategory('all')}
-                className="text-xs font-bold text-[#E6007E] hover:underline cursor-pointer"
+                className="cursor-pointer rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
               >
                 Reset Filter
               </button>
             </div>
 
             {categoryFilteredProducts.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Babu kayayyaki a wannan category tukuna.</div>
+              <div className="rounded-[26px] border border-emerald-100 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">Babu kayayyaki a wannan category tukuna.</div>
             ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
               {categoryFilteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
