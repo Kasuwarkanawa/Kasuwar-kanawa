@@ -520,105 +520,6 @@ export default function App() {
         </section>
       )}
 
-      {/* System Phase 4 Portal Bar: Connect Buyer, Seller & Super Admin */}
-      <div className="bg-[#081225] text-slate-300 py-1.5 px-3 sm:px-6 text-[11px] border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-pink-400 font-extrabold uppercase tracking-wider">KASUWAR KANAWA:</span>
-          {currentUser ? (
-            <span className="text-white flex items-center gap-1.5 font-semibold">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{currentUser.fullName}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded text-[10px] uppercase font-black ${
-                  currentUser.accountType === 'seller'
-                    ? 'bg-emerald-600 text-white'
-                    : currentUser.accountType === 'admin'
-                    ? 'bg-blue-600 text-white'
-                    : currentUser.accountType === 'logistics'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-[#E6007E] text-white'
-                }`}
-              >
-                {currentUser.accountType}
-              </span>
-            </span>
-          ) : (
-            <span className="text-slate-400 italic">Guest Session</span>
-          )}
-        </div>
-
-        {/* Portal Direct Access Buttons */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Buyer Dashboard Button (Role Guarded) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (!currentUser) {
-                setAuthInitialMode('login');
-                setAuthModalOpen(true);
-                return;
-              }
-              if (currentUser.accountType !== 'buyer') {
-                showToast('Access Restricted: Buyers only.');
-                return;
-              }
-              setBuyerDashboardOpen(true);
-            }}
-            className="text-slate-300 hover:text-white font-bold flex items-center gap-1 hover:underline cursor-pointer"
-          >
-            <ShoppingBag className="w-3.5 h-3.5 text-pink-400" />
-            <span>Buyer Dashboard</span>
-          </button>
-
-          {/* Seller Dashboard Button (Role Guarded) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (!currentUser) {
-                setAuthInitialMode('login');
-                setAuthModalOpen(true);
-                return;
-              }
-              if (currentUser.accountType !== 'seller') {
-                showToast('Access Restricted: Sellers only.');
-                return;
-              }
-              setSellerDashboardOpen(true);
-            }}
-            className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-          >
-            <Store className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Seller Dashboard</span>
-          </button>
-
-          {/* Logistics Dashboard Button (Approved company only) */}
-          {currentUser?.accountType === 'logistics' && (
-            <button
-              type="button"
-              onClick={openLogisticsDashboard}
-              className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40 font-black flex items-center gap-1"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Logistics Dashboard</span>
-            </button>
-          )}
-
-          {/* Super Admin CPanel Button (Security Gated) */}
-          <button
-            type="button"
-            onClick={() => {
-              openAdminPanel();
-            }}
-            className="px-2.5 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#E6007E]" />
-            <span>Super Admin CPanel</span>
-          </button>
-
-
-        </div>
-      </div>
-
       {/* 1. Top Contact Bar */}
       <TopContactBar />
 
@@ -638,6 +539,7 @@ export default function App() {
         onOpenDashboard={openBuyerDashboard}
         onOpenSellerDashboard={openSellerDashboard}
         onOpenAdminPanel={openAdminPanel}
+        onOpenLogisticsDashboard={openLogisticsDashboard}
         onLogout={handleLogout}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -814,7 +716,7 @@ export default function App() {
 
         {/* Full catalogue: compact recommendation row with an explicit expand action */}
         {!searchResults && !categoryFilteredProducts && (
-          <section id="all-products-section" className="scroll-mt-24 max-w-7xl mx-auto px-4 sm:px-6 my-10">
+          <section id="all-products-section" className="scroll-mt-24 mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 my-10">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
               <div>
                 <div className="flex items-center gap-2">
