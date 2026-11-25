@@ -50,7 +50,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   onClose,
   onContinueShopping,
 }) => {
-  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'orders' | 'profile'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'overview' | 'orders' | 'profile'>('overview');
   const [selectedStatusTab, setSelectedStatusTab] = useState<OrderStatus | 'all'>('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -247,7 +247,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-base sm:text-lg">{user.fullName}</h2>
                 <span className="bg-white/10 text-[#f0d58a] text-[10px] font-bold px-2 py-0.5 rounded-full border border-pink-500/30 uppercase">
-                  {user.accountType} Dashboard
+                  Personal Workspace
                 </span>
               </div>
               <p className="text-xs text-slate-300">
@@ -257,7 +257,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {activeTab !== 'menu' && <button type="button" onClick={() => setActiveTab('menu')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">← Back to Menu</button>}
+            <button type="button" onClick={() => setActiveTab('overview')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">Overview</button>
             <button
               onClick={refreshOrders}
               className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -274,17 +274,19 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
           </div>
         </div>
 
-        {/* Main menu: only buttons are shown until a section is opened. */}
-        {activeTab === 'menu' && (
-          <nav className="grid flex-1 content-start grid-cols-1 gap-4 overflow-y-auto bg-[radial-gradient(circle_at_top_right,_rgba(226,194,116,.16),_transparent_32%),#f5f8f4] p-4 sm:grid-cols-2 sm:gap-5 sm:p-7 lg:grid-cols-3">
-            <button type="button" onClick={() => setActiveTab('overview')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><Package className="w-5 h-5 text-[#E6007E]" />Dashboard Overview</button>
-            <button type="button" onClick={() => setActiveTab('orders')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><Package className="w-5 h-5 text-[#E6007E]" />Order Management ({orders.length})</button>
-            <button type="button" onClick={() => setActiveTab('profile')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><UserIcon className="w-5 h-5 text-[#E6007E]" />Buyer Profile & Address</button>
-          </nav>
-        )}
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <aside className="shrink-0 border-b border-emerald-100 bg-white p-3 lg:w-64 lg:border-b-0 lg:border-r lg:p-5">
+            <p className="hidden px-3 pb-3 text-[10px] font-black uppercase tracking-[.2em] text-emerald-700 lg:block">My workspace</p>
+            <nav aria-label="Buyer dashboard sections" className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1">
+              <button type="button" onClick={() => setActiveTab('overview')} className={"flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-bold transition lg:w-full lg:text-left "+(activeTab==='overview'?"bg-[#13622B] text-white shadow-md":"text-slate-600 hover:bg-emerald-50 hover:text-[#13622B]")}><Package className="h-4 w-4"/>Overview</button>
+              <button type="button" onClick={() => setActiveTab('orders')} className={"flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-bold transition lg:w-full lg:text-left "+(activeTab==='orders'?"bg-[#13622B] text-white shadow-md":"text-slate-600 hover:bg-emerald-50 hover:text-[#13622B]")}><Truck className="h-4 w-4"/>My Orders <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px]">{orders.length}</span></button>
+              <button type="button" onClick={() => setActiveTab('profile')} className={"flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-bold transition lg:w-full lg:text-left "+(activeTab==='profile'?"bg-[#13622B] text-white shadow-md":"text-slate-600 hover:bg-emerald-50 hover:text-[#13622B]")}><UserIcon className="h-4 w-4"/>Profile & Address</button>
+              <a href="https://wa.me/2349060938835" target="_blank" rel="noreferrer" className="flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-bold text-slate-600 transition hover:bg-emerald-50 hover:text-[#13622B] lg:w-full"><MessageCircle className="h-4 w-4"/>Customer Support</a>
+            </nav>
+          </aside>
 
         {/* Content Body */}
-        <div className={`flex-1 space-y-6 overflow-y-auto bg-[#f5f8f4] p-4 sm:p-7 ${activeTab === 'menu' ? 'hidden' : ''}`}>
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-[#f5f8f4] p-4 sm:p-7 lg:p-8">
           {activeTab === 'overview' && (
             <div className="space-y-5">
               <section className="rounded-[26px] bg-gradient-to-br from-[#063b2a] via-[#07583b] to-[#0b6846] text-white p-6 sm:p-8 shadow-[0_18px_45px_rgba(5,65,42,.18)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -858,6 +860,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
