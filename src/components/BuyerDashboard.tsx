@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Search,
   ExternalLink,
+  MessageCircle,
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { formatPrice } from '../utils/format';
