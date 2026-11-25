@@ -234,19 +234,19 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#062d21]">
       {/* Backdrop */}
-      <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
+      <div onClick={onClose} className="fixed inset-0 bg-[#031b14]/85 backdrop-blur-md transition-opacity" />
 
-      <div className="relative bg-slate-50 w-full h-[100dvh] overflow-hidden z-10 flex flex-col animate-in fade-in duration-200">
+      <div className="relative z-10 mx-auto flex h-[100dvh] w-full max-w-[1500px] flex-col overflow-hidden bg-[#f5f8f4] shadow-2xl animate-in fade-in duration-200 sm:my-3 sm:h-[calc(100dvh-24px)] sm:rounded-[28px]">
         {/* Top Header */}
-        <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className="shrink-0 border-b border-white/10 bg-gradient-to-r from-[#063b2a] via-[#07583b] to-[#0b6846] px-4 py-4 text-white shadow-lg sm:px-7 sm:py-5">
           <div className="flex items-center gap-3">
             <UserAvatar user={user} size="lg" showBadge />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-base sm:text-lg">{user.fullName}</h2>
-                <span className="bg-white/10 text-pink-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-pink-500/30 uppercase">
+                <span className="bg-white/10 text-[#f0d58a] text-[10px] font-bold px-2 py-0.5 rounded-full border border-pink-500/30 uppercase">
                   {user.accountType} Dashboard
                 </span>
               </div>
@@ -276,20 +276,20 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
 
         {/* Main menu: only buttons are shown until a section is opened. */}
         {activeTab === 'menu' && (
-          <nav className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto grid content-start grid-cols-1 sm:grid-cols-3 gap-3">
-            <button type="button" onClick={() => setActiveTab('overview')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><Package className="w-5 h-5 text-[#E6007E]" />Dashboard Overview</button>
-            <button type="button" onClick={() => setActiveTab('orders')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><Package className="w-5 h-5 text-[#E6007E]" />Order Management ({orders.length})</button>
-            <button type="button" onClick={() => setActiveTab('profile')} className="min-h-16 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left font-bold text-sm text-slate-700 hover:border-pink-300 hover:bg-pink-50 flex items-center gap-3"><UserIcon className="w-5 h-5 text-[#E6007E]" />Buyer Profile & Address</button>
+          <nav className="grid flex-1 content-start grid-cols-1 gap-4 overflow-y-auto bg-[radial-gradient(circle_at_top_right,_rgba(226,194,116,.16),_transparent_32%),#f5f8f4] p-4 sm:grid-cols-2 sm:gap-5 sm:p-7 lg:grid-cols-3">
+            <button type="button" onClick={() => setActiveTab('overview')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><Package className="w-5 h-5 text-[#E6007E]" />Dashboard Overview</button>
+            <button type="button" onClick={() => setActiveTab('orders')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><Package className="w-5 h-5 text-[#E6007E]" />Order Management ({orders.length})</button>
+            <button type="button" onClick={() => setActiveTab('profile')} className="group min-h-28 rounded-[22px] border border-emerald-100 bg-white p-5 text-left text-sm font-black text-slate-800 shadow-[0_8px_24px_rgba(8,70,45,.06)] transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl flex items-center gap-4"><UserIcon className="w-5 h-5 text-[#E6007E]" />Buyer Profile & Address</button>
           </nav>
         )}
 
         {/* Content Body */}
-        <div className={`p-4 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-slate-50 ${activeTab === 'menu' ? 'hidden' : ''}`}>
+        <div className={`flex-1 space-y-6 overflow-y-auto bg-[#f5f8f4] p-4 sm:p-7 ${activeTab === 'menu' ? 'hidden' : ''}`}>
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              <section className="rounded-2xl bg-gradient-to-r from-[#0B172E] to-[#182b50] text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div><p className="text-xs font-bold uppercase tracking-wider text-pink-300">Buyer Workspace</p><h2 className="text-xl sm:text-2xl font-black mt-1">Welcome back, {user.fullName}</h2><p className="text-sm text-slate-300 mt-1">Manage your purchases, delivery updates and account details.</p></div>
-                <button type="button" onClick={onContinueShopping} className="rounded-xl bg-pink-600 hover:bg-pink-700 px-4 py-3 text-sm font-bold">Continue Shopping</button>
+              <section className="rounded-[26px] bg-gradient-to-br from-[#063b2a] via-[#07583b] to-[#0b6846] text-white p-6 sm:p-8 shadow-[0_18px_45px_rgba(5,65,42,.18)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div><p className="text-xs font-bold uppercase tracking-wider text-[#f0d58a]">Buyer Workspace</p><h2 className="text-xl sm:text-2xl font-black mt-1">Welcome back, {user.fullName}</h2><p className="text-sm text-slate-300 mt-1">Manage your purchases, delivery updates and account details.</p></div>
+                <button type="button" onClick={onContinueShopping} className="rounded-xl bg-[#e6bf63] hover:bg-[#f1d58b] text-[#153b2a] px-4 py-3 text-sm font-bold">Continue Shopping</button>
               </section>
               <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
