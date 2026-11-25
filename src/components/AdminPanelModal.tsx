@@ -1375,15 +1375,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           /* ============================================================ */
           <>
             {/* Header */}
-            <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between border-b border-[#1b2b4e]">
+            <div className="flex items-center justify-between border-b border-emerald-950/20 bg-gradient-to-r from-[#063b2a] via-[#07583b] to-[#0b6846] p-4 text-white shadow-lg sm:p-6">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#E6007E] rounded-xl text-white shadow-md">
+                <div className="rounded-2xl bg-[#e6bf63] p-3 text-[#153b2a] shadow-md">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-base sm:text-lg tracking-wide">Super Admin CPanel Control</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#E6007E] text-white uppercase">
+                    <span className="rounded-full border border-[#f0d58a]/40 bg-[#f0d58a]/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#f4db9c]">
                       Central Authority
                     </span>
                   </div>
@@ -1437,8 +1437,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
             {/* Main menu: show only navigation buttons until a section is selected. */}
             {activeTab === 'menu' && (
-            <div className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto overscroll-contain [touch-action:pan-y] flex items-start">
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs font-bold">
+            <div className="flex flex-1 items-start overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_top_right,_rgba(226,194,116,.16),_transparent_32%),#f5f8f4] p-4 [touch-action:pan-y] sm:p-7">
+              <div className="grid w-full grid-cols-2 gap-3 text-xs font-bold sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: Layers, badge: null },
                 { id: 'users', label: 'Users', icon: Users, badge: allUsers.length },
@@ -1468,8 +1468,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`relative min-h-14 rounded-xl border px-3 py-2 flex flex-row items-center justify-center gap-2 text-center transition-all cursor-pointer ${
                       isActive
-                        ? 'border-pink-300 text-[#E6007E] bg-pink-50 shadow-sm ring-1 ring-pink-200'
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-pink-300 hover:bg-white hover:text-[#E6007E]'
+                        ? 'border-emerald-300 text-emerald-800 bg-emerald-50 shadow-md ring-1 ring-emerald-100'
+                        : 'border-emerald-100 bg-white text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -1494,7 +1494,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
             {/* Notification Toast */}
             {toastMessage && (
-              <div className="bg-[#0B172E] text-white py-2 px-4 text-xs font-bold border-b border-pink-500/30 flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-emerald-900/10 bg-emerald-900 px-4 py-3 text-xs font-bold text-white">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#E6007E]" />
                   <span>{toastMessage}</span>
