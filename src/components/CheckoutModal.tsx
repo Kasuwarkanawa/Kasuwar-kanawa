@@ -258,14 +258,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#031b14]/80 backdrop-blur-md transition-opacity"
       />
 
-      <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+      <div className="relative z-10 flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[26px] border border-emerald-100 bg-[#f8faf7] shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between border-b border-[#1b2b4e]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#063b2a] to-[#0b6846] p-4 text-white shadow-md sm:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#E6007E] rounded-xl text-white shadow-xs">
+            <div className="p-2 bg-emerald-700 rounded-xl text-white shadow-xs">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -597,7 +597,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || checkoutItems.length === 0 || quoteLoading || !shippingQuote}
-              className="w-full py-3.5 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 bg-emerald-700 hover:bg-[#D00071] active:scale-98 disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>
@@ -632,7 +632,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span className="text-[11px] font-black text-slate-600 uppercase tracking-wider">
                   Official OPay Account Details
                 </span>
-                <span className="bg-[#E6007E] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
                   Verified OPay Merchant
                 </span>
               </div>
@@ -734,7 +734,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !paymentReceipt}
-                className="w-full py-3.5 bg-[#E6007E] hover:bg-[#D00071] disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 bg-emerald-700 hover:bg-[#D00071] disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{isSubmitting ? 'Submitting Receipt…' : 'Confirm Payment'}</span>
@@ -802,7 +802,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 bg-[#E6007E] hover:bg-[#D00071] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all"
+                className="flex-1 py-3 bg-emerald-700 hover:bg-[#D00071] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all"
               >
                 Continue Shopping
               </button>
