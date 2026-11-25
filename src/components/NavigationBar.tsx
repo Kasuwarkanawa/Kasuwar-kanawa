@@ -70,7 +70,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               }}
               className={`flex items-center gap-2 px-4 py-3 rounded-t-md transition-colors cursor-pointer ${
                 activeTab === 'home' && (!selectedCategory || selectedCategory === 'all')
-                  ? 'bg-[#E6007E] text-white font-bold shadow-sm'
+                  ? 'bg-[#087A35] text-white font-bold shadow-sm'
                   : 'hover:bg-white/10 text-slate-200'
               }`}
             >
@@ -88,11 +88,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 onClick={() => setCategoriesDropdownOpen(!categoriesDropdownOpen)}
                 className={`flex items-center gap-1.5 px-4 py-3 rounded-t-md transition-colors cursor-pointer ${
                   selectedCategory && selectedCategory !== 'all'
-                    ? 'bg-[#E6007E]/30 text-pink-300'
+                    ? 'bg-[#087A35]/30 text-emerald-300'
                     : 'hover:bg-white/10 text-slate-200'
                 }`}
               >
-                <LayoutGrid className="w-4 h-4 text-pink-400" />
+                <LayoutGrid className="w-4 h-4 text-emerald-400" />
                 <span>Categories</span>
                 <ChevronDown className="w-3.5 h-3.5 ml-0.5 opacity-80" />
               </button>
@@ -107,7 +107,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         onSelectCategory('all');
                         setCategoriesDropdownOpen(false);
                       }}
-                      className="text-[#E6007E] hover:underline normal-case cursor-pointer"
+                      className="text-[#087A35] hover:underline normal-case cursor-pointer"
                     >
                       View All
                     </button>
@@ -120,9 +120,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                         handleNavClick('category', 'category-products-section');
                         setCategoriesDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-pink-50 flex items-center justify-between transition-colors cursor-pointer ${
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-emerald-50 flex items-center justify-between transition-colors cursor-pointer ${
                         selectedCategory === cat.id
-                          ? 'bg-pink-50 text-[#E6007E] font-bold'
+                          ? 'bg-emerald-50 text-[#087A35] font-bold'
                           : 'text-slate-700'
                       }`}
                     >
@@ -148,7 +148,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               onClick={() => handleNavClick('flash-sales', 'flash-sales-section')}
               className={`flex items-center gap-1.5 px-4 py-3 rounded-t-md transition-colors cursor-pointer ${
                 activeTab === 'flash-sales'
-                  ? 'bg-[#E6007E] text-white font-bold'
+                  ? 'bg-[#087A35] text-white font-bold'
                   : 'hover:bg-white/10 text-slate-200'
               }`}
             >
@@ -161,11 +161,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               onClick={() => handleNavClick('special-offers', 'special-offers-section')}
               className={`flex items-center gap-1.5 px-4 py-3 rounded-t-md transition-colors cursor-pointer ${
                 activeTab === 'special-offers'
-                  ? 'bg-[#E6007E] text-white font-bold'
+                  ? 'bg-[#087A35] text-white font-bold'
                   : 'hover:bg-white/10 text-slate-200'
               }`}
             >
-              <Gift className="w-4 h-4 text-pink-400" />
+              <Gift className="w-4 h-4 text-emerald-400" />
               <span>Special Offers</span>
             </button>
 
@@ -174,7 +174,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               onClick={() => handleNavClick('deals', 'discount-ads-section')}
               className={`flex items-center gap-1.5 px-4 py-3 rounded-t-md transition-colors cursor-pointer ${
                 activeTab === 'deals'
-                  ? 'bg-[#E6007E] text-white font-bold'
+                  ? 'bg-[#087A35] text-white font-bold'
                   : 'hover:bg-white/10 text-slate-200'
               }`}
             >
@@ -189,10 +189,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               onClick={onOpenCart}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white transition-colors cursor-pointer text-xs lg:text-sm font-semibold"
             >
-              <ShoppingBag className="w-4 h-4 text-pink-400" />
+              <ShoppingBag className="w-4 h-4 text-emerald-400" />
               <span>My Cart</span>
               {cartCount > 0 && (
-                <span className="bg-[#E6007E] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                <span className="bg-[#087A35] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                   {cartCount}
                 </span>
               )}
@@ -219,7 +219,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   handleNavClick('home');
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg text-left transition-colors cursor-pointer ${
-                  activeTab === 'home' ? 'bg-[#E6007E] text-white' : 'bg-slate-800/80 text-slate-200'
+                  activeTab === 'home' ? 'bg-[#087A35] text-white' : 'bg-slate-800/80 text-slate-200'
                 }`}
               >
                 <Home className="w-4 h-4 shrink-0" />
@@ -236,9 +236,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
               <button
                 onClick={() => handleNavClick('special-offers', 'special-offers-section')}
-                className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/80 text-pink-300 hover:bg-slate-700 cursor-pointer"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-slate-700 cursor-pointer"
               >
-                <Gift className="w-4 h-4 shrink-0 text-pink-400" />
+                <Gift className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>Special Offers</span>
               </button>
 
@@ -266,7 +266,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     }}
                     className={`w-full text-left p-2.5 rounded text-xs transition-colors cursor-pointer ${
                       selectedCategory === cat.id
-                        ? 'bg-[#E6007E] text-white font-bold'
+                        ? 'bg-[#087A35] text-white font-bold'
                         : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -285,7 +285,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                 }}
                 className="flex items-center gap-2 text-xs text-slate-200 py-1.5 px-3 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer"
               >
-                <User className="w-4 h-4 text-pink-400" />
+                <User className="w-4 h-4 text-emerald-400" />
                 <span>My Account</span>
               </button>
 
@@ -294,7 +294,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                   setMobileMenuOpen(false);
                   onOpenCart();
                 }}
-                className="flex items-center gap-2 text-xs text-white py-1.5 px-3 rounded bg-[#E6007E] hover:bg-[#D00071] font-bold cursor-pointer"
+                className="flex items-center gap-2 text-xs text-white py-1.5 px-3 rounded bg-[#087A35] hover:bg-[#06652C] font-bold cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Cart ({cartCount})</span>
