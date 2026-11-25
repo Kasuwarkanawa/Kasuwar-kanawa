@@ -9,6 +9,7 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onViewDetails?: (product: Product) => void;
+  compact?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -16,6 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   onBuyNow,
   onViewDetails,
+  compact = false,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -48,7 +50,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       className="bg-white rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group cursor-pointer"
     >
       {/* Top Media Area */}
-      <div className="relative aspect-square w-full bg-white overflow-hidden">
+      <div className={`relative w-full bg-white overflow-hidden ${compact ? "aspect-[4/3]" : "aspect-square"}`}>
         {/* Newly added product label */}
         {product.isNew && (
           <div className="absolute bottom-2 left-2 z-10 bg-emerald-600 text-white text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-md shadow-md uppercase tracking-wide">
@@ -115,7 +117,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Content Details */}
-      <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+      <div className={compact ? "px-2.5 pb-2.5 pt-1.5 flex-1" : "p-3 sm:p-4 flex-1 flex flex-col justify-between"}>
         <div>
           {/* Product Name */}
           <h3
@@ -125,15 +127,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.name}
           </h3>
 
-          <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+          {!compact && <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
             <span className={isOutOfStock ? "font-bold text-red-700" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "font-bold text-emerald-700" : "font-medium text-slate-500"}>
               {isOutOfStock ? "Out of stock" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "In stock" : "Availability not confirmed"}
             </span>
             {product.sellerActive && <span className="font-bold text-emerald-700">Active seller</span>}
-          </div>
+          </div> }
 
           {/* Rating Stars & Reviews */}
-          <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+          <div className={compact ? "mt-1 flex items-center gap-1 flex-wrap" : "mt-1.5 flex items-center gap-1 flex-wrap"}>
             <div className="flex items-center text-amber-400">
               {[...Array(5)].map((_, i) => (
                 <Star
@@ -157,8 +159,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           {/* Price & Discount Section */}
-          <div className="mt-2.5 flex items-baseline gap-1.5 flex-wrap">
-            <span className="text-sm sm:text-base font-black text-[#0B172E] tabular-nums">
+          <div className={compact ? "mt-1 flex items-baseline gap-1.5 flex-wrap" : "mt-2.5 flex items-baseline gap-1.5 flex-wrap"}>
+            <span className={compact ? "text-xs sm:text-base font-black text-emerald-900 tabular-nums" : "text-sm sm:text-base font-black text-[#0B172E] tabular-nums"}>
               {formatPrice(product.price)}
             </span>
             {product.originalPrice > product.price && (
@@ -170,7 +172,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Action Buttons: Add to Cart and Buy Now */}
-        <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {!compact && <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {/* Add to Cart */}
           <button
             onClick={handleAdd}
