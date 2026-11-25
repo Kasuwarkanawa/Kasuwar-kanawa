@@ -203,7 +203,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <Zap className="w-3.5 h-3.5 fill-white" />
             <span className="truncate">Buy Now</span>
           </button>
-        </div>
+        </div>}
       </div>
       <ImagePreview src={product.image} alt={product.name} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />
     </div>
