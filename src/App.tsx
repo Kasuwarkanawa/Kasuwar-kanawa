@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { TopContactBar } from './components/TopContactBar';
+import { CategoriesSection } from './components/CategoriesSection';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { Header } from './components/Header';
 import { NavigationBar } from './components/NavigationBar';
 import { MainPromotionalBanner } from './components/MainPromotionalBanner';
@@ -697,6 +699,7 @@ export default function App() {
         {!searchResults && !categoryFilteredProducts && (
           <>
             <TrustBadges />
+            <CategoriesSection selectedCategory={selectedCategory} onSelectCategory={(catId) => setSelectedCategory(catId)} products={liveProducts} />
             <FlashSalesSection
               products={liveProducts}
               activeFlashSale={activeFlashSale}
@@ -976,6 +979,8 @@ export default function App() {
           }}
         />
       )}
+
+      <MobileBottomNav onHome={() => { setSelectedCategory('all'); setSearchQuery(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onOpenCart={() => setCartDrawerOpen(true)} onOpenAccount={() => { if (currentUser) { if (currentUser.accountType === 'seller') setSellerDashboardOpen(true); else if (currentUser.accountType === 'logistics') openLogisticsDashboard(); else if (currentUser.accountType === 'admin') openAdminPanel(); else setBuyerDashboardOpen(true); } else { setAuthInitialMode('login'); setAuthModalOpen(true); } }} />
 
       {/* 13. Footer with Kano Ribbon */}
       <Footer
