@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white border-b border-emerald-100 shadow-sm relative z-30">
-      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-5">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
         <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4 md:gap-8">
 
           {/* Left-side menu control */}
@@ -86,12 +86,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Logo Brand Lockup */}
           <a
             href="/"
-            className="flex min-w-0 max-w-[56%] sm:max-w-none items-center gap-1 sm:gap-3 shrink group focus:outline-hidden"
+            className="flex min-w-0 max-w-[62%] sm:max-w-none items-center gap-1.5 sm:gap-3 shrink group focus:outline-hidden"
           >
-            <div className="relative flex shrink-0 items-center justify-center">
+            <div className="relative flex shrink-0 items-center justify-center rounded-2xl border border-amber-300/80 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-1 sm:p-1.5 shadow-md shadow-emerald-900/10">
               <svg
                 viewBox="0 0 100 80"
-                className="w-8 h-7 sm:w-12 sm:h-10 text-[#087A35]"
+                className="w-11 h-9 sm:w-[4.5rem] sm:h-[3.8rem] md:w-[5rem] md:h-[4.2rem] text-[#087A35] drop-shadow-sm"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="hidden xs:flex items-end -ml-1 text-amber-700">
                 <svg
                   viewBox="0 0 60 70"
-                  className="w-8 h-10 sm:w-10 sm:h-12"
+                  className="w-7 h-9 sm:w-9 sm:h-11"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
@@ -148,10 +148,10 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Typography */}
             <div className="flex min-w-0 flex-col">
               <div className="flex items-center whitespace-nowrap tracking-tight leading-none">
-                <span className="text-[clamp(0.58rem,3vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
+                <span className="text-[clamp(0.68rem,3.3vw,1.35rem)] sm:text-2xl md:text-3xl font-black text-[#0B172E]">
                   KASUWAR&nbsp;
                 </span>
-                <span className="text-[clamp(0.62rem,3.2vw,1.25rem)] sm:text-2xl md:text-3xl font-black text-[#087A35]">
+                <span className="text-[clamp(0.72rem,3.5vw,1.4rem)] sm:text-2xl md:text-3xl font-black text-[#087A35]">
                   KANAWA
                 </span>
               </div>
@@ -238,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   <span className="font-bold text-slate-800">
                     {currentUser
-                      ? `${currentUser.accountType.toUpperCase()} ▾`
+                      ? `My Account ▾`
                       : 'Sign In / Register ▾'}
                   </span>
                 </div>
@@ -276,7 +276,7 @@ export const Header: React.FC<HeaderProps> = ({
                               ? 'bg-blue-100 text-blue-700'
                               : 'bg-pink-100 text-[#087A35]'
                           }`}>
-                            {currentUser.accountType}
+                            {currentUser.accountType === 'buyer' ? 'Personal Account' : currentUser.accountType === 'seller' ? 'Merchant Account' : currentUser.accountType === 'admin' ? 'Management Account' : 'Delivery Partner'}
                           </span>
                         </div>
                       </div>
@@ -293,7 +293,7 @@ export const Header: React.FC<HeaderProps> = ({
                             className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 hover:text-[#087A35] font-bold flex items-center gap-2 cursor-pointer"
                           >
                             <UserIcon className="w-4 h-4" />
-                            <span>Buyer Dashboard & Profile</span>
+                            <span>My Account & Profile</span>
                           </button>
 
                           <button
@@ -323,7 +323,7 @@ export const Header: React.FC<HeaderProps> = ({
                           className="w-full text-left px-4 py-3 hover:bg-emerald-50 text-[#087A35] font-black flex items-center gap-2 cursor-pointer"
                         >
                           <Store className="w-4 h-4" />
-                          <span>Seller Dashboard (Kayayyaki & Orders)</span>
+                          <span>Store Workspace</span>
                         </button>
                       )}
 
@@ -352,10 +352,10 @@ export const Header: React.FC<HeaderProps> = ({
                               onOpenAdminPanel();
                             }
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 text-blue-700 font-black flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-4 py-3 hover:bg-emerald-50 text-[#087A35] font-black flex items-center gap-2 cursor-pointer"
                         >
                           <Shield className="w-4 h-4" />
-                          <span>Super Admin CPanel Control</span>
+                          <span>Management Centre</span>
                         </button>
                       )}
 
@@ -433,7 +433,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCart}
-              className="flex items-center justify-center gap-1 sm:gap-2 py-1.5 px-1.5 sm:px-3 rounded-full bg-emerald-50 hover:bg-pink-100 transition-colors border border-emerald-200 text-[#087A35] cursor-pointer group"
+              className="flex items-center justify-center gap-1 sm:gap-2 py-1.5 px-1.5 sm:px-3 rounded-full bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 text-[#087A35] cursor-pointer group"
             >
               <div className="relative">
                 <ShoppingBag className="w-5 h-5 text-[#087A35] transition-transform group-hover:scale-110" />
@@ -446,7 +446,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               <div className="hidden sm:block text-left text-xs">
-                <span className="block text-pink-600 text-[10px] leading-tight">
+                <span className="block text-[#087A35] text-[10px] leading-tight">
                   My Cart
                 </span>
 
