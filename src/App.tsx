@@ -359,10 +359,10 @@ export default function App() {
     [liveProducts]
   );
   // Keep homepage collections mutually exclusive so a product card is not repeated in several rows.
-  const homepagePopularProducts = useMemo(
-    () => popularProducts.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id)).slice(0, 8),
-    [popularProducts, flashSaleProducts, specialOfferProducts]
-  );
+  const homepagePopularProducts = useMemo(() => {
+    const featured = popularProducts.length > 0 ? popularProducts : liveProducts;
+    return featured.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id)).slice(0, 8);
+  }, [liveProducts, popularProducts, flashSaleProducts, specialOfferProducts]);
   const homepageNewProducts = useMemo(
     () => newProducts.filter((p) => !flashSaleProducts.some((x) => x.id === p.id) && !specialOfferProducts.some((x) => x.id === p.id) && !homepagePopularProducts.some((x) => x.id === p.id)).slice(0, 8),
     [newProducts, flashSaleProducts, specialOfferProducts, homepagePopularProducts]
@@ -694,29 +694,14 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1">
         {/* Featured homepage banner advertisement */}
-        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner />}
+        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner products={liveProducts.slice(0,2)} />}
 
         {!searchResults && !categoryFilteredProducts && (
           <>
-            <TrustBadges />
             <CategoriesSection selectedCategory={selectedCategory} onSelectCategory={(catId) => setSelectedCategory(catId)} products={liveProducts} />
             <FlashSalesSection
               products={liveProducts}
               activeFlashSale={activeFlashSale}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              onViewDetails={(p) => setSelectedProductForDetail(p)}
-            />
-            <DiscountAdvertisements
-              promotions={activePromotions}
-              onStartShopping={() => {
-                const el = document.getElementById('all-products-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onSelectCategory={setSelectedCategory}
-            />
-            <SpecialOffersSection
-              products={specialOfferProducts}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
@@ -727,12 +712,24 @@ export default function App() {
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
+            <SpecialOffersSection
+              products={specialOfferProducts}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
             <NewProductsSection
               products={homepageNewProducts}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onViewDetails={(p) => setSelectedProductForDetail(p)}
             />
+            <DiscountAdvertisements
+              promotions={activePromotions}
+              onStartShopping={() => document.getElementById('all-products-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onSelectCategory={setSelectedCategory}
+            />
+            <TrustBadges />
           </>
         )}
 
