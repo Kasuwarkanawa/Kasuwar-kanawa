@@ -27,19 +27,19 @@ export const NewsletterSection: React.FC = () => {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 my-10">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B172E] via-[#102246] to-[#0B172E] p-6 sm:p-10 border border-slate-800 shadow-xl text-white">
+    <section className="mx-auto my-12 w-full max-w-[1440px] px-3 sm:px-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073d2c] via-[#0b6846] to-[#04291e] p-6 sm:p-10 border border-emerald-800/50 shadow-xl text-white">
         
         {/* Background Decorative Circles */}
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-[#E6007E]/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-[#d6b45f]/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-[#d6b45f]/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
           
           {/* Left Text Content */}
           <div className="max-w-xl text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-black uppercase tracking-wider mb-3 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#E6007E]" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d6b45f]/15 border border-[#d6b45f]/30 text-[#f0d58a] text-xs font-black uppercase tracking-wider mb-3 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#e6bf63]" />
               <span>Arewa Market Updates</span>
             </div>
 
@@ -75,14 +75,14 @@ export const NewsletterSection: React.FC = () => {
                   placeholder="Enter your email address..."
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 text-xs sm:text-sm bg-white/10 hover:bg-white/15 focus:bg-white text-white focus:text-[#0B172E] placeholder:text-slate-400 rounded-xl border border-white/20 focus:border-[#E6007E] focus:outline-hidden transition-all shadow-inner"
+                  className="w-full pl-10 pr-4 py-3 text-xs sm:text-sm bg-white/10 hover:bg-white/15 focus:bg-white text-white focus:text-[#0B172E] placeholder:text-slate-400 rounded-xl border border-white/20 focus:border-[#d6b45f] focus:outline-hidden transition-all shadow-inner"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="py-3 px-6 bg-[#E6007E] hover:bg-pink-700 active:bg-pink-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-60"
+                className="py-3 px-6 bg-[#d6b45f] hover:bg-[#f0d58a] active:bg-[#c39c47] text-white font-black text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-60"
               >
                 <span>Subscribe</span>
                 <Send className="w-3.5 h-3.5" />
