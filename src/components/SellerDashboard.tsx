@@ -591,8 +591,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 overflow-hidden">
-      <div className="relative bg-slate-50 w-full h-[100dvh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#062d21]">
+      <div className="relative mx-auto flex h-[100dvh] w-full max-w-[1500px] flex-col overflow-hidden bg-[#f5f8f4] shadow-2xl sm:my-3 sm:h-[calc(100dvh-24px)] sm:rounded-[28px]">
         {showSellerWelcome && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
             <div className="w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-3xl border border-pink-200 bg-white p-5 shadow-2xl sm:p-7">
@@ -643,7 +643,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         )}
         
         {/* Top Header */}
-        <div className="bg-[#0B172E] text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2b4e]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-950/20 bg-gradient-to-r from-[#063b2a] via-[#07583b] to-[#0b6846] px-5 py-4 text-white shadow-lg sm:px-7 sm:py-5">
           <div className="flex items-center gap-3">
             <UserAvatar user={currentSeller} size="lg" showBadge />
             <div>
@@ -776,14 +776,14 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>}
 
         {/* Menu buttons are the landing screen; selected sections use the full workspace. */}
-        {activeTab === 'menu' && <div className="bg-white p-4 sm:p-6 flex-1 overflow-y-auto grid content-start grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {activeTab === 'menu' && <div className="grid flex-1 content-start grid-cols-2 gap-3 overflow-y-auto bg-[radial-gradient(circle_at_top_right,_rgba(226,194,116,.16),_transparent_32%),#f5f8f4] p-4 sm:grid-cols-3 sm:gap-4 sm:p-7 lg:grid-cols-4">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
             className={`py-3 px-3 font-bold text-xs flex items-center justify-center gap-2 border rounded-xl transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'overview'
-                ? 'border-pink-200 text-[#E6007E] bg-pink-50 shadow-sm'
-                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-900'
+                ? 'border-emerald-300 text-emerald-800 bg-emerald-50 shadow-sm'
+                : 'border-emerald-100 bg-white text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900'
             }`}
           >
             <TrendingUp className="w-4 h-4" />
@@ -795,7 +795,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             onClick={() => setActiveTab('products')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'products'
-                ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
+                ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -808,7 +808,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             onClick={() => setActiveTab('orders')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'orders'
-                ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
+                ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -821,7 +821,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             onClick={() => setActiveTab('history')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'history'
-                ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
+                ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -833,7 +833,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             type="button"
             onClick={() => setActiveTab('cod')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
-              activeTab === 'cod' ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'
+              activeTab === 'cod' ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70' : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
             <DollarSign className="w-4 h-4" />
@@ -844,7 +844,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             type="button"
             onClick={() => setActiveTab('transfer')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
-              activeTab === 'transfer' ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50' : 'border-transparent text-slate-600 hover:text-slate-900'
+              activeTab === 'transfer' ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70' : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
             <DollarSign className="w-4 h-4" />
@@ -865,7 +865,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
             onClick={() => setActiveTab('reports')}
             className={`py-3 px-2 sm:px-3.5 font-bold text-xs flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer text-center leading-tight min-h-12 min-w-0 ${
               activeTab === 'reports'
-                ? 'border-[#E6007E] text-[#E6007E] bg-pink-50/50'
+                ? 'border-emerald-700 text-emerald-800 bg-emerald-50/70'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
