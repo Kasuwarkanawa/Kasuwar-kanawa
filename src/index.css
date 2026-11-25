@@ -206,3 +206,20 @@ body::before {
   background-repeat: repeat; background-size: 150px 150px; background-position: 20px 20px;
 }
 #root { position: relative; z-index: 1; }
+
+
+/* Kasuwar Kanawa mobile-first green marketplace theme */
+html, body { background: #f8faf8; }
+@media (max-width: 767px) {
+  main { padding-bottom: 5.25rem; }
+  main section { scroll-margin-top: 1rem; }
+}
+header { border-color: #e5eee7 !important; }
+header .text-\[\#0B172E\] { color: #075b2c !important; }
+main .text-\[\#E6007E\], main .text-\[\#0B172E\] { color: #087a35 !important; }
+main .bg-\[\#E6007E\] { background-color: #087a35 !important; }
+main .border-\[\#E6007E\] { border-color: #087a35 !important; }
+main .ring-\[\#E6007E\] { --tw-ring-color: #087a35 !important; }
+main .from-\[\#E6007E\] { --tw-gradient-from: #087a35 var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(8 122 53 / 0) var(--tw-gradient-to-position) !important; }
+main .via-\[\#FF007F\] { --tw-gradient-via: #16a34a var(--tw-gradient-via-position) !important; }
+main .to-\[\#0B172E\] { --tw-gradient-to: #064e3b var(--tw-gradient-to-position) !important; }
