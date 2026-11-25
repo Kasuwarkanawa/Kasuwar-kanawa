@@ -158,13 +158,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
-      <div onClick={onClose} className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
+      <div onClick={onClose} className="fixed inset-0 bg-[#031b14]/80 backdrop-blur-md transition-opacity" />
 
-      <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-[26px] border border-emerald-100 bg-[#f8faf7] shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between">
+        <div className="flex items-center justify-between bg-gradient-to-r from-[#063b2a] to-[#0b6846] p-4 text-white shadow-md sm:p-6">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#E6007E] rounded-xl text-white shadow-xs">
+            <div className="rounded-xl bg-[#e6bf63] p-2 text-[#153b2a] shadow-xs">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
@@ -288,7 +288,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full py-3 bg-emerald-700 hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>{isSubmitting ? 'Please wait...' : 'Login to Account'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -333,7 +333,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Strong password (12+ characters)</label><input required type="password" minLength={12} autoComplete="new-password" value={adminPassword} onChange={(e)=>setAdminPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Confirm password</label><input required type="password" minLength={12} autoComplete="new-password" value={adminConfirmPassword} onChange={(e)=>setAdminConfirmPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" /></div>
-              <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-[#E6007E] py-3 text-sm font-black text-white disabled:opacity-50">{isSubmitting ? 'Creating secure Admin account…' : 'Create First Super Admin'}</button>
+              <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-black text-white disabled:opacity-50">{isSubmitting ? 'Creating secure Admin account…' : 'Create First Super Admin'}</button>
               <button type="button" onClick={()=>{setMode('login');setError(null);}} className="w-full py-2 text-xs font-bold text-slate-500">Back to login</button>
             </form>
           )}
@@ -357,7 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <p className="text-lg font-black text-[#E6007E]">Happy and safe shopping!</p>
                 </>
               )}
-              <button type="button" onClick={() => { if (registeredUser && accountType === 'buyer') onLoginSuccess(registeredUser); setRegistrationComplete(false); setRegisteredUser(null); onClose(); }} className="w-full rounded-xl bg-[#E6007E] px-5 py-3 text-sm font-black text-white shadow-md hover:bg-[#D00071]">{registrationLanguage === 'ha' ? 'Ci gaba zuwa Kasuwar Kanawa' : 'Continue to Kasuwar Kanawa'}</button>
+              <button type="button" onClick={() => { if (registeredUser && accountType === 'buyer') onLoginSuccess(registeredUser); setRegistrationComplete(false); setRegisteredUser(null); onClose(); }} className="w-full rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-md hover:bg-[#D00071]">{registrationLanguage === 'ha' ? 'Ci gaba zuwa Kasuwar Kanawa' : 'Continue to Kasuwar Kanawa'}</button>
             </div>
           )}
 
@@ -670,7 +670,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#E6007E] hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-3"
+                className="w-full py-3 bg-emerald-700 hover:bg-[#D00071] active:scale-98 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-3"
               >
                 <span>{isSubmitting ? 'Please wait...' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -714,7 +714,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-[#E6007E] hover:bg-[#D00071] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                className="w-full py-2.5 bg-emerald-700 hover:bg-[#D00071] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
               >
                 Send Reset Code
               </button>
