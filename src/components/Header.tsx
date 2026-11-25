@@ -68,9 +68,20 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-white border-b border-slate-100 shadow-xs relative z-30">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3.5">
-        <div className="flex min-w-0 items-center justify-between gap-1 sm:gap-3 md:gap-8">
+    <header className="bg-white border-b border-emerald-100 shadow-sm relative z-30">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-5">
+        <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4 md:gap-8">
+
+          {/* Left-side menu control */}
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="flex shrink-0 items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-emerald-100 bg-emerald-50 text-[#087A35] hover:bg-emerald-100 transition-colors cursor-pointer"
+            aria-label="Open side menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
 
           {/* Logo Brand Lockup */}
           <a
@@ -445,20 +456,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </button>
 
-            {/* Mobile Hamburger Menu */}
-            <button
-              type="button"
-              onClick={onToggleMobileMenu}
-              className="md:hidden p-1.5 sm:p-2 rounded-lg text-slate-700 hover:text-[#087A35] hover:bg-slate-100 cursor-pointer focus:outline-hidden"
-              aria-label="Toggle Navigation Menu"
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-[#087A35]" />
-              ) : (
-                <Menu className="w-6 h-6 text-[#087A35]" />
-              )}
-            </button>
           </div>
         </div>
 
