@@ -57,10 +57,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   };
 
   return (
-    <nav className="bg-[#0B172E] text-white shadow-md relative z-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <nav className={mobileMenuOpen ? "fixed inset-y-0 left-0 z-[60] w-[min(22rem,88vw)] overflow-y-auto bg-white text-slate-800 shadow-2xl border-r border-emerald-100" : "hidden"}>
+      <div className="w-full px-4 py-4 sm:px-5">
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center justify-between text-sm font-semibold">
+        <div className="hidden items-center justify-between text-sm font-semibold">
           <div className="flex items-center gap-1 lg:gap-2">
             {/* Home Tab */}
             <button
@@ -211,15 +211,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
         {/* Mobile Navigation Drawer / Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-3 border-t border-slate-700/60 animate-in fade-in slide-in-from-top-1 duration-150">
-            <div className="grid grid-cols-2 gap-2 text-xs font-semibold mb-3">
+          <div className="block py-3 animate-in fade-in slide-in-from-left-1 duration-150">
+            <div className="mb-4 flex items-center justify-between border-b border-emerald-100 pb-3"><div className="text-lg font-black tracking-tight text-[#087A35]">KASUWAR KANAWA</div><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className="rounded-lg bg-emerald-50 p-2 text-[#087A35]"><span className="text-xl leading-none">×</span></button></div><div className="grid grid-cols-2 gap-2 text-xs font-semibold mb-3">
               <button
                 onClick={() => {
                   onSelectCategory('all');
                   handleNavClick('home');
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg text-left transition-colors cursor-pointer ${
-                  activeTab === 'home' ? 'bg-[#087A35] text-white' : 'bg-slate-800/80 text-slate-200'
+                  activeTab === 'home' ? 'bg-[#087A35] text-white' : 'bg-emerald-50 text-[#075b2c]'
                 }`}
               >
                 <Home className="w-4 h-4 shrink-0" />
@@ -228,7 +228,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
               <button
                 onClick={() => handleNavClick('flash-sales', 'flash-sales-section')}
-                className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/80 text-yellow-300 hover:bg-slate-700 cursor-pointer"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-slate-700 cursor-pointer"
               >
                 <Zap className="w-4 h-4 shrink-0 text-yellow-400 fill-yellow-400" />
                 <span>Flash Sales</span>
@@ -236,7 +236,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
               <button
                 onClick={() => handleNavClick('special-offers', 'special-offers-section')}
-                className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-slate-700 cursor-pointer"
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 text-[#075b2c] hover:bg-slate-700 cursor-pointer"
               >
                 <Gift className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>Special Offers</span>
@@ -252,8 +252,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             </div>
 
             {/* Mobile Categories list */}
-            <div className="border-t border-slate-800 pt-2">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+            <div className="border-t border-emerald-100 pt-3">
+              <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 px-1">
                 Browse Categories
               </div>
               <div className="flex flex-col gap-1.5">
@@ -267,7 +267,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
                     className={`w-full text-left p-2.5 rounded text-xs transition-colors cursor-pointer ${
                       selectedCategory === cat.id
                         ? 'bg-[#087A35] text-white font-bold'
-                        : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'
+                        : 'bg-slate-50 text-slate-700 hover:bg-emerald-50'
                     }`}
                   >
                     {cat.name}
@@ -277,13 +277,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             </div>
 
             {/* Mobile Account & Cart Quick Actions */}
-            <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
+            <div className="mt-3 pt-2 border-t border-emerald-100 flex items-center justify-between">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onOpenAccount();
                 }}
-                className="flex items-center gap-2 text-xs text-slate-200 py-1.5 px-3 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer"
+                className="flex items-center gap-2 text-xs text-emerald-900 py-1.5 px-3 rounded bg-emerald-50 hover:bg-emerald-100 cursor-pointer"
               >
                 <User className="w-4 h-4 text-emerald-400" />
                 <span>My Account</span>
