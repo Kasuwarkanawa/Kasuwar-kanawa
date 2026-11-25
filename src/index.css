@@ -223,3 +223,102 @@ main .ring-\[\#E6007E\] { --tw-ring-color: #087a35 !important; }
 main .from-\[\#E6007E\] { --tw-gradient-from: #087a35 var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(8 122 53 / 0) var(--tw-gradient-to-position) !important; }
 main .via-\[\#FF007F\] { --tw-gradient-via: #16a34a var(--tw-gradient-via-position) !important; }
 main .to-\[\#0B172E\] { --tw-gradient-to: #064e3b var(--tw-gradient-to-position) !important; }
+
+
+/* KASUWAR KANAWA — unified marketplace design system (storefront + buyer + seller + admin + logistics) */
+:root {
+  --kk-green: #087a35;
+  --kk-green-dark: #075b2c;
+  --kk-green-deep: #064426;
+  --kk-gold: #d6a52b;
+  --kk-gold-soft: #fff6dc;
+  --kk-ink: #10251b;
+  --kk-muted: #64756a;
+  --kk-line: #e2ebe4;
+  --kk-surface: #ffffff;
+  --kk-canvas: #f4f8f4;
+}
+html { scroll-behavior: smooth; background: var(--kk-canvas); }
+body { color: var(--kk-ink); background: linear-gradient(180deg,#f8fbf7 0%,#f1f7f1 100%); }
+body::before { opacity: .018; background-size: 190px 190px; }
+#root { min-height: 100vh; }
+header { background: rgba(255,255,255,.97) !important; border-bottom: 1px solid var(--kk-line) !important; box-shadow: 0 5px 24px rgba(10,60,30,.055) !important; backdrop-filter: blur(14px); }
+header > div { max-width: 1440px; }
+main { color: var(--kk-ink); }
+main section { scroll-margin-top: 6rem; }
+main section > h2, main section h2 { letter-spacing: -.025em; }
+main section .rounded-2xl, main section .rounded-3xl { border-color: var(--kk-line); }
+main section .shadow-lg, main section .shadow-xl { box-shadow: 0 10px 30px rgba(12,55,28,.075); }
+main section .bg-white { background-color: #fff; }
+main section button, [role="dialog"] button { transition: background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease; }
+main section button:active, [role="dialog"] button:active { transform: translateY(1px); }
+main section input, main section select, main section textarea,
+[role="dialog"] input, [role="dialog"] select, [role="dialog"] textarea,
+input, select, textarea {
+  border-color: #dce8de;
+  border-radius: 12px;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--kk-green) !important;
+  box-shadow: 0 0 0 3px rgba(8,122,53,.12) !important;
+}
+button.bg-\\[\\#087A35\\], a.bg-\\[\\#087A35\\] { background: linear-gradient(135deg,var(--kk-green),var(--kk-green-dark)); }
+button.bg-\\[\\#E6007E\\], .bg-\\[\\#E6007E\\] { background-color: var(--kk-green) !important; }
+.text-\\[\\#E6007E\\], .text-pink-600, .text-pink-700 { color: var(--kk-green) !important; }
+.border-\\[\\#E6007E\\], .border-pink-200, .border-pink-100 { border-color: #cfe3d2 !important; }
+.bg-pink-50, .bg-pink-50\\/60, .bg-pink-50\\/90 { background-color: #f0f8f0 !important; }
+.text-pink-200 { color: #d9f2df !important; }
+.bg-\\[\\#0B172E\\] { background: linear-gradient(135deg,#075b2c,#103d27) !important; }
+.border-\\[\\#1b2b4e\\] { border-color: rgba(255,255,255,.14) !important; }
+main .from-\\[\\#E6007E\\] { --tw-gradient-from: #087a35 var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(8 122 53 / 0) var(--tw-gradient-to-position) !important; }
+main .via-\\[\\#FF007F\\] { --tw-gradient-via: #d6a52b var(--tw-gradient-via-position) !important; }
+main .to-\\[\\#0B172E\\] { --tw-gradient-to: #064426 var(--tw-gradient-to-position) !important; }
+
+/* Consistent elevated workspaces for every account area and modal. */
+.fixed.inset-0 > .fixed, .fixed.inset-0 > div > .fixed,
+[class*="max-h-[92vh]"], [class*="max-h-[90vh]"],
+[class*="max-h-[95vh]"] {
+  border: 1px solid rgba(214,165,43,.24);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(5,40,20,.22);
+}
+[class*="bg-[#0B172E]"], [class*="bg-[#0b172e]"] {
+  background: linear-gradient(135deg,#075b2c,#103d27) !important;
+}
+[class*="bg-pink-50"] { background-color: #f0f8f0; }
+[class*="text-pink-"] { color: var(--kk-green); }
+[class*="border-pink-"] { border-color: #d6e8d8; }
+
+/* Shared dashboard surfaces, tables, tabs, and data panels. */
+[class*="rounded-xl"][class*="border"], [class*="rounded-2xl"][class*="border"],
+[class*="rounded-3xl"][class*="border"] { border-color: var(--kk-line); }
+table { border-collapse: separate; border-spacing: 0; }
+th { color: #315b40; background: #eff7ef; font-weight: 800; }
+td, th { border-color: var(--kk-line); }
+hr { border-color: var(--kk-line); }
+label { color: #365542; font-weight: 600; }
+button:focus-visible, a:focus-visible { outline: 3px solid rgba(214,165,43,.55); outline-offset: 2px; }
+
+/* Mobile marketplace shell and bottom navigation. */
+@media (max-width: 767px) {
+  body { background: #f4f8f4; }
+  main { padding-bottom: max(5.5rem, env(safe-area-inset-bottom)); }
+  header { position: relative; }
+  main section { margin-inline: auto; }
+  nav[aria-label="Mobile quick navigation"] {
+    background: rgba(255,255,255,.97) !important;
+    border-top: 1px solid #dce9dd !important;
+    box-shadow: 0 -8px 28px rgba(7,65,31,.12) !important;
+    padding-top: 9px;
+    backdrop-filter: blur(18px);
+  }
+  nav[aria-label="Mobile quick navigation"] button,
+  nav[aria-label="Mobile quick navigation"] a { color: #627468; }
+  nav[aria-label="Mobile quick navigation"] button:first-child { color: var(--kk-green); }
+  nav[aria-label="Mobile quick navigation"] svg { stroke-width: 2.2; }
+  [class*="max-h-[92vh]"], [class*="max-h-[90vh]"] { border-radius: 18px; }
+}
+@media (min-width: 768px) {
+  main { padding-bottom: 2rem; }
+}
