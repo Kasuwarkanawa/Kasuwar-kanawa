@@ -18,19 +18,19 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#031b14]/80 backdrop-blur-md transition-opacity"
       />
 
-      <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-[26px] border border-emerald-100 bg-[#f8faf7] shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-[#0B172E] text-white p-4 sm:p-5 flex items-center justify-between">
+        <div className="flex items-center justify-between bg-gradient-to-r from-[#063b2a] to-[#0b6846] p-4 text-white shadow-md sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#E6007E] text-white flex items-center justify-center font-bold text-base shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-[#e6bf63] text-white flex items-center justify-center font-bold text-base shadow-xs">
               UK
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base">Usman Kano</h3>
-              <p className="text-xs text-pink-200">usmannafiu46688@gmail.com</p>
+              <p className="text-xs text-emerald-100">usmannafiu46688@gmail.com</p>
             </div>
           </div>
           <button
@@ -47,7 +47,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             onClick={() => setTab('profile')}
             className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
               tab === 'profile'
-                ? 'bg-white text-[#E6007E] border-b-2 border-[#E6007E]'
+                ? 'bg-white text-emerald-800 border-b-2 border-emerald-700'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -57,7 +57,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             onClick={() => setTab('orders')}
             className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
               tab === 'orders'
-                ? 'bg-white text-[#E6007E] border-b-2 border-[#E6007E]'
+                ? 'bg-white text-emerald-800 border-b-2 border-emerald-700'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -67,7 +67,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             onClick={() => setTab('wishlist')}
             className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
               tab === 'wishlist'
-                ? 'bg-white text-[#E6007E] border-b-2 border-[#E6007E]'
+                ? 'bg-white text-emerald-800 border-b-2 border-emerald-700'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -76,11 +76,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 text-xs text-slate-700 space-y-4">
+        <div className="space-y-4 bg-[radial-gradient(circle_at_top_right,_rgba(226,194,116,.12),_transparent_32%),#f8faf7] p-5 text-xs text-slate-700 sm:p-7">
           {tab === 'profile' && (
             <div className="space-y-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                <Phone className="w-4 h-4 text-[#E6007E]" />
+                <Phone className="w-4 h-4 text-emerald-700" />
                 <div>
                   <span className="block text-[10px] text-slate-400">Phone Number</span>
                   <span className="font-bold text-slate-900">09060938835</span>
@@ -88,7 +88,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-[#E6007E]" />
+                <MapPin className="w-4 h-4 text-emerald-700" />
                 <div>
                   <span className="block text-[10px] text-slate-400">Default Delivery Address</span>
                   <span className="font-bold text-slate-900">
@@ -97,8 +97,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 bg-pink-50 rounded-xl border border-pink-200">
-                <span className="text-xs font-bold text-[#E6007E] block mb-1">
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <span className="text-xs font-bold text-emerald-700 block mb-1">
                   Arewa VIP Club Member
                 </span>
                 <span className="text-[11px] text-slate-600">
