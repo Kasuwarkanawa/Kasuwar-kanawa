@@ -1,211 +1,34 @@
 import React, { useState } from 'react';
-import { Star, ShoppingCart, Zap, Check, Eye } from 'lucide-react';
+import { Star, ShoppingCart, Zap, Check, Eye, BadgeCheck, Heart } from 'lucide-react';
 import { Product } from '../types';
 import { formatPrice } from '../utils/format';
 import { ImagePreview } from './ImagePreview';
 
-interface ProductCardProps {
-  product: Product;
-  onAddToCart: (product: Product) => void;
-  onBuyNow: (product: Product) => void;
-  onViewDetails?: (product: Product) => void;
-  compact?: boolean;
-}
-
-export const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  onAddToCart,
-  onBuyNow,
-  onViewDetails,
-  compact = false,
-}) => {
-  const [imageError, setImageError] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [addedAnimation, setAddedAnimation] = useState(false);
-  const isOutOfStock = product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false;
-
-  const handleAdd = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (product.colors?.length) { onViewDetails?.(product); return; }
-    onAddToCart(product);
-    setAddedAnimation(true);
-    setTimeout(() => setAddedAnimation(false), 1200);
-  };
-
-  const handleBuy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (product.colors?.length) { onViewDetails?.(product); return; }
-    onBuyNow(product);
-  };
-
-  const handleClickCard = () => {
-    if (onViewDetails) {
-      onViewDetails(product);
-    }
-  };
-
-  return (
-    <div
-      onClick={handleClickCard}
-      className="bg-white rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group cursor-pointer"
-    >
-      {/* Top Media Area */}
-      <div className={`relative w-full bg-white overflow-hidden ${compact ? "aspect-[4/3]" : "aspect-square"}`}>
-        {/* Newly added product label */}
-        {product.isNew && (
-          <div className="absolute bottom-2 left-2 z-10 bg-emerald-600 text-white text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-md shadow-md uppercase tracking-wide">
-            NEW
-          </div>
-        )}
-
-        {/* Discount Badge */}
-        {product.discountPercentage > 0 && (
-          <div className="absolute top-2 left-2 z-10 bg-[#E6007E] text-white text-[11px] sm:text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
-            -{product.discountPercentage}%
-          </div>
-        )}
-
-        {product.sellerVerified && (
-          <div className="absolute top-2 left-2 z-10 mt-7 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-[9px] font-black uppercase text-white shadow-md">
-            <Check className="h-3 w-3" /> Verified Seller
-          </div>
-        )}
-
-        {/* Special Badge if any */}
-        {product.badge && (
-          <div className="absolute top-2 right-2 z-10 bg-[#0B172E]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-            {product.badge}
-          </div>
-        )}
-
-        {/* Quick View Overlay on hover */}
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 pointer-events-none">
-          <span className="bg-white/90 backdrop-blur-xs text-[#0B172E] text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5 text-[#E6007E]" />
-            <span>View Details</span>
-          </span>
-        </div>
-
-        {/* Product Image */}
-        {!imageError ? (
-          <>
-            <img
-              src={product.image}
-              alt={product.name}
-              referrerPolicy="no-referrer"
-              onError={() => setImageError(true)}
-              className="block w-full h-full object-contain p-2 transition-transform duration-300 bg-white"
-              loading="lazy"
-              onClick={(event) => { event.stopPropagation(); setPreviewOpen(true); }}
-            />
-            <button
-              type="button"
-              onClick={(event) => { event.stopPropagation(); setPreviewOpen(true); }}
-              className="absolute bottom-2 right-2 z-20 rounded-full bg-white/95 text-[#0B172E] text-[10px] font-bold px-2.5 py-1 shadow-md"
-            >
-              Tap to view full image
-            </button>
-          </>
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-pink-50 text-slate-400 p-4 text-center">
-            <span className="text-2xl mb-1">🛍️</span>
-            <span className="text-xs font-semibold text-slate-600 line-clamp-2">
-              {product.name}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Product Content Details */}
-      <div className={compact ? "px-2.5 pb-2.5 pt-1.5 flex-1" : "p-3 sm:p-4 flex-1 flex flex-col justify-between"}>
-        <div>
-          {/* Product Name */}
-          <h3
-            className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 group-hover:text-[#E6007E] transition-colors leading-snug"
-            title={product.name}
-          >
-            {product.name}
-          </h3>
-
-          {!compact && <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
-            <span className={isOutOfStock ? "font-bold text-red-700" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "font-bold text-emerald-700" : "font-medium text-slate-500"}>
-              {isOutOfStock ? "Out of stock" : product.stockQuantity != null || product.stockLeft != null || product.inStock === true ? "In stock" : "Availability not confirmed"}
-            </span>
-            {product.sellerActive && <span className="font-bold text-emerald-700">Active seller</span>}
-          </div> }
-
-          {/* Rating Stars & Reviews */}
-          <div className={compact ? "mt-1 flex items-center gap-1 flex-wrap" : "mt-1.5 flex items-center gap-1 flex-wrap"}>
-            <div className="flex items-center text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${
-                    i < Math.floor(product.rating)
-                      ? 'fill-amber-400 text-amber-400'
-                      : i < product.rating
-                      ? 'fill-amber-300/60 text-amber-400'
-                      : 'text-slate-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-[11px] font-bold text-slate-700 tabular-nums">
-              {product.rating}
-            </span>
-            <span className="text-[10px] sm:text-[11px] text-slate-400 tabular-nums">
-              ({product.reviewsCount} reviews)
-            </span>
-          </div>
-
-          {/* Price & Discount Section */}
-          <div className={compact ? "mt-1 flex items-baseline gap-1.5 flex-wrap" : "mt-2.5 flex items-baseline gap-1.5 flex-wrap"}>
-            <span className={compact ? "text-xs sm:text-base font-black text-emerald-900 tabular-nums" : "text-sm sm:text-base font-black text-[#0B172E] tabular-nums"}>
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice > product.price && (
-              <span className="text-xs text-slate-400 line-through tabular-nums">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons: Add to Cart and Buy Now */}
-        {!compact && <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-          {/* Add to Cart */}
-          <button
-            onClick={handleAdd}
-            disabled={isOutOfStock}
-            className="w-full py-2 px-2 disabled:opacity-50 disabled:cursor-not-allowed bg-pink-50 hover:bg-pink-100 active:bg-pink-200 text-[#E6007E] font-bold text-xs rounded-lg border border-pink-200 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-            aria-label={`Add ${product.name} to Cart`}
-          >
-            {addedAnimation ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-green-600" />
-                <span className="text-green-600 font-extrabold">Added!</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span className="truncate">Add to Cart</span>
-              </>
-            )}
-          </button>
-
-          {/* Buy Now */}
-          <button
-            onClick={handleBuy}
-            disabled={isOutOfStock}
-            className="w-full py-2 px-2 disabled:opacity-50 disabled:cursor-not-allowed bg-[#E6007E] hover:bg-[#D00071] active:bg-[#B80064] text-white font-extrabold text-xs rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-            aria-label={`Buy ${product.name} Now`}
-          >
-            <Zap className="w-3.5 h-3.5 fill-white" />
-            <span className="truncate">Buy Now</span>
-          </button>
-        </div>}
-      </div>
-      <ImagePreview src={product.image} alt={product.name} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />
-    </div>
-  );
+interface ProductCardProps { product:Product; onAddToCart:(product:Product)=>void; onBuyNow:(product:Product)=>void; onViewDetails?:(product:Product)=>void; compact?:boolean; }
+export const ProductCard:React.FC<ProductCardProps>=({product,onAddToCart,onBuyNow,onViewDetails,compact=false})=>{
+ const [imageError,setImageError]=useState(false); const [previewOpen,setPreviewOpen]=useState(false); const [addedAnimation,setAddedAnimation]=useState(false);
+ const isOutOfStock=product.stockQuantity===0||product.stockLeft===0||product.inStock===false;
+ const handleAdd=(e:React.MouseEvent)=>{e.stopPropagation();if(product.colors?.length){onViewDetails?.(product);return;}onAddToCart(product);setAddedAnimation(true);setTimeout(()=>setAddedAnimation(false),1200);};
+ const handleBuy=(e:React.MouseEvent)=>{e.stopPropagation();if(product.colors?.length){onViewDetails?.(product);return;}onBuyNow(product);};
+ return <article onClick={()=>onViewDetails?.(product)} className="group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_16px_rgba(15,45,30,.045)] transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_14px_34px_rgba(15,75,45,.12)]">
+  <div className={`relative w-full overflow-hidden bg-[#f5f7f3] ${compact?'aspect-[4/3]':'aspect-square'}`}>
+   {product.discountPercentage>0&&<span className="absolute left-2 top-2 z-10 rounded-md bg-[#b83b32] px-2 py-1 text-[9px] font-black text-white shadow sm:text-[10px]">-{product.discountPercentage}%</span>}
+   {product.isNew&&<span className="absolute right-2 top-2 z-10 rounded-md bg-[#e7c56f] px-2 py-1 text-[9px] font-black text-[#183c2c]">NEW</span>}
+   {product.badge&&!product.isNew&&<span className="absolute right-2 top-2 z-10 rounded-md bg-[#0b5639] px-2 py-1 text-[9px] font-black text-white">{product.badge}</span>}
+   {!imageError?<img src={product.image} alt={product.name} referrerPolicy="no-referrer" onError={()=>setImageError(true)} loading="lazy" onClick={e=>{e.stopPropagation();setPreviewOpen(true);}} className="h-full w-full object-contain p-3 transition duration-500 group-hover:scale-[1.04]"/>:<div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400"><ShoppingCart className="h-8 w-8"/><span className="px-2 text-center text-[10px] font-bold">{product.name}</span></div>}
+   <button type="button" onClick={e=>{e.stopPropagation();setPreviewOpen(true);}} className="absolute bottom-2 right-2 rounded-full bg-white/95 p-2 text-slate-700 shadow-md transition hover:text-emerald-700" aria-label="View full image"><Eye className="h-4 w-4"/></button>
+   {product.sellerVerified&&<span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[8px] font-black text-emerald-800 shadow sm:text-[9px]"><BadgeCheck className="h-3 w-3"/> Verified seller</span>}
+  </div>
+  <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+   <h3 className="line-clamp-2 min-h-[2.3em] text-[11px] font-bold leading-snug text-slate-800 transition group-hover:text-emerald-800 sm:text-sm" title={product.name}>{product.name}</h3>
+   <div className="mt-1.5 flex items-center gap-1"><div className="flex items-center text-amber-400">{[...Array(5)].map((_,i)=><Star key={i} className={`h-3 w-3 ${i<Math.floor(product.rating)?'fill-amber-400 text-amber-400':i<product.rating?'fill-amber-200 text-amber-400':'text-slate-200'}`}/>)}</div><span className="text-[9px] font-bold text-slate-600">{product.rating||'New'}</span><span className="text-[9px] text-slate-400">({product.reviewsCount||0})</span></div>
+   <div className="mt-2 flex flex-wrap items-baseline gap-1.5"><span className="text-sm font-black tracking-tight text-[#0b5136] sm:text-base">{formatPrice(product.price)}</span>{product.originalPrice>product.price&&<span className="text-[10px] text-slate-400 line-through">{formatPrice(product.originalPrice)}</span>}</div>
+   <div className="mt-1 text-[9px] font-semibold">{isOutOfStock?<span className="text-red-600">Out of stock</span>:product.sellerActive?<span className="text-emerald-700">Seller active</span>:<span className="text-slate-400">Available to order</span>}</div>
+   {!compact&&<div className="mt-auto grid grid-cols-2 gap-1.5 pt-3">
+    <button onClick={handleAdd} disabled={isOutOfStock} className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 py-2 text-[10px] font-extrabold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-40">{addedAnimation?<><Check className="h-3.5 w-3.5"/> Added</>:<><ShoppingCart className="h-3.5 w-3.5"/> Add</>}</button>
+    <button onClick={handleBuy} disabled={isOutOfStock} className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg bg-[#0b5639] px-1.5 py-2 text-[10px] font-extrabold text-white transition hover:bg-[#073d2c] disabled:opacity-40"><Zap className="h-3.5 w-3.5"/> Buy now</button>
+   </div>}
+  </div>
+  <ImagePreview src={product.image} alt={product.name} isOpen={previewOpen} onClose={()=>setPreviewOpen(false)}/>
+ </article>;
 };
