@@ -11,6 +11,6 @@ export const PopularProductsSection:React.FC<PopularProductsSectionProps>=({prod
    <div><div className="mb-1 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-emerald-700"><TrendingUp className="h-4 w-4"/> Trending in the marketplace</div><h2 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Popular products</h2><p className="mt-1 text-xs text-slate-500">Discover items shoppers are checking out</p></div>
    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 text-[10px] font-black text-amber-800"><Flame className="h-4 w-4"/> Popular picks</span>
   </div>
-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">{products.map(product=><ProductCard compact key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onViewDetails={onViewDetails}/>)}</div>
+  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">{products.map(product=><ProductCard compact key={product.id} product={product} onAddToCart={onAddToCart} onBuyNow={onBuyNow} onViewDetails={onViewDetails}/>)}</div>
  </section>;
 };
