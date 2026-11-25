@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Search Bar - Desktop and Tablet */}
           <form
             onSubmit={onSearchSubmit}
-            className="hidden md:flex flex-1 max-w-xl items-center relative"
+            className="order-3 flex w-full flex-1 items-center relative md:order-none md:max-w-xl"
           >
             <div className="relative w-full">
               <input
