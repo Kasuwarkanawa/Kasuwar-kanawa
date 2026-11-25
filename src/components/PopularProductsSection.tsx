@@ -45,7 +45,7 @@ export const PopularProductsSection: React.FC<PopularProductsSectionProps> = ({
         {products.map((product) => (
           <ProductCard
             compact
-            key={product.id>
+            key={product.id}
             product={product}
             onAddToCart={onAddToCart}
             onBuyNow={onBuyNow}
