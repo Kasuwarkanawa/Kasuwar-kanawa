@@ -419,12 +419,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     type="button"
                     onClick={handleAdd}
                     disabled={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false}
-                    className="py-3 px-3 bg-pink-50 hover:bg-pink-100 active:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-[#E6007E] font-bold text-xs sm:text-sm rounded-xl border border-pink-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="py-3 px-3 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-[#17351F] font-bold text-xs sm:text-sm rounded-xl border border-amber-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {addedAnimation ? (
                       <>
                         <Check className="w-4 h-4 text-green-600" />
-                        <span className="text-green-600 font-extrabold">Added to Cart!</span>
+                        <span className="text-[#17351F] font-extrabold">Added to Cart!</span>
                       </>
                     ) : (
                       <>
@@ -438,7 +438,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     type="button"
                     onClick={handleBuy}
                     disabled={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false}
-                    className="py-3 px-3 bg-emerald-700 hover:bg-[#D00071] active:bg-[#B80064] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    className="py-3 px-3 bg-[#06381C] hover:bg-[#0E6A3A] active:bg-[#042914] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <Zap className="w-4 h-4 fill-white" />
                     <span>Buy Now ({formatPrice(product.price * quantity)})</span>
