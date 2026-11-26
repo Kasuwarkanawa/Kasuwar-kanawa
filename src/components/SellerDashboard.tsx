@@ -1692,7 +1692,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                 </button>
               </div>
 
-              <form onSubmit={handleSaveProduct} className="p-5 overflow-y-auto space-y-3.5 text-xs">
+              <form onSubmit={handleSaveProduct} className="seller-product-form p-5 overflow-y-auto space-y-3.5 text-xs">
                 {/* Note about Super Admin approval requirement */}
                 <div className="p-3 bg-pink-50 border border-pink-200 rounded-xl text-pink-900 text-xs">
                   <strong>Notice:</strong> As required by Kasuwar Kanawa policy, all newly submitted products remain in{' '}
