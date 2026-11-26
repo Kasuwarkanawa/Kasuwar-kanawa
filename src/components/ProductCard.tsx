@@ -25,8 +25,8 @@ export const ProductCard:React.FC<ProductCardProps>=({product,onAddToCart,onBuyN
    <div className="mt-2 flex flex-wrap items-baseline gap-1.5"><span className="text-sm font-black tracking-tight text-[#FDE68A] sm:text-base">{formatPrice(product.price)}</span>{product.originalPrice>product.price&&<span className="text-[10px] text-slate-400 line-through">{formatPrice(product.originalPrice)}</span>}</div>
    <div className="mt-1 text-[9px] font-semibold">{isOutOfStock?<span className="text-red-600">Out of stock</span>:product.sellerActive?<span className="text-emerald-700">Seller active</span>:<span className="text-slate-400">Available to order</span>}</div>
    {!compact&&<div className="mt-auto grid grid-cols-2 gap-1.5 pt-3">
-    <button onClick={handleAdd} disabled={isOutOfStock} className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-amber-300 bg-amber-400 px-1.5 py-2 text-[10px] font-extrabold text-[#17351F] transition hover:bg-emerald-100 disabled:opacity-40">{addedAnimation?<><Check className="h-3.5 w-3.5"/> Added</>:<><ShoppingCart className="h-3.5 w-3.5"/> Add</>}</button>
-    <button onClick={handleBuy} disabled={isOutOfStock} className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg bg-[#06381C] border border-amber-300/60 px-1.5 py-2 text-[10px] font-extrabold text-white transition hover:bg-[#073d2c] disabled:opacity-40"><Zap className="h-3.5 w-3.5"/> Buy now</button>
+    <button onClick={handleAdd} disabled={isOutOfStock} className="kk-action inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-extrabold disabled:opacity-40">{addedAnimation?<><Check className="h-3.5 w-3.5"/> Added</>:<><ShoppingCart className="h-3.5 w-3.5"/> Add</>}</button>
+    <button onClick={handleBuy} disabled={isOutOfStock} className="kk-action-secondary inline-flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-extrabold disabled:opacity-40"><Zap className="h-3.5 w-3.5"/> Buy now</button>
    </div>}
   </div>
   <ImagePreview src={product.image} alt={product.name} isOpen={previewOpen} onClose={()=>setPreviewOpen(false)}/>
