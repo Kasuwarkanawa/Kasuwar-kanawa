@@ -879,3 +879,72 @@ body thead, body th {
 body td, body th, body tr, body hr {
   border-color: var(--kk-border) !important;
 }
+
+
+/* ==========================================================
+   Final small-area contrast fixes — legacy dashboard surfaces
+   ========================================================== */
+body :is(
+  [class~="bg-pink-100"], [class~="bg-purple-50"], [class~="bg-fuchsia-50"],
+  [class~="bg-sky-50"], [class~="bg-amber-100"], [class~="bg-blue-100"],
+  [class~="bg-emerald-100"], [class~="bg-green-100"], [class~="bg-red-100"],
+  [class~="bg-amber-50/20"], [class~="bg-amber-50/60"],
+  [class~="bg-red-50/60"], [class~="bg-pink-50/50"], [class~="bg-pink-50/60"],
+  [class*="f5f8f4"]
+) {
+  background: var(--kk-surface) !important;
+  background-image: none !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor !important;
+  border-color: var(--kk-border) !important;
+}
+
+/* Darken old amber/blue/red/green/pink status callouts and their
+   nested labels; do not leave dark status text on a forest surface. */
+body :is(
+  [class~="text-amber-950"], [class~="text-amber-900"], [class~="text-amber-800"],
+  [class~="text-blue-950"], [class~="text-blue-900"], [class~="text-blue-800"],
+  [class~="text-red-950"], [class~="text-red-900"], [class~="text-red-800"],
+  [class~="text-red-700"], [class~="text-green-950"], [class~="text-green-900"],
+  [class~="text-green-800"], [class~="text-emerald-950"], [class~="text-emerald-900"],
+  [class~="text-emerald-800"], [class~="text-pink-950"], [class~="text-pink-900"],
+  [class~="text-pink-800"], [class~="text-purple-950"], [class~="text-purple-900"],
+  [class~="text-indigo-950"], [class~="text-indigo-900"], [class~="text-sky-900"]
+) {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Convert old light action buttons to ivory only when the class is
+   exactly a light fill; translucent white header controls stay dark. */
+body :is(
+  button[class~="bg-white"], a[class~="bg-white"],
+  button[class~="bg-gray-50"], a[class~="bg-gray-50"],
+  button[class~="bg-gray-100"], a[class~="bg-gray-100"],
+  button[class~="bg-slate-50"], a[class~="bg-slate-50"],
+  button[class~="bg-slate-100"], a[class~="bg-slate-100"]
+) {
+  background: var(--kk-cream) !important;
+  color: var(--kk-canvas) !important;
+  -webkit-text-fill-color: var(--kk-canvas) !important;
+  border-color: rgba(234,179,8,.38) !important;
+}
+body :is(
+  button[class~="bg-white"], a[class~="bg-white"],
+  button[class~="bg-gray-50"], a[class~="bg-gray-50"],
+  button[class~="bg-gray-100"], a[class~="bg-gray-100"],
+  button[class~="bg-slate-50"], a[class~="bg-slate-50"],
+  button[class~="bg-slate-100"], a[class~="bg-slate-100"]
+) * {
+  color: var(--kk-canvas) !important;
+  -webkit-text-fill-color: var(--kk-canvas) !important;
+}
+body :is(
+  button[class~="bg-white/10"], button[class~="bg-white/15"],
+  a[class~="bg-white/10"], a[class~="bg-white/15"]
+) {
+  background: rgba(14,90,48,.72) !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+}
