@@ -324,29 +324,30 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(214,165,43,.55);
 }
 
 
-/* KASUWAR KANAWA — site-wide deep green background */
-html {
+/* KASUWAR KANAWA — exact footer green across the entire site */
+:root {
+  --kk-site-background: #053323;
+}
+html, body {
   min-height: 100%;
-  background: #032f1b !important;
+  background: var(--kk-site-background) !important;
+  background-image: none !important;
 }
 body {
   min-height: 100vh;
   color: #f4fff6;
-  background: linear-gradient(145deg, #032f1b 0%, #064426 48%, #075b2c 100%) fixed !important;
 }
-#root {
-  min-height: 100vh;
-  background: transparent !important;
-}
-main {
-  background: transparent !important;
+#root, main, main > div, main section {
+  min-height: 0;
+  background-color: transparent !important;
+  background-image: none !important;
   color: #f4fff6;
 }
 header {
   color: #f4fff6 !important;
-  background: linear-gradient(105deg, #032f1b 0%, #075b2c 100%) !important;
+  background: var(--kk-site-background) !important;
   border-color: rgba(255,255,255,.16) !important;
-  box-shadow: 0 5px 24px rgba(0,0,0,.2) !important;
+  box-shadow: none !important;
 }
 header .text-\\[\\#0B172E\\],
 header [class*="text-slate-"],
@@ -354,15 +355,16 @@ header [class*="text-gray-"] {
   color: #f4fff6 !important;
 }
 body::before {
-  opacity: .035;
+  opacity: .025;
   background-size: 190px 190px;
 }
 @media (max-width: 767px) {
-  body { background: linear-gradient(145deg, #032f1b, #064426 55%, #075b2c) fixed !important; }
+  body { background: var(--kk-site-background) !important; }
   nav[aria-label="Mobile quick navigation"] {
     color: #f4fff6 !important;
-    background: rgba(3,47,27,.98) !important;
+    background: var(--kk-site-background) !important;
     border-top-color: rgba(255,255,255,.18) !important;
+    box-shadow: none !important;
   }
   nav[aria-label="Mobile quick navigation"] button,
   nav[aria-label="Mobile quick navigation"] a {
