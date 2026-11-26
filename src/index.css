@@ -1055,3 +1055,77 @@ body button[class*="bg-[#0B5639]"] {
   -webkit-text-fill-color: #FFFFFF !important;
   border: 1px solid rgba(234,179,8,.45) !important;
 }
+
+
+/* Dashboard finishing pass: legacy tab bars, status text and nested panels. */
+body .fixed.inset-0 nav button,
+body .fixed.inset-0 aside button {
+  border-color: var(--kk-border);
+}
+body .fixed.inset-0 nav button[class*="bg-white"],
+body .fixed.inset-0 nav button[class*="bg-emerald-50"],
+body .fixed.inset-0 nav button[class*="bg-pink-50"],
+body .fixed.inset-0 aside button[class*="bg-white"],
+body .fixed.inset-0 aside button[class*="bg-emerald-50"] {
+  background: #0A4A26 !important;
+  color: #E5F2E9 !important;
+  -webkit-text-fill-color: #E5F2E9 !important;
+}
+body .fixed.inset-0 nav button[class*="bg-emerald-800"],
+body .fixed.inset-0 nav button[class*="bg-[#13622B]"],
+body .fixed.inset-0 aside button[class*="bg-[#13622B]"] {
+  background: linear-gradient(135deg,#EAB308,#FACC15) !important;
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+  border-color: #FDE68A !important;
+}
+body .fixed.inset-0 nav button *,
+body .fixed.inset-0 aside button * { color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+
+/* Catch remaining legacy dark typography, including arbitrary hex classes. */
+body [class*="text-slate-950"], body [class*="text-slate-900"],
+body [class*="text-slate-800"], body [class*="text-slate-700"],
+body [class*="text-gray-950"], body [class*="text-gray-900"],
+body [class*="text-gray-800"], body [class*="text-gray-700"],
+body [class*="text-zinc-900"], body [class*="text-zinc-800"],
+body [class*="text-[#0B172E]"], body [class*="text-[#0b172e]"],
+body [class*="text-[#073d2c]"], body [class*="text-[#0B172E]"],
+body [class*="text-[#183c2c]"] {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+body [class*="text-slate-600"], body [class*="text-slate-500"],
+body [class*="text-gray-600"], body [class*="text-gray-500"],
+body [class*="text-zinc-600"], body [class*="text-zinc-500"] {
+  color: var(--kk-text-muted) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Legacy dashboard panels and payout/COD status callouts. */
+body .fixed.inset-0 [class*="bg-white"],
+body .fixed.inset-0 [class*="bg-pink-50"],
+body .fixed.inset-0 [class*="bg-amber-50"],
+body .fixed.inset-0 [class*="bg-blue-50"],
+body .fixed.inset-0 [class*="bg-sky-50"],
+body .fixed.inset-0 [class*="bg-red-50"],
+body .fixed.inset-0 [class*="bg-green-50"],
+body .fixed.inset-0 [class*="bg-emerald-50"] {
+  background-color: #0A4A26 !important;
+  color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+}
+body .fixed.inset-0 [class*="bg-white"] :is(p,span,strong,b,label,h1,h2,h3,h4,small,div),
+body .fixed.inset-0 [class*="-50"] :is(p,span,strong,b,label,h1,h2,h3,h4,small) {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Semantic status labels: distinct colored chips on dark surfaces. */
+body .fixed.inset-0 span[class*="bg-emerald-"],
+body .fixed.inset-0 span[class*="bg-green-"] { background: rgba(16,185,129,.20) !important; color:#6EE7B7 !important; }
+body .fixed.inset-0 span[class*="bg-amber-"],
+body .fixed.inset-0 span[class*="bg-yellow-"] { background: rgba(234,179,8,.20) !important; color:#FDE68A !important; }
+body .fixed.inset-0 span[class*="bg-red-"],
+body .fixed.inset-0 span[class*="bg-rose-"] { background: rgba(244,63,94,.20) !important; color:#FDA4AF !important; }
+body .fixed.inset-0 span[class*="bg-blue-"],
+body .fixed.inset-0 span[class*="bg-sky-"] { background: rgba(56,189,248,.18) !important; color:#7DD3FC !important; }
