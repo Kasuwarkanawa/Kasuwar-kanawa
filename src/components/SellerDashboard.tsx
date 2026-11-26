@@ -1139,9 +1139,12 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                           <button
                             type="button"
                             onClick={() => openEditProduct(prod)}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                            aria-label={`Edit ${prod.name}`}
+                            title={`Edit ${prod.name}`}
+                            className="px-3 py-1.5 border-2 border-amber-400 bg-amber-200 hover:bg-amber-100 text-emerald-950 font-extrabold text-xs rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                            style={{ backgroundColor: '#FDE68A', color: '#064E3B', borderColor: '#F59E0B' }}
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-4 h-4" style={{ color: '#047857', strokeWidth: 2.8 }} />
                             <span>Edit</span>
                           </button>
 
