@@ -725,3 +725,157 @@ body {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
 }
+
+
+/* ==========================================================
+   KASUWAR KANAWA — dashboard nested-surface contrast audit
+   Applies to dashboard tabs, nested views, portals, drawers,
+   dialogs, popovers, dropdowns, tables and action panels.
+   ========================================================== */
+:root {
+  --kk-canvas: #06381C;
+  --kk-surface: #0A4A26;
+  --kk-surface-raised: #0E5A30;
+  --kk-surface-input: #042914;
+  --kk-border: rgba(255,255,255,.15);
+  --kk-text: #FFFFFF;
+  --kk-text-soft: #F4F7F5;
+  --kk-text-muted: #B8D1C2;
+}
+
+/* Convert residual light utility surfaces, including portal-rendered
+   content that may be mounted outside #root. */
+body :is(
+  [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"],
+  [class~="bg-gray-200"], [class~="bg-slate-50"], [class~="bg-slate-100"],
+  [class~="bg-slate-200"], [class~="bg-zinc-50"], [class~="bg-zinc-100"],
+  [class~="bg-neutral-50"], [class~="bg-neutral-100"],
+  [class~="bg-stone-50"], [class~="bg-stone-100"],
+  [class~="bg-pink-50"], [class~="bg-emerald-50"], [class~="bg-green-50"],
+  [class~="bg-amber-50"], [class~="bg-blue-50"], [class~="bg-red-50"],
+  [class~="bg-violet-50"], [class~="bg-indigo-50"],
+  [class*="bg-white/"], [class*="bg-gray-50/"], [class*="bg-gray-100/"],
+  [class*="bg-slate-50/"], [class*="bg-slate-100/"], [class*="bg-zinc-50/"]
+) {
+  background-color: var(--kk-surface) !important;
+  background-image: none !important;
+  border-color: var(--kk-border) !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* Slightly raised nested cards and tab panels. */
+body :is(
+  [class~="bg-gray-100"], [class~="bg-slate-100"],
+  [class~="bg-gray-200"], [class~="bg-slate-200"]
+) {
+  background-color: var(--kk-surface-raised) !important;
+}
+
+/* Inline white backgrounds left in legacy components are also darkened. */
+body [style*="background-color: rgb(255, 255, 255)" i],
+body [style*="background: rgb(255, 255, 255)" i],
+body [style*="background-color: #fff" i],
+body [style*="background: #fff" i],
+body [style*="background-color: #ffffff" i],
+body [style*="background: #ffffff" i] {
+  background: var(--kk-surface) !important;
+  color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+}
+
+/* Readable default text on dark dashboard surfaces. */
+body :is(
+  [class~="text-black"], [class~="text-gray-900"], [class~="text-gray-800"],
+  [class~="text-gray-700"], [class~="text-slate-950"], [class~="text-slate-900"],
+  [class~="text-slate-800"], [class~="text-slate-700"],
+  [class~="text-zinc-900"], [class~="text-zinc-800"], [class~="text-neutral-900"]
+) {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+body :is(
+  [class~="text-gray-600"], [class~="text-gray-500"],
+  [class~="text-slate-600"], [class~="text-slate-500"],
+  [class~="text-zinc-600"], [class~="text-zinc-500"],
+  [class~="text-neutral-600"], [class~="text-neutral-500"]
+) {
+  color: var(--kk-text-muted) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Inputs in every dashboard/form use the same dark, legible treatment.
+   This intentionally removes the former white Seller product-form exception. */
+body input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+body select, body textarea {
+  background-color: var(--kk-surface-input) !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+  caret-color: var(--kk-text-soft);
+  color-scheme: dark;
+}
+body input::placeholder, body textarea::placeholder {
+  color: var(--kk-text-muted) !important;
+  -webkit-text-fill-color: var(--kk-text-muted) !important;
+  opacity: 1;
+}
+body select option {
+  color: var(--kk-text-soft) !important;
+  background: var(--kk-surface-input) !important;
+}
+
+/* White/light action buttons remain intentionally ivory with explicit
+   dark-green text; ordinary cards and panels remain forest green. */
+body button[class*="bg-white"], body a[class*="bg-white"],
+body button[class*="bg-gray-50"], body a[class*="bg-gray-50"],
+body button[class*="bg-gray-100"], body a[class*="bg-gray-100"],
+body button[class*="bg-slate-50"], body a[class*="bg-slate-50"],
+body button[class*="bg-slate-100"], body a[class*="bg-slate-100"] {
+  background: var(--kk-cream) !important;
+  color: var(--kk-canvas) !important;
+  -webkit-text-fill-color: var(--kk-canvas) !important;
+  border-color: rgba(234,179,8,.38) !important;
+}
+body button[class*="bg-white"] *, body a[class*="bg-white"] *,
+body button[class*="bg-gray-50"] *, body a[class*="bg-gray-50"] *,
+body button[class*="bg-gray-100"] *, body a[class*="bg-gray-100"] *,
+body button[class*="bg-slate-50"] *, body a[class*="bg-slate-50"] *,
+body button[class*="bg-slate-100"] *, body a[class*="bg-slate-100"] * {
+  color: var(--kk-canvas) !important;
+  -webkit-text-fill-color: var(--kk-canvas) !important;
+}
+
+/* Seller product form no longer forces white fields. */
+body .seller-product-form input:not([type="file"]),
+body .seller-product-form select,
+body .seller-product-form textarea {
+  background: var(--kk-surface-input) !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+  color-scheme: dark;
+}
+body .seller-product-form input::placeholder,
+body .seller-product-form textarea::placeholder {
+  color: var(--kk-text-muted) !important;
+  -webkit-text-fill-color: var(--kk-text-muted) !important;
+}
+
+/* Keep nested modal, drawer, popup and dropdown layers on-theme,
+   including components rendered through a portal. */
+body [role="dialog"], body [role="menu"], body [role="listbox"],
+body [data-radix-popper-content-wrapper],
+body [data-state="open"][data-side],
+body .fixed.inset-0 > div,
+body .fixed.inset-0 > section {
+  border-color: var(--kk-border);
+}
+body table { color: var(--kk-text-soft); }
+body thead, body th {
+  background: var(--kk-surface-raised) !important;
+  color: var(--kk-text-soft) !important;
+}
+body td, body th, body tr, body hr {
+  border-color: var(--kk-border) !important;
+}
