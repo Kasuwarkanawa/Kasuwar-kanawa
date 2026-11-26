@@ -1129,3 +1129,81 @@ body .fixed.inset-0 span[class*="bg-red-"],
 body .fixed.inset-0 span[class*="bg-rose-"] { background: rgba(244,63,94,.20) !important; color:#FDA4AF !important; }
 body .fixed.inset-0 span[class*="bg-blue-"],
 body .fixed.inset-0 span[class*="bg-sky-"] { background: rgba(56,189,248,.18) !important; color:#7DD3FC !important; }
+
+
+/* Shopping cart drawer — complete forest/gold palette (not a white panel). */
+.kk-cart-drawer {
+  background: linear-gradient(160deg,#06381C 0%,#074525 48%,#0A4A26 100%) !important;
+  color: #F4F7F5 !important;
+  border-color: rgba(234,179,8,.45) !important;
+}
+.kk-cart-drawer > div:first-child {
+  background: linear-gradient(110deg,#042914,#0E5A30) !important;
+  border-color: rgba(234,179,8,.35) !important;
+}
+.kk-cart-drawer > div:first-child button {
+  background: linear-gradient(135deg,#EAB308,#FACC15) !important;
+  color: #17351F !important;
+  border: 1px solid #FDE68A !important;
+  border-radius: 12px !important;
+}
+.kk-cart-drawer > div:first-child button svg { color:#17351F !important; }
+.kk-cart-drawer > div:nth-child(2) {
+  background: linear-gradient(100deg,#0E5A30,#0A4A26) !important;
+  color:#F4F7F5 !important;
+  border-color:rgba(234,179,8,.28) !important;
+}
+.kk-cart-drawer > div:nth-child(2) p,
+.kk-cart-drawer > div:nth-child(2) strong { color:#F4F7F5 !important; }
+.kk-cart-drawer > div:nth-child(2) span { color:#FDE68A !important; }
+.kk-cart-drawer > div:nth-child(2) > div { background:#042914 !important; }
+.kk-cart-drawer > div:nth-child(2) > div > div {
+  background:linear-gradient(90deg,#EAB308,#FACC15) !important;
+}
+.kk-cart-drawer > div:nth-child(3) {
+  background:transparent !important;
+  color:#F4F7F5 !important;
+}
+.kk-cart-drawer > div:nth-child(3) > div {
+  background:#0A4A26 !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  color:#F4F7F5 !important;
+}
+.kk-cart-drawer > div:nth-child(3) h4,
+.kk-cart-drawer > div:nth-child(3) p,
+.kk-cart-drawer > div:nth-child(3) span,
+.kk-cart-drawer > div:nth-child(3) strong { color:#F4F7F5 !important; }
+.kk-cart-drawer > div:nth-child(3) button:not(:has(img)) {
+  background:#0E5A30 !important;
+  color:#F4F7F5 !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+.kk-cart-drawer > div:nth-child(3) button svg { color:inherit !important; }
+.kk-cart-drawer > div:nth-child(3) img { background:#FFFFFF !important; }
+.kk-cart-drawer > div:nth-child(3) [class*="bg-white"] {
+  background:#0E5A30 !important;
+  color:#F4F7F5 !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+.kk-cart-drawer > div:nth-child(3) [class*="text-slate-400"],
+.kk-cart-drawer > div:nth-child(3) [class*="text-slate-500"] { color:#B8D1C2 !important; }
+.kk-cart-drawer > div:nth-child(4) {
+  background:linear-gradient(160deg,#0A4A26,#06381C) !important;
+  color:#F4F7F5 !important;
+  border-color:rgba(234,179,8,.35) !important;
+}
+.kk-cart-drawer > div:nth-child(4) span,
+.kk-cart-drawer > div:nth-child(4) p { color:#DCEBE2 !important; }
+.kk-cart-drawer > div:nth-child(4) span.font-black,
+.kk-cart-drawer > div:nth-child(4) .text-xl { color:#FDE68A !important; }
+.kk-cart-drawer > div:nth-child(4) button {
+  background:linear-gradient(100deg,#EAB308,#FACC15) !important;
+  color:#17351F !important;
+  border:1px solid #FDE68A !important;
+  box-shadow:0 8px 22px rgba(0,0,0,.22) !important;
+}
+.kk-cart-drawer > div:nth-child(4) button * {
+  color:#17351F !important;
+  -webkit-text-fill-color:#17351F !important;
+}
+.kk-cart-drawer > div:nth-child(4) > div:last-child { color:#B8D1C2 !important; }
