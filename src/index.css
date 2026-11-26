@@ -325,15 +325,18 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(214,165,43,.55);
 
 
 /* KASUWAR KANAWA — site-wide deep green background */
-html,
-body,
-#root {
+html {
   min-height: 100%;
-  background: #064426 !important;
+  background: #032f1b !important;
 }
 body {
+  min-height: 100vh;
   color: #f4fff6;
   background: linear-gradient(145deg, #032f1b 0%, #064426 48%, #075b2c 100%) fixed !important;
+}
+#root {
+  min-height: 100vh;
+  background: transparent !important;
 }
 main {
   background: transparent !important;
