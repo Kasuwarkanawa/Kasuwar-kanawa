@@ -56,7 +56,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="z-10 flex w-screen max-w-lg flex-col border-l border-emerald-100 bg-[#f8faf7] shadow-2xl animate-in slide-in-from-right duration-300">
+        <div className="kk-cart-drawer z-10 flex w-screen max-w-lg flex-col border-l shadow-2xl animate-in slide-in-from-right duration-300">
           
           {/* Drawer Header */}
           <div className="p-4 sm:p-5 bg-gradient-to-r from-[#063b2a] to-[#0b6846] text-white flex items-center justify-between border-b border-[#1b2b4e]">
