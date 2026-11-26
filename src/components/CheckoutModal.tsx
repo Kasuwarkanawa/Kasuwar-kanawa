@@ -597,7 +597,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || checkoutItems.length === 0 || quoteLoading || !shippingQuote}
-              className="w-full py-3.5 bg-emerald-700 hover:bg-[#D00071] active:scale-98 disabled:opacity-50 text-white font-black text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="kk-action w-full py-3.5 disabled:opacity-50 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>
