@@ -374,3 +374,34 @@ body::before {
     color: #f2c85b !important;
   }
 }
+
+
+/* Readability pass for dark-green canvas: keep dark text off dark surfaces. */
+:root {
+  --kk-text-primary: #f4fff6;
+  --kk-text-secondary: #c4d8cc;
+  --kk-text-muted: #a9c2b3;
+  --kk-gold: #f2d27a;
+}
+/* Main content headings and dark navy labels become high-contrast ivory. */
+main :is(h1,h2,h3,h4,h5,h6),
+main .text-\\[\\#0B172E\\], main [class*="text-slate-900"],
+main [class*="text-slate-800"], main [class*="text-gray-900"],
+main [class*="text-gray-800"] {
+  color: var(--kk-text-primary) !important;
+}
+/* Muted descriptions and helper copy on transparent green sections. */
+main p, main small,
+main [class*="text-slate-500"], main [class*="text-slate-600"],
+main [class*="text-gray-500"], main [class*="text-gray-600"] {
+  color: var(--kk-text-secondary) !important;
+}
+/* Keep text on white/light cards readable with dark ink. */
+main :is(h1,h2,h3,h4,h5,h6,p,small,span,a,div,label):is(.bg-white *, [class*="bg-white"] *, [class*="bg-[#fff"] *, [class*="bg-[#f"] *) {
+  color: revert !important;
+}
+/* Gold/bright-green accents remain visible against the dark canvas. */
+main [class*="text-[#D6A52B]"], main [class*="text-amber-"],
+main [class*="text-yellow-"] { color: var(--kk-gold) !important; }
+main [class*="text-[#087A35]"] { color: #57d58a !important; }
+main [class*="text-[#0B172E]"] { color: var(--kk-text-primary) !important; }
