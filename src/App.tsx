@@ -4,7 +4,6 @@ import { CategoriesSection } from './components/CategoriesSection';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Header } from './components/Header';
 import { NavigationBar } from './components/NavigationBar';
-import { MainPromotionalBanner } from './components/MainPromotionalBanner';
 import { TrustBadges } from './components/TrustBadges';
 import { FlashSalesSection } from './components/FlashSalesSection';
 import { SpecialOffersSection } from './components/SpecialOffersSection';
@@ -596,7 +595,18 @@ export default function App() {
       {/* Main Content Area */}
       <main className="min-h-screen flex-1 bg-[linear-gradient(180deg,#f8faf7_0%,#f1f6f0_48%,#ffffff_100%)] pb-20 md:pb-0">
         {/* Featured homepage banner advertisement */}
-        {!searchResults && !categoryFilteredProducts && <MainPromotionalBanner products={liveProducts.slice(0,3)} activeFlashSale={activeFlashSale} />}
+        {!searchResults && !categoryFilteredProducts && (
+          <section aria-label="Kasuwar Kanawa promotional banner" className="mx-auto w-full max-w-[1440px] overflow-hidden bg-[#053223]">
+            <img
+              src="/assets/kasuwar-kanawa-banner.webp"
+              alt="Kasuwar Kanawa E-Store — Arewa Sai Dan Arewa"
+              className="block h-auto w-full object-contain"
+              width="1280"
+              height="480"
+              loading="eager"
+            />
+          </section>
+        )}
 
         {!searchResults && !categoryFilteredProducts && (
           <>
