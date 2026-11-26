@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --color-forest-950: #06381C;
+  --color-forest-900: #0A4A26;
+  --color-forest-800: #0E5A30;
+  --color-forest-975: #042914;
+  --color-ivory: #FCF8E8;
+  --color-sage: #B8D1C2;
+  --color-forest-gold: #EAB308;
+}
+
+
 *,
 *::before,
 *::after {
@@ -691,4 +702,26 @@ body {
   #root nav[aria-label="Mobile quick navigation"] a {
     color: var(--kk-text-muted) !important;
   }
+}
+
+/* Explicit utility precedence for light-class inputs used by shared forms. */
+#root input[class*="bg-white"],
+#root input[class*="bg-gray-"],
+#root input[class*="bg-slate-"],
+#root select[class*="bg-white"],
+#root select[class*="bg-gray-"],
+#root select[class*="bg-slate-"],
+#root textarea[class*="bg-white"],
+#root textarea[class*="bg-gray-"],
+#root textarea[class*="bg-slate-"] {
+  background: var(--kk-surface-input) !important;
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+}
+#root .seller-product-form input:not([type="file"]),
+#root .seller-product-form select,
+#root .seller-product-form textarea {
+  background: #fff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
