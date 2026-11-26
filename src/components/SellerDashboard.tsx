@@ -1828,7 +1828,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   <div><p className="font-black text-slate-800">Category-specific specifications</p><p className="text-[10px] text-slate-500">These fields change automatically when you choose another category.</p></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {categorySpecFields(prodCategory).map((field) => (
-                      <label key={field} className="block"><span className="mb-1 block text-[10px] font-bold text-slate-700">{field}</span><input value={prodSpecs[field] || ''} onChange={(e) => setProdSpecs((current) => ({ ...current, [field]: e.target.value }))} placeholder={`Enter ${field.toLowerCase()}`} className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs" /></label>
+                      <label key={field} className="block"><span className="mb-1 block text-[10px] font-bold text-slate-700">{field}{field.trim().toLowerCase() === "color" ? " (Optional)" : ""}</span><input value={prodSpecs[field] || ''} onChange={(e) => setProdSpecs((current) => ({ ...current, [field]: e.target.value }))} placeholder={`Enter ${field.toLowerCase()}${field.trim().toLowerCase() === "color" ? " (optional)" : ""}`} className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs" /></label>
                     ))}
                   </div>
                 </div>
