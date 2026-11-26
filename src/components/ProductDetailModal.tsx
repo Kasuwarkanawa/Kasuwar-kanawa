@@ -159,9 +159,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       {/* Backdrop */}
       <div onClick={onClose} className="fixed inset-0 bg-[#031b14]/80 backdrop-blur-md transition-opacity" />
 
-      <div className="relative z-10 my-1 flex max-h-[98vh] w-full max-w-[1440px] flex-col overflow-hidden rounded-[26px] border border-emerald-100 bg-[#f8faf7] shadow-2xl animate-in zoom-in-95 duration-200 sm:my-3">
+      <div className="relative z-10 my-1 flex max-h-[98vh] w-full max-w-[1440px] flex-col overflow-hidden rounded-[26px] border border-white/15 bg-[#0A4A26] text-white shadow-2xl animate-in zoom-in-95 duration-200 sm:my-3 kk-panel">
         {/* Top Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-emerald-100 bg-white px-4 py-4 text-[#073d2c] shadow-sm sm:px-6">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/15 bg-[#0E5A30] px-4 py-4 text-white shadow-sm sm:px-6">
           <div className="flex items-center gap-2">
             <span className="bg-emerald-700 text-white text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-md uppercase">
               Product Details
@@ -179,7 +179,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-3 sm:p-6 lg:p-8 overflow-y-auto flex-1 space-y-6 bg-slate-50/70">
+        <div className="p-3 sm:p-6 lg:p-8 overflow-y-auto flex-1 space-y-6 bg-[#06381C]">
           {/* Main Grid: Gallery Left, Details Right */}
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] gap-5 lg:gap-8 bg-white rounded-xl border border-slate-200 p-3 sm:p-5">
             {/* Gallery Column */}
@@ -413,13 +413,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
 
               {/* Action Buttons: Add to Cart and Buy Now */}
-              <div className="pt-4 border-t border-slate-200 space-y-2 sticky bottom-0 bg-white/95 backdrop-blur-sm">
+              <div className="pt-4 border-t border-white/15 space-y-2 sticky bottom-0 bg-[#0A4A26]/95 backdrop-blur-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handleAdd}
                     disabled={product.stockQuantity === 0 || product.stockLeft === 0 || product.inStock === false}
-                    className="py-3 px-3 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-[#17351F] font-bold text-xs sm:text-sm rounded-xl border border-amber-200 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="kk-action py-3 px-3 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {addedAnimation ? (
                       <>
