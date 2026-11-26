@@ -363,11 +363,12 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
   // Seller products are persisted by the authenticated backend API.
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const sampleLabels = prodColors.split(',').map((value) => value.trim()).filter(Boolean);
-    if (prodGalleryImages.length > 0 && sampleLabels.length !== prodGalleryImages.length) {
-      alert(`You uploaded ${prodGalleryImages.length} sample photos. Enter exactly ${prodGalleryImages.length} matching sample names in the same order.`);
-      return;
-    }
+    const enteredSampleLabels = prodColors.split(',').map((value) => value.trim()).filter(Boolean);
+    // Sample names are optional. Keep one label per uploaded sample image,
+    // using a simple generated name whenever the seller leaves a name blank.
+    const sampleLabels = prodGalleryImages.length > 0
+      ? prodGalleryImages.map((_, index) => enteredSampleLabels[index] || `Design ${index + 1}`)
+      : enteredSampleLabels;
     const payload = {
       name: prodName.trim(),
       category: prodCategory === 'Solar / Batteries' ? `Solar / Batteries - ${solarProductType}` : prodCategory,
