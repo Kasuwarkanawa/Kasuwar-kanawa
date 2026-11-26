@@ -480,3 +480,25 @@ header nav[aria-label="Main navigation"] button * {
   color: #f2d27a !important;
   -webkit-text-fill-color: #f2d27a !important;
 }
+
+
+/* Seller Add/Edit Product: force readable form controls on the dark site theme. */
+.seller-product-form input:not([type="file"]),
+.seller-product-form select,
+.seller-product-form textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  background-color: #ffffff !important;
+  caret-color: #0f172a !important;
+  color-scheme: light;
+}
+.seller-product-form input::placeholder,
+.seller-product-form textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1 !important;
+}
+.seller-product-form select option {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
