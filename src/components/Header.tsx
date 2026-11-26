@@ -9,7 +9,7 @@ export const Header:React.FC<HeaderProps>=({searchQuery,onSearchChange,onSearchS
  const link="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2.5 text-xs font-extrabold text-slate-700 transition hover:bg-white hover:text-[#13622B] sm:gap-2 sm:px-3 sm:text-sm";
  return <header id="top" className="sticky top-0 z-40 w-full border-b border-emerald-100 bg-gradient-to-r from-white via-[#fffefa] to-[#f3faf4] shadow-[0_5px_24px_rgba(19,98,43,.09)] backdrop-blur-xl">
   <div className="w-full overflow-hidden bg-[#053223]">
-   <img src="https://raw.githubusercontent.com/Kasuwarkanawa/Kasuwar-kanawa/main/public/assets/kasuwar-kanawa-banner.webp" alt="Kasuwar Kanawa E-Store — Arewa Sai Dan Arewa" className="mx-auto block h-auto w-full max-w-[1440px] object-contain" width="1280" height="480" loading="eager" />
+   <img src={`${import.meta.env.BASE_URL}assets/kasuwar-kanawa-banner.webp`} alt="Kasuwar Kanawa E-Store — Arewa Sai Dan Arewa" className="mx-auto block h-auto w-full max-w-[1440px] object-contain" width="1280" height="480" loading="eager" />
   </div>
   <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 lg:flex-nowrap lg:gap-5">
    <a href="#top" className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="Kasuwar Kanawa E-Store home">
