@@ -443,3 +443,40 @@ main [class*="text-[#0B172E]"] { color: var(--kk-text-primary) !important; }
   color: #123b27 !important;
   -webkit-text-fill-color: #123b27 !important;
 }
+
+
+/* Contrast repair: dark text on every pale/white control over the dark-green canvas. */
+header input,
+header input[type="search"] {
+  color: #173a25 !important;
+  -webkit-text-fill-color: #173a25 !important;
+  background-color: #f8fafc !important;
+}
+header input::placeholder,
+header input[type="search"]::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1 !important;
+}
+header nav[aria-label="Main navigation"] a,
+header nav[aria-label="Main navigation"] button {
+  color: #263b30 !important;
+  -webkit-text-fill-color: #263b30 !important;
+}
+header nav[aria-label="Main navigation"] a *,
+header nav[aria-label="Main navigation"] button * {
+  -webkit-text-fill-color: currentColor;
+}
+#root main #categories-section > div:first-child > button {
+  color: #17452b !important;
+  -webkit-text-fill-color: #17452b !important;
+}
+#root main #popular-products-section span.bg-amber-50,
+#root main #popular-products-section span.bg-amber-50 * {
+  color: #854d0e !important;
+  -webkit-text-fill-color: #854d0e !important;
+}
+#root main #popular-products-section .text-emerald-700 {
+  color: #f2d27a !important;
+  -webkit-text-fill-color: #f2d27a !important;
+}
