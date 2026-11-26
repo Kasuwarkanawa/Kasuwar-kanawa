@@ -398,7 +398,7 @@ main [class*="text-gray-500"], main [class*="text-gray-600"] {
 }
 /* Keep text on white/light cards readable with dark ink. */
 main :is(h1,h2,h3,h4,h5,h6,p,small,span,a,div,label):is(.bg-white *, [class*="bg-white"] *, [class*="bg-[#fff"] *, [class*="bg-[#f"] *) {
-  color: revert !important;
+  color: #0B172E !important;
 }
 /* Gold/bright-green accents remain visible against the dark canvas. */
 main [class*="text-[#D6A52B]"], main [class*="text-amber-"],
