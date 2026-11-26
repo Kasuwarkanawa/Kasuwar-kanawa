@@ -326,7 +326,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(214,165,43,.55);
 
 /* KASUWAR KANAWA — exact footer green across the entire site */
 :root {
-  --kk-site-background: #053323;
+  --kk-site-background: #053223;
 }
 html, body {
   min-height: 100%;
