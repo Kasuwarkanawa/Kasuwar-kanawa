@@ -1511,3 +1511,8 @@ body [role="alert"] *,body [aria-live="assertive"] * { color: inherit; }
   body::before { background-size: 280px 280px; }
   body .kk-action { min-height: 42px; }
 }
+
+
+/* Keep botanical layers above the body canvas and beneath the app UI. */
+body::before, body::after { z-index: 0; }
+#root { position: relative; z-index: 1; }
