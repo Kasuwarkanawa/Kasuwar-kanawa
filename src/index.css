@@ -322,3 +322,55 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(214,165,43,.55);
 @media (min-width: 768px) {
   main { padding-bottom: 2rem; }
 }
+
+
+/* KASUWAR KANAWA — exact footer green across the entire site */
+:root {
+  --kk-site-background: #053223;
+}
+html, body {
+  min-height: 100%;
+  background: var(--kk-site-background) !important;
+  background-image: none !important;
+}
+body {
+  min-height: 100vh;
+  color: #f4fff6;
+}
+#root, main, main > div, main section {
+  min-height: 0;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: #f4fff6;
+}
+header {
+  color: #f4fff6 !important;
+  background: var(--kk-site-background) !important;
+  border-color: rgba(255,255,255,.16) !important;
+  box-shadow: none !important;
+}
+header .text-\\[\\#0B172E\\],
+header [class*="text-slate-"],
+header [class*="text-gray-"] {
+  color: #f4fff6 !important;
+}
+body::before {
+  opacity: .025;
+  background-size: 190px 190px;
+}
+@media (max-width: 767px) {
+  body { background: var(--kk-site-background) !important; }
+  nav[aria-label="Mobile quick navigation"] {
+    color: #f4fff6 !important;
+    background: var(--kk-site-background) !important;
+    border-top-color: rgba(255,255,255,.18) !important;
+    box-shadow: none !important;
+  }
+  nav[aria-label="Mobile quick navigation"] button,
+  nav[aria-label="Mobile quick navigation"] a {
+    color: #e4f5e8 !important;
+  }
+  nav[aria-label="Mobile quick navigation"] button:first-child {
+    color: #f2c85b !important;
+  }
+}
