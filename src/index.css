@@ -948,3 +948,110 @@ body :is(
   -webkit-text-fill-color: var(--kk-text-soft) !important;
   border-color: var(--kk-border) !important;
 }
+
+
+/* ==========================================================
+   Final interaction palette: dashboard back, tabs, alerts,
+   status chips, and storefront purchase actions.
+   ========================================================== */
+:root {
+  --kk-gold: #EAB308;
+  --kk-success: #34D399;
+  --kk-warning: #FBBF24;
+  --kk-danger: #FB7185;
+  --kk-info: #7DD3FC;
+}
+
+/* Back/return controls: dark forest surface, never a white tile. */
+body button:has(> svg.lucide-arrow-left),
+body button[aria-label*="back" i],
+body button[title*="back" i] {
+  background: linear-gradient(135deg,#0E5A30,#06381C) !important;
+  color: #F4F7F5 !important;
+  -webkit-text-fill-color: #F4F7F5 !important;
+  border: 1px solid rgba(234,179,8,.55) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+body button:has(> svg.lucide-arrow-left) *,
+body button[aria-label*="back" i] *,
+body button[title*="back" i] * {
+  color: #F4F7F5 !important;
+  -webkit-text-fill-color: #F4F7F5 !important;
+}
+
+/* Tabs: clear selected/unselected contrast across all dashboards. */
+body [role="tablist"] { background: rgba(4,41,20,.72) !important; border-color: var(--kk-border) !important; }
+body [role="tab"][aria-selected="true"],
+body button[aria-selected="true"],
+body [data-state="active"][role="tab"] {
+  background: linear-gradient(135deg,#EAB308,#FACC15) !important;
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+  border-color: #FDE68A !important;
+  font-weight: 900 !important;
+}
+body [role="tab"][aria-selected="true"] *,
+body button[aria-selected="true"] *,
+body [data-state="active"][role="tab"] * {
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+}
+body [role="tab"][aria-selected="false"],
+body button[aria-selected="false"],
+body [data-state="inactive"][role="tab"] {
+  background: #0A4A26 !important;
+  color: #DCEBE2 !important;
+  -webkit-text-fill-color: #DCEBE2 !important;
+  border-color: var(--kk-border) !important;
+}
+
+/* Alert panels retain meaning through colored borders and readable text. */
+body [role="alert"], body [aria-live="assertive"] {
+  color: #F4F7F5 !important;
+  -webkit-text-fill-color: #F4F7F5 !important;
+}
+body [role="alert"] :is(p,span,strong,b,small),
+body [aria-live="assertive"] :is(p,span,strong,b,small) {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Status chips use luminous text on translucent semantic surfaces. */
+body :is(
+ [class*="bg-amber-"],[class*="bg-yellow-"],[class*="bg-red-"],
+ [class*="bg-rose-"],[class*="bg-emerald-"],[class*="bg-green-"],
+ [class*="bg-blue-"],[class*="bg-sky-"],[class*="bg-purple-"],
+ [class*="bg-violet-"],[class*="bg-pink-"],[class*="bg-indigo-"]
+):is(span,small,strong,div) {
+  border-color: rgba(255,255,255,.18);
+}
+body :is(
+ [class~="text-slate-700"],[class~="text-slate-800"],[class~="text-slate-900"],
+ [class~="text-gray-700"],[class~="text-gray-800"],[class~="text-gray-900"],
+ [class~="text-zinc-700"],[class~="text-neutral-700"],
+ [class~="text-[#0B172E]"],[class~="text-[#0b172e]"],
+ [class~="text-[#183c2c]"],[class~="text-[#073d2c]"],
+ [class~="text-[#0b5136]"],[class~="text-[#0b5639]"]
+) {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+}
+
+/* Keep storefront add-to-cart and buy-now buttons visually distinct. */
+body button[class*="border-emerald-200"][class*="bg-emerald-50"] {
+  background: linear-gradient(135deg,#EAB308,#FACC15) !important;
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+  border-color: #FDE68A !important;
+}
+body button[class*="border-emerald-200"][class*="bg-emerald-50"] * {
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+}
+body button[class*="bg-[#0b5639]"],
+body button[class*="bg-[#0B5639]"] {
+  background: linear-gradient(135deg,#0E6A3A,#06381C) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border: 1px solid rgba(234,179,8,.45) !important;
+}
