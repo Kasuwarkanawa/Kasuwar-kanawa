@@ -405,3 +405,41 @@ main [class*="text-[#D6A52B]"], main [class*="text-amber-"],
 main [class*="text-yellow-"] { color: var(--kk-gold) !important; }
 main [class*="text-[#087A35]"] { color: #57d58a !important; }
 main [class*="text-[#0B172E]"] { color: var(--kk-text-primary) !important; }
+
+
+/* Final high-contrast overrides for dark-green marketplace sections */
+#root main #categories-section h2,
+#root main #categories-section button > span:nth-of-type(2) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+#root main #categories-section > div:first-child > div > p:first-child,
+#root main [class*="uppercase"][class*="tracking-"] {
+  color: #f2d27a !important;
+  -webkit-text-fill-color: #f2d27a !important;
+}
+#root main #categories-section > div:first-child > div > p:nth-of-type(2),
+#root main #categories-section button > span:nth-of-type(3) {
+  color: #d5e7dc !important;
+  -webkit-text-fill-color: #d5e7dc !important;
+}
+/* Dark green/navy utility text must not remain on transparent green surfaces. */
+#root main [class*="text-slate-950"],
+#root main [class*="text-slate-900"],
+#root main [class*="text-slate-800"],
+#root main [class*="text-gray-950"],
+#root main [class*="text-gray-900"],
+#root main [class*="text-gray-800"],
+#root main [class*="text-[#13622B]"],
+#root main [class*="text-[#0B172E]"] {
+  color: #f4fff6 !important;
+  -webkit-text-fill-color: #f4fff6 !important;
+}
+/* Restore dark ink on explicitly light cards and controls. */
+#root main [class*="bg-white"] [class*="text-slate-950"],
+#root main [class*="bg-white"] [class*="text-slate-900"],
+#root main [class*="bg-white"] [class*="text-[#13622B]"],
+#root main [class*="bg-white"] [class*="text-[#0B172E]"] {
+  color: #123b27 !important;
+  -webkit-text-fill-color: #123b27 !important;
+}
