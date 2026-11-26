@@ -8,7 +8,10 @@ export const Header:React.FC<HeaderProps>=({searchQuery,onSearchChange,onSearchS
  const openDashboard=()=>{setAccountMenuOpen(false);if(currentUser?.accountType==='seller')onOpenSellerDashboard?.();else if(currentUser?.accountType==='admin')onOpenAdminPanel?.();else if(currentUser?.accountType==='logistics')onOpenLogisticsDashboard?.();else onOpenDashboard();};
  const link="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2.5 text-xs font-extrabold text-slate-700 transition hover:bg-white hover:text-[#13622B] sm:gap-2 sm:px-3 sm:text-sm";
  return <header id="top" className="sticky top-0 z-40 w-full border-b border-emerald-100 bg-gradient-to-r from-white via-[#fffefa] to-[#f3faf4] shadow-[0_5px_24px_rgba(19,98,43,.09)] backdrop-blur-xl">
-  <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 lg:flex-nowrap lg:gap-5 lg:px-7">
+  <div className="w-full overflow-hidden bg-[#053223]">
+   <img src="https://raw.githubusercontent.com/Kasuwarkanawa/Kasuwar-kanawa/main/public/assets/kasuwar-kanawa-banner.webp" alt="Kasuwar Kanawa E-Store — Arewa Sai Dan Arewa" className="mx-auto block h-auto w-full max-w-[1440px] object-contain" width="1280" height="480" loading="eager" />
+  </div>
+  <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 lg:flex-nowrap lg:gap-5">
    <a href="#top" className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="Kasuwar Kanawa E-Store home">
     <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 bg-gradient-to-br from-[#eaf5e9] to-[#fff5d9] text-[#13622B] ring-1 ring-[#D49B1A]/50 shadow-md sm:h-[62px] sm:w-[62px]"><ShoppingCart className="h-8 w-8 stroke-[2.6] sm:h-9 sm:w-9"/><span className="absolute -left-1 top-3 flex flex-col gap-1"><i className="h-0.5 w-2.5 rounded bg-[#D49B1A]"/><i className="h-0.5 w-2 rounded bg-[#D49B1A]"/></span><span className="absolute -right-1 bottom-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#D49B1A]"/></span>
     <span className="sr-only">Kasuwar Kanawa E-Store</span>
