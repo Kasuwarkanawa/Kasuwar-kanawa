@@ -852,7 +852,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                       <span className="text-slate-500 font-mono text-[11px] block">{user.phone}</span>
                     </div>
 
-                    <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-[11px] flex items-center gap-2">
+                    <div className="kk-alert-success p-3 rounded-xl text-[11px] flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Saved shipping address will auto-fill during your checkout.</span>
                     </div>
