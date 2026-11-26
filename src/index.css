@@ -502,3 +502,193 @@ header nav[aria-label="Main navigation"] button * {
   color: #0f172a !important;
   background-color: #ffffff !important;
 }
+
+
+/* ==========================================================
+   KASUWAR KANAWA — DEEP FOREST GREEN DESIGN SYSTEM
+   Global tokens and shared surfaces for storefront, auth,
+   buyer, seller, logistics and admin workspaces.
+   ========================================================== */
+:root {
+  color-scheme: dark;
+  --kk-canvas: #06381C;
+  --kk-surface: #0A4A26;
+  --kk-surface-raised: #0E5A30;
+  --kk-surface-input: #042914;
+  --kk-border: rgba(255,255,255,.14);
+  --kk-text: #FFFFFF;
+  --kk-text-soft: #F4F7F5;
+  --kk-text-muted: #B8D1C2;
+  --kk-cream: #FCF8E8;
+  --kk-gold: #EAB308;
+  --kk-focus: #34D399;
+}
+html, body, #root {
+  min-height: 100%;
+  background: var(--kk-canvas) !important;
+  color: var(--kk-text-soft);
+}
+body {
+  min-height: 100vh;
+  background-image: none !important;
+  color: var(--kk-text-soft) !important;
+}
+#root { min-height: 100vh; }
+#root::before { pointer-events: none; }
+
+/* Main canvas: keep page wrappers transparent so the same forest canvas
+   continues behind every route, dashboard and authentication screen. */
+#root main, #root main > div, #root main > section,
+#root [data-dashboard], #root [data-page],
+#root .min-h-screen, #root .min-h-\[100vh\] {
+  background-color: transparent;
+  color: var(--kk-text-soft);
+}
+
+/* Shared elevated surfaces: cards, table panels, drawers, sidebars,
+   popovers, dropdowns and modal content that previously used pale fills. */
+#root [class*="bg-white"],
+#root [class*="bg-gray-50"],
+#root [class*="bg-gray-100"],
+#root [class*="bg-slate-50"],
+#root [class*="bg-slate-100"],
+#root [class*="bg-pink-50"],
+#root [class*="bg-emerald-50"],
+#root [class*="bg-green-50"] {
+  background-color: var(--kk-surface) !important;
+  background-image: none;
+  border-color: var(--kk-border) !important;
+  color: var(--kk-text-soft) !important;
+}
+
+/* Slightly raised panels and interactive hover surfaces. */
+#root [class*="bg-white/"],
+#root [class*="bg-gray-50/"],
+#root [class*="bg-slate-50/"] {
+  background-color: rgba(14,90,48,.88) !important;
+}
+#root [class*="hover:bg-white"]:hover,
+#root [class*="hover:bg-gray-50"]:hover,
+#root [class*="hover:bg-slate-50"]:hover {
+  background-color: var(--kk-surface-raised) !important;
+}
+
+/* Ensure headings, labels, table content and helper text stay readable
+   on converted dark surfaces. Preserve semantic status colors below. */
+#root [class*="bg-white"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-gray-50"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-gray-100"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-slate-50"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-slate-100"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-pink-50"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-emerald-50"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div),
+#root [class*="bg-green-50"] :is(h1,h2,h3,h4,h5,h6,p,span,label,small,strong,td,th,a,div) {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* Inputs remain clean, high-contrast controls on the forest canvas. */
+#root input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+#root select, #root textarea {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+  background: var(--kk-surface-input) !important;
+  border: 1px solid var(--kk-border) !important;
+  caret-color: var(--kk-text-soft);
+  color-scheme: dark;
+}
+#root input::placeholder, #root textarea::placeholder {
+  color: var(--kk-text-muted) !important;
+  -webkit-text-fill-color: var(--kk-text-muted) !important;
+  opacity: 1;
+}
+#root select option {
+  color: var(--kk-text-soft);
+  background: var(--kk-surface-input);
+}
+#root input:focus, #root select:focus, #root textarea:focus {
+  outline: none;
+  border-color: var(--kk-gold) !important;
+  box-shadow: 0 0 0 3px rgba(234,179,8,.2) !important;
+}
+
+/* Seller product form is an intentional light-input exception for usability. */
+#root .seller-product-form input:not([type="file"]),
+#root .seller-product-form select,
+#root .seller-product-form textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  caret-color: #0f172a;
+  color-scheme: light;
+}
+#root .seller-product-form input::placeholder,
+#root .seller-product-form textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+
+/* Luxury ivory primary actions with deep-green text. */
+#root button[class*="bg-white"],
+#root a[class*="bg-white"],
+#root button[class*="bg-amber-"],
+#root a[class*="bg-amber-"] {
+  background: var(--kk-cream) !important;
+  color: var(--kk-canvas) !important;
+  border-color: rgba(234,179,8,.38) !important;
+}
+#root button[class*="bg-white"] *,
+#root a[class*="bg-white"] *,
+#root button[class*="bg-amber-"] *,
+#root a[class*="bg-amber-"] * {
+  color: var(--kk-canvas) !important;
+  -webkit-text-fill-color: var(--kk-canvas) !important;
+}
+#root button:focus-visible, #root a:focus-visible {
+  outline: 3px solid var(--kk-gold);
+  outline-offset: 2px;
+}
+
+/* Dashboard chrome and modal/drawer layers. */
+#root aside, #root [role="dialog"], #root [role="menu"],
+#root [role="listbox"], #root [data-radix-popper-content-wrapper] {
+  border-color: var(--kk-border);
+}
+#root header, #root nav, #root aside,
+#root [role="dialog"] > div, #root [role="menu"] {
+  border-color: var(--kk-border) !important;
+}
+#root table { color: var(--kk-text-soft); border-color: var(--kk-border); }
+#root thead, #root th { background: var(--kk-surface-raised) !important; color: var(--kk-text-soft) !important; }
+#root td, #root th, #root tr, #root hr { border-color: var(--kk-border) !important; }
+#root label, #root small, #root [class*="text-slate-500"],
+#root [class*="text-gray-500"], #root [class*="text-slate-600"],
+#root [class*="text-gray-600"] {
+  color: var(--kk-text-muted) !important;
+}
+#root :is(h1,h2,h3,h4,h5,h6) { color: var(--kk-text) !important; }
+#root [class*="text-slate-900"], #root [class*="text-slate-800"],
+#root [class*="text-gray-900"], #root [class*="text-gray-800"],
+#root [class*="text-[#0B172E]"] {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+}
+
+/* Preserve imagery and product thumbnails; do not tint media or their frames. */
+#root img, #root video, #root canvas { background-color: transparent; }
+#root .seller-product-form img { background-color: transparent; }
+
+/* Mobile bottom navigation follows the same dark forest system. */
+@media (max-width: 767px) {
+  #root nav[aria-label="Mobile quick navigation"] {
+    background: rgba(6,56,28,.97) !important;
+    border-top: 1px solid var(--kk-border) !important;
+    color: var(--kk-text-soft) !important;
+    backdrop-filter: blur(16px);
+  }
+  #root nav[aria-label="Mobile quick navigation"] button,
+  #root nav[aria-label="Mobile quick navigation"] a {
+    color: var(--kk-text-muted) !important;
+  }
+}
