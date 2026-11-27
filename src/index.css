@@ -1610,3 +1610,75 @@ body::before, body::after { z-index: 0; }
   .nav-item,
   .nav-gif-box { transition: none; }
 }
+
+
+/* Shared dock, GIF frame, and icon foundation */
+.nav-dock {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  background: rgba(5, 44, 22, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 12px 10px 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #CFE3D7;
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.nav-gif-box {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.nav-gif-box img.gif-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.72;
+  z-index: 1;
+}
+
+.nav-gif-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 56, 28, 0.22);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.nav-gif-box svg,
+.nav-gif-box i {
+  position: relative;
+  z-index: 3;
+  width: 23px;
+  height: 23px;
+  color: #FFFFFF;
+  stroke: #FFFFFF;
+  stroke-width: 2.3;
+  fill: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65));
+}
