@@ -386,7 +386,16 @@ export default function App() {
   // Category Filter Results
   const categoryFilteredProducts = useMemo(() => {
     if (!selectedCategory || selectedCategory === 'all') return null;
-    return liveProducts.filter((p) => p.category === selectedCategory || p.categoryId === selectedCategory).sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''));
+    const selected = db.getCategories().find((category) => category.id === selectedCategory);
+    const selectedName = selected?.name.trim().toLocaleLowerCase();
+    const selectedId = selectedCategory.trim().toLocaleLowerCase();
+    return liveProducts.filter((product) => {
+      const productCategory = product.category.trim().toLocaleLowerCase();
+      const productCategoryId = product.categoryId?.trim().toLocaleLowerCase();
+      return productCategoryId === selectedId ||
+        productCategory === selectedId ||
+        (selectedName !== undefined && productCategory === selectedName);
+    }).sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''));
   }, [selectedCategory, liveProducts]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -597,6 +606,13 @@ export default function App() {
         {!searchResults && !categoryFilteredProducts && (
           <>
             <CategoriesSection selectedCategory={selectedCategory} onSelectCategory={(catId) => setSelectedCategory(catId)} products={liveProducts} />
+            <FlashSalesSection
+              products={flashSaleProducts}
+              activeFlashSale={activeFlashSale}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onViewDetails={(p) => setSelectedProductForDetail(p)}
+            />
             <PopularProductsSection
               products={homepagePopularProducts}
               onAddToCart={handleAddToCart}

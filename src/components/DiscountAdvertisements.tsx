@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sparkles, ChevronRight, Copy, Check, Percent, ArrowUpRight } from 'lucide-react';
+import React from 'react';
+import { Sparkles, ChevronRight, Percent, ArrowUpRight } from 'lucide-react';
 import { PromotionalAdvertisement } from '../types';
 
 interface DiscountAdvertisementsProps {
@@ -13,17 +13,12 @@ export const DiscountAdvertisements: React.FC<DiscountAdvertisementsProps> = ({
   onStartShopping,
   onSelectCategory,
 }) => {
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const copyCoupon = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
-
   const activeAds = promotions && promotions.length > 0 ? promotions : [];
   const mainAd = activeAds[0];
   const secondaryAds = activeAds.slice(1, 3);
+
+  // Do not display placeholder promotions or coupon codes when admins have not published an ad.
+  if (!mainAd) return null;
 
   const handleLinkClick = (url?: string) => {
     if (!url) {
@@ -88,28 +83,13 @@ export const DiscountAdvertisements: React.FC<DiscountAdvertisementsProps> = ({
             </div>
           </div>
 
-          {/* Right: Action Button & Coupon Code */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          {/* Right: Action Button */}
+          <div className="flex w-full items-center justify-center md:w-auto">
             <button
-              onClick={() => copyCoupon('KANO2026')}
-              className="w-full sm:w-auto px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer text-emerald-100 hover:text-white"
-            >
-              <span>Code:</span>
-              <span className="font-mono text-yellow-300 font-extrabold tracking-wider">
-                KANO2026
-              </span>
-              {copiedCode === 'KANO2026' ? (
-                <Check className="w-3.5 h-3.5 text-green-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-[#f0d58a]" />
-              )}
-            </button>
-
-            <button
-              onClick={() => handleLinkClick(mainAd?.linkUrl)}
+              onClick={() => handleLinkClick(mainAd.linkUrl)}
               className="w-full sm:w-auto px-7 py-3 bg-[#d6b45f] hover:bg-[#D00071] active:scale-95 text-white font-black text-sm rounded-full shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer group"
             >
-              <span>{mainAd?.linkText || 'Start Shopping'}</span>
+              <span>{mainAd.linkText || 'Start Shopping'}</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
