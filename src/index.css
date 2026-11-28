@@ -1784,3 +1784,21 @@ body table, body td { color: var(--kk-text-soft); }
 body th { color: #FFFFFF !important; background: var(--kk-surface-raised) !important; }
 body :is([role="dialog"],[role="menu"],[role="listbox"]) { color: var(--kk-text-soft); }
 body :focus-visible { outline-color: #FDE68A !important; }
+
+
+/* Edit / pencil action icons: keep every edit affordance clearly visible. */
+body button[title*="Edit"] svg.lucide-edit-2,
+body button[aria-label*="Edit"] svg.lucide-edit-2,
+body button[title*="Edit"] svg.lucide-pencil,
+body button[aria-label*="Edit"] svg.lucide-pencil {
+  color: #FDE68A !important;
+  stroke: #FDE68A !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 1px rgba(0,0,0,.55));
+}
+/* Seller product edit uses a gold button, so its pencil must be dark for contrast. */
+body button[aria-label^="Edit "][title^="Edit "] svg.lucide-edit-2,
+body button[aria-label^="Edit "][title^="Edit "] svg.lucide-pencil {
+  color: #06381C !important;
+  stroke: #06381C !important;
+}
