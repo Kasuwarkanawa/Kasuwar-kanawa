@@ -208,6 +208,7 @@ export const marketplaceApi = {
     confirmLogistics: (id:string,decision:'confirm'|'reject',notes?:string) => request<CODSettlement>('/admin/cod-settlements/'+encodeURIComponent(id)+'/logistics-confirmation',{method:'PATCH',body:JSON.stringify({decision,notes})}),
     uploadSellerReceipt: (id:string,file:File) => request<CODSettlement>('/admin/cod-settlements/'+encodeURIComponent(id)+'/seller-receipt',{method:'POST',headers:{'Content-Type':file.type},body:file}),
     sellerList: () => request<CODSettlement[]>('/seller/cod-settlements'),
+    sellerBank: () => request<{bankName:string;accountName:string;accountNumber:string}>('/seller/payout-account'),
     sellerReceiptUrl: (id:string) => request<{url:string}>('/seller/cod-settlements/'+encodeURIComponent(id)+'/receipt'),
     acceptSellerPayment: (id:string) => request<CODSettlement>('/seller/cod-settlements/'+encodeURIComponent(id)+'/accept',{method:'POST'}),
     saveSellerBank: (data:{bankName:string;accountName:string;accountNumber:string}) => request<any>('/seller/payout-account',{method:'PATCH',body:JSON.stringify(data)}),
