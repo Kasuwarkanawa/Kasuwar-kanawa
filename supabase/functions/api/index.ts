@@ -420,7 +420,7 @@ async function dispatch(req: Request, origin: string | null) {
     const now = new Date().toISOString();
     const {data,error}=await db.from("FlashSale").select("*,products:FlashSaleProduct(productId)").eq("isActive",true).lte("startTime",now).gt("endTime",now).order("createdAt",{ascending:false}).limit(20);
     if(error) throw error;
-    return reply((data ?? []).map(s=>({id:s.id,title:s.title,description:s.description || undefined,discountPercentage:s.discountPercentage,startTime:s.startTime,endTime:s.endTime,productIds:(s.products ?? []).map((p:any)=>p.productId),isActive:s.isActive,createdAt:s.createdAt})),200,origin);
+    return reply((data ?? []).map(s=>({id:s.id,title:s.title,description:s.description || undefined,bannerImage:s.bannerImage ?? undefined,discountPercentage:s.discountPercentage,startTime:s.startTime,endTime:s.endTime,productIds:(s.products ?? []).map((p:any)=>p.productId),isActive:s.isActive,createdAt:s.createdAt})),200,origin);
   }
   if (method === "POST" && path === "/content/newsletter") {
     const {email}=z.object({email:z.string().trim().email().max(254)}).parse(await bodyJson(req));
