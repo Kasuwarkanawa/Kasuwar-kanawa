@@ -225,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Form Container */}
-        <div className="p-5 max-h-[80vh] overflow-y-auto">
+        <div data-kk-auth-content className="p-5 max-h-[80vh] overflow-y-auto">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
