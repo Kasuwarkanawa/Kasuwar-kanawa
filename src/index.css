@@ -1686,3 +1686,101 @@ body::before, body::after { z-index: 0; }
 
 /* Respect Android/iPhone gesture area at the bottom edge. */
 .nav-dock { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+
+
+/* ==========================================================
+   KASUWAR KANAWA — SITE-WIDE CONTRAST NORMALIZATION
+   Final, single source of truth for text and surface contrast.
+   Keeps the existing deep-forest visual theme.
+   ========================================================== */
+:root {
+  --kk-canvas: #06381C;
+  --kk-surface: #0A4A26;
+  --kk-surface-raised: #0E5A30;
+  --kk-surface-input: #042914;
+  --kk-border: rgba(220, 242, 226, .22);
+  --kk-text: #FFFFFF;
+  --kk-text-soft: #F4F7F5;
+  --kk-text-muted: #D0E2D6;
+}
+
+/* Consistent dark surfaces across storefront, dashboards, dialogs and drawers. */
+html, body, #root {
+  background-color: var(--kk-canvas) !important;
+  color: var(--kk-text-soft) !important;
+}
+#root main, #root main > div, #root main > section,
+#root [data-dashboard], #root [data-page] {
+  color: var(--kk-text-soft) !important;
+}
+body :is(
+  [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"],
+  [class~="bg-gray-200"], [class~="bg-slate-50"], [class~="bg-slate-100"],
+  [class~="bg-slate-200"], [class~="bg-zinc-50"], [class~="bg-zinc-100"],
+  [class~="bg-neutral-50"], [class~="bg-neutral-100"],
+  [class~="bg-stone-50"], [class~="bg-stone-100"],
+  [class~="bg-pink-50"], [class~="bg-emerald-50"], [class~="bg-green-50"],
+  [class~="bg-amber-50"], [class~="bg-blue-50"], [class~="bg-red-50"],
+  [class~="bg-sky-50"], [class~="bg-violet-50"], [class~="bg-indigo-50"],
+  [class~="bg-fuchsia-50"], [class~="bg-purple-50"],
+  [class*="bg-white/"], [class*="bg-gray-50/"], [class*="bg-slate-50/"]
+) {
+  background-color: var(--kk-surface) !important;
+  background-image: none !important;
+  color: var(--kk-text-soft) !important;
+  border-color: var(--kk-border) !important;
+}
+
+/* Do not let legacy dark text utilities become nearly invisible on green panels. */
+body :is(
+  [class~="text-black"], [class~="text-gray-950"], [class~="text-gray-900"],
+  [class~="text-gray-800"], [class~="text-gray-700"], [class~="text-gray-600"],
+  [class~="text-gray-500"], [class~="text-slate-950"], [class~="text-slate-900"],
+  [class~="text-slate-800"], [class~="text-slate-700"], [class~="text-slate-600"],
+  [class~="text-slate-500"], [class~="text-zinc-900"], [class~="text-zinc-800"],
+  [class~="text-zinc-700"], [class~="text-neutral-900"]
+) {
+  color: var(--kk-text-soft) !important;
+  -webkit-text-fill-color: var(--kk-text-soft) !important;
+}
+body :is(p, small, label, .kk-muted) { color: var(--kk-text-muted); }
+body :is(h1,h2,h3,h4,h5,h6,strong,b,th) { color: #FFFFFF !important; }
+
+/* Form fields are consistently dark with bright, readable entered text. */
+body input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+body select, body textarea {
+  background: var(--kk-surface-input) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border: 1px solid var(--kk-border) !important;
+  caret-color: #FFFFFF;
+  color-scheme: dark;
+}
+body input::placeholder, body textarea::placeholder {
+  color: #C5D9CC !important;
+  -webkit-text-fill-color: #C5D9CC !important;
+  opacity: 1 !important;
+}
+body select option { background: var(--kk-surface-input) !important; color: #FFFFFF !important; }
+
+/* Preserve clear semantic colors on dark surfaces. */
+body :is([class*="text-emerald-"],[class*="text-green-"]) { color: #6EE7A5 !important; -webkit-text-fill-color: #6EE7A5 !important; }
+body :is([class*="text-amber-"],[class*="text-yellow-"]) { color: #FDE68A !important; -webkit-text-fill-color: #FDE68A !important; }
+body :is([class*="text-red-"],[class*="text-rose-"]) { color: #FDA4AF !important; -webkit-text-fill-color: #FDA4AF !important; }
+body :is([class*="text-sky-"],[class*="text-blue-"]) { color: #7DD3FC !important; -webkit-text-fill-color: #7DD3FC !important; }
+body :is([class*="text-pink-"],[class*="text-purple-"],[class*="text-violet-"]) { color: #E9D5FF !important; -webkit-text-fill-color: #E9D5FF !important; }
+
+/* Gold action buttons need dark lettering; green/transparent actions use white. */
+body :is(.kk-action,[class*="bg-yellow-"],[class*="bg-amber-"],[class*="bg-[#EAB308]"]) {
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+}
+body :is(.kk-action,[class*="bg-yellow-"],[class*="bg-amber-"],[class*="bg-[#EAB308]"]) * {
+  color: #17351F !important;
+  -webkit-text-fill-color: #17351F !important;
+}
+body button:not(.kk-action), body a[role="button"] { text-shadow: none; }
+body table, body td { color: var(--kk-text-soft); }
+body th { color: #FFFFFF !important; background: var(--kk-surface-raised) !important; }
+body :is([role="dialog"],[role="menu"],[role="listbox"]) { color: var(--kk-text-soft); }
+body :focus-visible { outline-color: #FDE68A !important; }
