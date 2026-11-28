@@ -39,7 +39,7 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
   }, [activeFlashSale?.endTime, activeFlashSale?.isActive]);
 
   // If no active flash sale, or timer reached 0 (automatically ended), do not display
-  if (!activeFlashSale || !activeFlashSale.isActive || timeLeft <= 0 || products.length === 0) {
+  if (!activeFlashSale || !activeFlashSale.isActive || timeLeft <= 0) {
     return null;
   }
 
@@ -104,17 +104,19 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
       </div>
 
       {/* Product Cards Grid: Exactly 2 per row on mobile */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onAddToCart={onAddToCart}
-            onBuyNow={onBuyNow}
-            onViewDetails={onViewDetails}
-          />
-        ))}
-      </div>
+      {products.length > 0 && (
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddToCart={onAddToCart}
+              onBuyNow={onBuyNow}
+              onViewDetails={onViewDetails}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };
