@@ -1802,3 +1802,55 @@ body button[aria-label^="Edit "][title^="Edit "] svg.lucide-pencil {
   color: #06381C !important;
   stroke: #06381C !important;
 }
+
+
+/* Targeted readability repairs for light cards and authentication forms.
+   Keep authored gradient cards light; never apply dark-canvas text globally. */
+body [data-kk-announcement-card] h4,
+body [data-kk-announcement-card] p {
+  color: #14251b !important;
+  -webkit-text-fill-color: #14251b !important;
+}
+body [data-kk-announcement-card] button:first-child {
+  color: #075b2c !important;
+  -webkit-text-fill-color: #075b2c !important;
+}
+body [data-kk-announcement-card] button:nth-child(2) {
+  background: #f3d77d !important;
+  color: #17351f !important;
+  -webkit-text-fill-color: #17351f !important;
+}
+body [data-kk-announcement-card] button:last-child {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  -webkit-text-fill-color: #b91c1c !important;
+}
+body [data-kk-auth-content] {
+  color: #14251b !important;
+}
+body [data-kk-auth-content] label,
+body [data-kk-auth-content] p,
+body [data-kk-auth-content] h2,
+body [data-kk-auth-content] .text-slate-500,
+body [data-kk-auth-content] .text-slate-600,
+body [data-kk-auth-content] .text-slate-700,
+body [data-kk-auth-content] .text-slate-900 {
+  color: #243b2d !important;
+  -webkit-text-fill-color: #243b2d !important;
+}
+body [data-kk-auth-content] input,
+body [data-kk-auth-content] select,
+body [data-kk-auth-content] textarea {
+  background: #07351f !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body [data-kk-auth-content] input::placeholder,
+body [data-kk-auth-content] textarea::placeholder {
+  color: #c5d9cc !important;
+  -webkit-text-fill-color: #c5d9cc !important;
+}
+body [data-kk-auth-content] button[type="submit"] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
